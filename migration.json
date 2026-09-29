@@ -1,0 +1,1370 @@
+{
+  "source_repository": "https://github.com/changlukas/noc_project.git",
+  "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
+  "files": [
+    {
+      "source": ".clang-format",
+      "path": ".clang-format"
+    },
+    {
+      "source": ".dockerignore",
+      "path": ".dockerignore"
+    },
+    {
+      "source": ".gitattributes",
+      "path": ".gitattributes"
+    },
+    {
+      "source": "LICENSE",
+      "path": "LICENSE"
+    },
+    {
+      "source": "docker/noc-dev/Dockerfile",
+      "path": "docker/noc-dev/Dockerfile"
+    },
+    {
+      "source": "ref_model/c_model/CMakeLists.txt",
+      "path": "ref_model/c_model/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/axi_master.hpp",
+      "path": "ref_model/c_model/include/axi/axi_master.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/axi_slave.hpp",
+      "path": "ref_model/c_model/include/axi/axi_slave.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/memory.hpp",
+      "path": "ref_model/c_model/include/axi/memory.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/memory_port.hpp",
+      "path": "ref_model/c_model/include/axi/memory_port.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/protocol_rules.hpp",
+      "path": "ref_model/c_model/include/axi/protocol_rules.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/scenario_parser.hpp",
+      "path": "ref_model/c_model/include/axi/scenario_parser.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/scoreboard.hpp",
+      "path": "ref_model/c_model/include/axi/scoreboard.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/axi/types.hpp",
+      "path": "ref_model/c_model/include/axi/types.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/flit.hpp",
+      "path": "ref_model/c_model/include/flit.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/ni/address_map.hpp",
+      "path": "ref_model/c_model/include/ni/address_map.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/ni/channel_mode.hpp",
+      "path": "ref_model/c_model/include/ni/channel_mode.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/ni/ni_stage.hpp",
+      "path": "ref_model/c_model/include/ni/ni_stage.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/ni/pipeline_stage.hpp",
+      "path": "ref_model/c_model/include/ni/pipeline_stage.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/ni/wormhole_arbiter.hpp",
+      "path": "ref_model/c_model/include/ni/wormhole_arbiter.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/addr_trans.hpp",
+      "path": "ref_model/c_model/include/nmu/addr_trans.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/axi_slave_port.hpp",
+      "path": "ref_model/c_model/include/nmu/axi_slave_port.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/depacketize.hpp",
+      "path": "ref_model/c_model/include/nmu/depacketize.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/nmu.hpp",
+      "path": "ref_model/c_model/include/nmu/nmu.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/nmu_standalone.hpp",
+      "path": "ref_model/c_model/include/nmu/nmu_standalone.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/packetize.hpp",
+      "path": "ref_model/c_model/include/nmu/packetize.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/port_params.hpp",
+      "path": "ref_model/c_model/include/nmu/port_params.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/rob.hpp",
+      "path": "ref_model/c_model/include/nmu/rob.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/sam_yaml.hpp",
+      "path": "ref_model/c_model/include/nmu/sam_yaml.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/staged_beats.hpp",
+      "path": "ref_model/c_model/include/nmu/staged_beats.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nmu/vc_allocator.hpp",
+      "path": "ref_model/c_model/include/nmu/vc_allocator.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/axi_master_port.hpp",
+      "path": "ref_model/c_model/include/nsu/axi_master_port.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/depacketize.hpp",
+      "path": "ref_model/c_model/include/nsu/depacketize.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/meta_buffer.hpp",
+      "path": "ref_model/c_model/include/nsu/meta_buffer.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/nsu.hpp",
+      "path": "ref_model/c_model/include/nsu/nsu.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/nsu_standalone.hpp",
+      "path": "ref_model/c_model/include/nsu/nsu_standalone.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/packetize.hpp",
+      "path": "ref_model/c_model/include/nsu/packetize.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/port_params.hpp",
+      "path": "ref_model/c_model/include/nsu/port_params.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/nsu/vc_allocator.hpp",
+      "path": "ref_model/c_model/include/nsu/vc_allocator.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/request_io.hpp",
+      "path": "ref_model/c_model/include/request_io.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/response_io.hpp",
+      "path": "ref_model/c_model/include/response_io.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/null_adapters.hpp",
+      "path": "ref_model/c_model/include/router/null_adapters.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/queue_credit_out.hpp",
+      "path": "ref_model/c_model/include/router/queue_credit_out.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/req_in.hpp",
+      "path": "ref_model/c_model/include/router/req_in.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/req_out.hpp",
+      "path": "ref_model/c_model/include/router/req_out.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/route_mask.hpp",
+      "path": "ref_model/c_model/include/router/route_mask.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/router.hpp",
+      "path": "ref_model/c_model/include/router/router.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/router_adapters.hpp",
+      "path": "ref_model/c_model/include/router/router_adapters.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/router_types.hpp",
+      "path": "ref_model/c_model/include/router/router_types.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/rsp_in.hpp",
+      "path": "ref_model/c_model/include/router/rsp_in.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/rsp_out.hpp",
+      "path": "ref_model/c_model/include/router/rsp_out.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/router/simple_router.hpp",
+      "path": "ref_model/c_model/include/router/simple_router.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/dat_merge_wrap.hpp",
+      "path": "ref_model/c_model/include/wrap/dat_merge_wrap.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/flit_byte_conv.hpp",
+      "path": "ref_model/c_model/include/wrap/flit_byte_conv.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/flit_bytes.hpp",
+      "path": "ref_model/c_model/include/wrap/flit_bytes.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/nmu_wrap.hpp",
+      "path": "ref_model/c_model/include/wrap/nmu_wrap.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/nmu_wrap_io.hpp",
+      "path": "ref_model/c_model/include/wrap/nmu_wrap_io.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/nsu_wrap.hpp",
+      "path": "ref_model/c_model/include/wrap/nsu_wrap.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/nsu_wrap_io.hpp",
+      "path": "ref_model/c_model/include/wrap/nsu_wrap_io.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/perf_collector.hpp",
+      "path": "ref_model/c_model/include/wrap/perf_collector.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/router_wrap.hpp",
+      "path": "ref_model/c_model/include/wrap/router_wrap.hpp"
+    },
+    {
+      "source": "ref_model/c_model/include/wrap/router_wrap_io.hpp",
+      "path": "ref_model/c_model/include/wrap/router_wrap_io.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/axi/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/mock_memory_port.hpp",
+      "path": "ref_model/c_model/tests/axi/mock_memory_port.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/mock_slave.hpp",
+      "path": "ref_model/c_model/tests/axi/mock_slave.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_axi_master.cpp",
+      "path": "ref_model/c_model/tests/axi/test_axi_master.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_axi_master_inject.cpp",
+      "path": "ref_model/c_model/tests/axi/test_axi_master_inject.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_axi_master_raw_order.cpp",
+      "path": "ref_model/c_model/tests/axi/test_axi_master_raw_order.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_axi_slave.cpp",
+      "path": "ref_model/c_model/tests/axi/test_axi_slave.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_memory.cpp",
+      "path": "ref_model/c_model/tests/axi/test_memory.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_protocol_rules.cpp",
+      "path": "ref_model/c_model/tests/axi/test_protocol_rules.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_scenario_metadata.cpp",
+      "path": "ref_model/c_model/tests/axi/test_scenario_metadata.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_scoreboard.cpp",
+      "path": "ref_model/c_model/tests/axi/test_scoreboard.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/axi/test_wire_slave_port.cpp",
+      "path": "ref_model/c_model/tests/axi/test_wire_slave_port.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/common/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/channel_model.hpp",
+      "path": "ref_model/c_model/tests/common/channel_model.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/channel_model_params.hpp",
+      "path": "ref_model/c_model/tests/common/channel_model_params.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/dat_flit_builders.hpp",
+      "path": "ref_model/c_model/tests/common/dat_flit_builders.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/flit_builders.hpp",
+      "path": "ref_model/c_model/tests/common/flit_builders.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/loopback_channel_set.hpp",
+      "path": "ref_model/c_model/tests/common/loopback_channel_set.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/mesh_config.hpp",
+      "path": "ref_model/c_model/tests/common/mesh_config.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/per_channel_capture.hpp",
+      "path": "ref_model/c_model/tests/common/per_channel_capture.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/test_axi_master_callbacks.cpp",
+      "path": "ref_model/c_model/tests/common/test_axi_master_callbacks.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/test_channel_model_per_vc_credit.cpp",
+      "path": "ref_model/c_model/tests/common/test_channel_model_per_vc_credit.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/test_logger.hpp",
+      "path": "ref_model/c_model/tests/common/test_logger.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/test_perf_collector.cpp",
+      "path": "ref_model/c_model/tests/common/test_perf_collector.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/common/tmp_path.hpp",
+      "path": "ref_model/c_model/tests/common/tmp_path.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/integration/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/integration/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/integration/test_narrow_class_smoke.cpp",
+      "path": "ref_model/c_model/tests/integration/test_narrow_class_smoke.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/integration/test_port_pair_loopback.cpp",
+      "path": "ref_model/c_model/tests/integration/test_port_pair_loopback.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/integration/test_request_response_loopback.cpp",
+      "path": "ref_model/c_model/tests/integration/test_request_response_loopback.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/nmu/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_addr_trans.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_addr_trans.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_axi_slave_port.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_axi_slave_port.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_depacketize.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_depacketize.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_nmu.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_nmu.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_nmu_collective.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_nmu_collective.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_nmu_credit.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_nmu_credit.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_nmu_dat_face.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_nmu_dat_face.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_nmu_req_bridge.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_nmu_req_bridge.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_packetize.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_packetize.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_rob.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_rob.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_sam_config.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_sam_config.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_sam_table.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_sam_table.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_sam_yaml.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_sam_yaml.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nmu/test_vc_allocator.cpp",
+      "path": "ref_model/c_model/tests/nmu/test_vc_allocator.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/nsu/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/test_meta_buffer.cpp",
+      "path": "ref_model/c_model/tests/nsu/test_meta_buffer.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/test_nsu.cpp",
+      "path": "ref_model/c_model/tests/nsu/test_nsu.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/test_nsu_collective.cpp",
+      "path": "ref_model/c_model/tests/nsu/test_nsu_collective.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/test_nsu_dat_face.cpp",
+      "path": "ref_model/c_model/tests/nsu/test_nsu_dat_face.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/test_nsu_depacketize.cpp",
+      "path": "ref_model/c_model/tests/nsu/test_nsu_depacketize.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/test_nsu_packetize.cpp",
+      "path": "ref_model/c_model/tests/nsu/test_nsu_packetize.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/nsu/test_nsu_vc_allocator.cpp",
+      "path": "ref_model/c_model/tests/nsu/test_nsu_vc_allocator.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/router/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_pipeline_stage.cpp",
+      "path": "ref_model/c_model/tests/router/test_pipeline_stage.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_route_mask.cpp",
+      "path": "ref_model/c_model/tests/router/test_route_mask.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_router.cpp",
+      "path": "ref_model/c_model/tests/router/test_router.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_router_adapters.cpp",
+      "path": "ref_model/c_model/tests/router/test_router_adapters.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_router_fork.cpp",
+      "path": "ref_model/c_model/tests/router/test_router_fork.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_router_front_route.cpp",
+      "path": "ref_model/c_model/tests/router/test_router_front_route.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_simple_router.cpp",
+      "path": "ref_model/c_model/tests/router/test_simple_router.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_simple_router_fork.cpp",
+      "path": "ref_model/c_model/tests/router/test_simple_router_fork.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_simple_router_join.cpp",
+      "path": "ref_model/c_model/tests/router/test_simple_router_join.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/test_wormhole_arbiter.cpp",
+      "path": "ref_model/c_model/tests/router/test_wormhole_arbiter.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/router/two_node_fabric.hpp",
+      "path": "ref_model/c_model/tests/router/two_node_fabric.hpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/test_flit.cpp",
+      "path": "ref_model/c_model/tests/test_flit.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/wrap/CMakeLists.txt",
+      "path": "ref_model/c_model/tests/wrap/CMakeLists.txt"
+    },
+    {
+      "source": "ref_model/c_model/tests/wrap/test_cmodel_dpi.cpp",
+      "path": "ref_model/c_model/tests/wrap/test_cmodel_dpi.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/wrap/test_dat_merge_wrap.cpp",
+      "path": "ref_model/c_model/tests/wrap/test_dat_merge_wrap.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/wrap/test_ni_router_chain.cpp",
+      "path": "ref_model/c_model/tests/wrap/test_ni_router_chain.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/wrap/test_nmu_wrap.cpp",
+      "path": "ref_model/c_model/tests/wrap/test_nmu_wrap.cpp"
+    },
+    {
+      "source": "ref_model/c_model/tests/wrap/test_router_wrap.cpp",
+      "path": "ref_model/c_model/tests/wrap/test_router_wrap.cpp"
+    },
+    {
+      "source": "ref_model/dpi/cmodel_dpi.cpp",
+      "path": "ref_model/dpi/cmodel_dpi.cpp"
+    },
+    {
+      "source": "ref_model/dpi/cmodel_dpi.h",
+      "path": "ref_model/dpi/cmodel_dpi.h"
+    },
+    {
+      "source": "ref_model/dpi/dpi_boundary_macros.h",
+      "path": "ref_model/dpi/dpi_boundary_macros.h"
+    },
+    {
+      "source": "ref_model/dpi/dpi_marshal.hpp",
+      "path": "ref_model/dpi/dpi_marshal.hpp"
+    },
+    {
+      "source": "ref_model/dpi/handle_block.hpp",
+      "path": "ref_model/dpi/handle_block.hpp"
+    },
+    {
+      "source": "ref_model/top/nsu_wrap.sv",
+      "path": "ref_model/top/nsu_wrap.sv"
+    },
+    {
+      "source": "ref_model/top/router_wrap.sv",
+      "path": "ref_model/top/router_wrap.sv"
+    },
+    {
+      "source": "rtl/Bender.yml",
+      "path": "rtl/Bender.yml"
+    },
+    {
+      "source": "rtl/common/axi_async_fifo.sv",
+      "path": "rtl/common/axi_async_fifo.sv"
+    },
+    {
+      "source": "rtl/common/axi_if.sv",
+      "path": "rtl/common/axi_if.sv"
+    },
+    {
+      "source": "rtl/common/ni_sam.sv",
+      "path": "rtl/common/ni_sam.sv"
+    },
+    {
+      "source": "rtl/common/ni_types_pkg.sv",
+      "path": "rtl/common/ni_types_pkg.sv"
+    },
+    {
+      "source": "rtl/common/stream_register.sv",
+      "path": "rtl/common/stream_register.sv"
+    },
+    {
+      "source": "rtl/common/test_axi_id_remap.sh",
+      "path": "rtl/common/test_axi_id_remap.sh"
+    },
+    {
+      "source": "rtl/common/test_sam.sh",
+      "path": "rtl/common/test_sam.sh"
+    },
+    {
+      "source": "rtl/common/tests/tb_axi_id_remap.sv",
+      "path": "rtl/common/tests/tb_axi_id_remap.sv"
+    },
+    {
+      "source": "rtl/common/tests/tb_axi_id_remap_illegal.sv",
+      "path": "rtl/common/tests/tb_axi_id_remap_illegal.sv"
+    },
+    {
+      "source": "rtl/common/tests/tb_ni_sam.sv",
+      "path": "rtl/common/tests/tb_ni_sam.sv"
+    },
+    {
+      "source": "rtl/nmu/channel_assign/channel_assign.sv",
+      "path": "rtl/nmu/channel_assign/channel_assign.sv"
+    },
+    {
+      "source": "rtl/nmu/channel_assign/request_buffer.sv",
+      "path": "rtl/nmu/channel_assign/request_buffer.sv"
+    },
+    {
+      "source": "rtl/nmu/channel_assign/rx_channel_assign.sv",
+      "path": "rtl/nmu/channel_assign/rx_channel_assign.sv"
+    },
+    {
+      "source": "rtl/nmu/channel_assign/tb_floo_vc_arbiter.sv",
+      "path": "rtl/nmu/channel_assign/tb_floo_vc_arbiter.sv"
+    },
+    {
+      "source": "rtl/nmu/channel_assign/test_vc_arbiter.sh",
+      "path": "rtl/nmu/channel_assign/test_vc_arbiter.sh"
+    },
+    {
+      "source": "rtl/nmu/ordering/ordering.sv",
+      "path": "rtl/nmu/ordering/ordering.sv"
+    },
+    {
+      "source": "rtl/nmu/ordering/reorder_storage.sv",
+      "path": "rtl/nmu/ordering/reorder_storage.sv"
+    },
+    {
+      "source": "rtl/nmu/ordering/tb_ordering.sv",
+      "path": "rtl/nmu/ordering/tb_ordering.sv"
+    },
+    {
+      "source": "rtl/nmu/ordering/tb_ordering_robless.sv",
+      "path": "rtl/nmu/ordering/tb_ordering_robless.sv"
+    },
+    {
+      "source": "rtl/nmu/ordering/tb_ordering_stall.sv",
+      "path": "rtl/nmu/ordering/tb_ordering_stall.sv"
+    },
+    {
+      "source": "rtl/nmu/ordering/test_ordering.sh",
+      "path": "rtl/nmu/ordering/test_ordering.sh"
+    },
+    {
+      "source": "rtl/nmu/request_fifo/request_fifo.sv",
+      "path": "rtl/nmu/request_fifo/request_fifo.sv"
+    },
+    {
+      "source": "rtl/nmu/request_fifo/tb_request_fifo.sv",
+      "path": "rtl/nmu/request_fifo/tb_request_fifo.sv"
+    },
+    {
+      "source": "rtl/nmu/request_fifo/tb_request_fifo_guards.sv",
+      "path": "rtl/nmu/request_fifo/tb_request_fifo_guards.sv"
+    },
+    {
+      "source": "rtl/nmu/request_fifo/test_request_fifo.sh",
+      "path": "rtl/nmu/request_fifo/test_request_fifo.sh"
+    },
+    {
+      "source": "rtl/nmu/request_packetize/request_inject_tb_dut.sv",
+      "path": "rtl/nmu/request_packetize/request_inject_tb_dut.sv"
+    },
+    {
+      "source": "rtl/nmu/request_packetize/request_packetize.sv",
+      "path": "rtl/nmu/request_packetize/request_packetize.sv"
+    },
+    {
+      "source": "rtl/nmu/request_packetize/tb_request_packetize.sv",
+      "path": "rtl/nmu/request_packetize/tb_request_packetize.sv"
+    },
+    {
+      "source": "rtl/nmu/request_packetize/tb_request_packetize_stall.sv",
+      "path": "rtl/nmu/request_packetize/tb_request_packetize_stall.sv"
+    },
+    {
+      "source": "rtl/nmu/request_packetize/tb_request_packetize_stress.sv",
+      "path": "rtl/nmu/request_packetize/tb_request_packetize_stress.sv"
+    },
+    {
+      "source": "rtl/nmu/request_packetize/test_request_packetize.sh",
+      "path": "rtl/nmu/request_packetize/test_request_packetize.sh"
+    },
+    {
+      "source": "rtl/nmu/request_path/id_remap.sv",
+      "path": "rtl/nmu/request_path/id_remap.sv"
+    },
+    {
+      "source": "rtl/nmu/request_path/request_path.sv",
+      "path": "rtl/nmu/request_path/request_path.sv"
+    },
+    {
+      "source": "rtl/nmu/request_path/tb_request_path.sv",
+      "path": "rtl/nmu/request_path/tb_request_path.sv"
+    },
+    {
+      "source": "rtl/nmu/request_path/test_request_path.sh",
+      "path": "rtl/nmu/request_path/test_request_path.sh"
+    },
+    {
+      "source": "rtl/nmu/request_path/write_context.sv",
+      "path": "rtl/nmu/request_path/write_context.sv"
+    },
+    {
+      "source": "rtl/nmu/response_depacketize/response_buffer.sv",
+      "path": "rtl/nmu/response_depacketize/response_buffer.sv"
+    },
+    {
+      "source": "rtl/nmu/response_depacketize/response_depacketize.sv",
+      "path": "rtl/nmu/response_depacketize/response_depacketize.sv"
+    },
+    {
+      "source": "rtl/nmu/response_depacketize/tb_response_depacketize.sv",
+      "path": "rtl/nmu/response_depacketize/tb_response_depacketize.sv"
+    },
+    {
+      "source": "rtl/nmu/response_depacketize/test_response_depacketize.sh",
+      "path": "rtl/nmu/response_depacketize/test_response_depacketize.sh"
+    },
+    {
+      "source": "rtl/nmu/response_fifo/response_fifo.sv",
+      "path": "rtl/nmu/response_fifo/response_fifo.sv"
+    },
+    {
+      "source": "rtl/nmu/response_fifo/tb_response_fifo_guards.sv",
+      "path": "rtl/nmu/response_fifo/tb_response_fifo_guards.sv"
+    },
+    {
+      "source": "rtl/nmu/response_path/response_path.sv",
+      "path": "rtl/nmu/response_path/response_path.sv"
+    },
+    {
+      "source": "rtl/nmu/response_path/tb_response_path.sv",
+      "path": "rtl/nmu/response_path/tb_response_path.sv"
+    },
+    {
+      "source": "rtl/nmu/response_path/test_response_path.sh",
+      "path": "rtl/nmu/response_path/test_response_path.sh"
+    },
+    {
+      "source": "rtl/nmu/sam/sam.sv",
+      "path": "rtl/nmu/sam/sam.sv"
+    },
+    {
+      "source": "rtl/nmu/sam/tb_sam.sv",
+      "path": "rtl/nmu/sam/tb_sam.sv"
+    },
+    {
+      "source": "rtl/nmu/sam/tb_sam_guards.sv",
+      "path": "rtl/nmu/sam/tb_sam_guards.sv"
+    },
+    {
+      "source": "rtl/nmu/sam/tb_sam_vectors.sv",
+      "path": "rtl/nmu/sam/tb_sam_vectors.sv"
+    },
+    {
+      "source": "rtl/nmu/sam/test_sam.sh",
+      "path": "rtl/nmu/sam/test_sam.sh"
+    },
+    {
+      "source": "rtl/nmu/top/nmu.sv",
+      "path": "rtl/nmu/top/nmu.sv"
+    },
+    {
+      "source": "rtl/nmu/top/nmu_lint.vlt",
+      "path": "rtl/nmu/top/nmu_lint.vlt"
+    },
+    {
+      "source": "rtl/nmu/top/tb_nmu_elaborate.sv",
+      "path": "rtl/nmu/top/tb_nmu_elaborate.sv"
+    },
+    {
+      "source": "rtl/nmu/top/test_nmu.sh",
+      "path": "rtl/nmu/top/test_nmu.sh"
+    },
+    {
+      "source": "sim/configs/mesh_2x2.yml",
+      "path": "sim/configs/mesh_2x2.yml"
+    },
+    {
+      "source": "sim/cosim/nmu/Makefile",
+      "path": "sim/cosim/nmu/Makefile"
+    },
+    {
+      "source": "sim/cosim/nmu/prepare.py",
+      "path": "sim/cosim/nmu/prepare.py"
+    },
+    {
+      "source": "sim/cosim/nmu/profile.yml",
+      "path": "sim/cosim/nmu/profile.yml"
+    },
+    {
+      "source": "sim/cosim/nmu/profiles/id4.yml",
+      "path": "sim/cosim/nmu/profiles/id4.yml"
+    },
+    {
+      "source": "sim/cosim/nmu/script/Makefile",
+      "path": "sim/cosim/nmu/script/Makefile"
+    },
+    {
+      "source": "sim/cosim/nmu/script/build_key.py",
+      "path": "sim/cosim/nmu/script/build_key.py"
+    },
+    {
+      "source": "sim/cosim/nmu/script/run.py",
+      "path": "sim/cosim/nmu/script/run.py"
+    },
+    {
+      "source": "sim/cosim/nmu/script/test_pipeline.py",
+      "path": "sim/cosim/nmu/script/test_pipeline.py"
+    },
+    {
+      "source": "sim/cosim/nmu/signals.rc",
+      "path": "sim/cosim/nmu/signals.rc"
+    },
+    {
+      "source": "sim/cosim/nmu/tb_nmu_cosim.sv",
+      "path": "sim/cosim/nmu/tb_nmu_cosim.sv"
+    },
+    {
+      "source": "sim/cosim/nmu/topology.yml",
+      "path": "sim/cosim/nmu/topology.yml"
+    },
+    {
+      "source": "deps/axi-0.39.7/LICENSE",
+      "path": "deps/axi-0.39.7/LICENSE"
+    },
+    {
+      "source": "deps/axi-0.39.7/include/axi/assign.svh",
+      "path": "deps/axi-0.39.7/include/axi/assign.svh"
+    },
+    {
+      "source": "deps/axi-0.39.7/include/axi/typedef.svh",
+      "path": "deps/axi-0.39.7/include/axi/typedef.svh"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_atop_filter.sv",
+      "path": "deps/axi-0.39.7/src/axi_atop_filter.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_cut.sv",
+      "path": "deps/axi-0.39.7/src/axi_cut.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_delayer.sv",
+      "path": "deps/axi-0.39.7/src/axi_delayer.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_demux.sv",
+      "path": "deps/axi-0.39.7/src/axi_demux.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_demux_simple.sv",
+      "path": "deps/axi-0.39.7/src/axi_demux_simple.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_err_slv.sv",
+      "path": "deps/axi-0.39.7/src/axi_err_slv.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_id_prepend.sv",
+      "path": "deps/axi-0.39.7/src/axi_id_prepend.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_id_remap.sv",
+      "path": "deps/axi-0.39.7/src/axi_id_remap.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_intf.sv",
+      "path": "deps/axi-0.39.7/src/axi_intf.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_multicut.sv",
+      "path": "deps/axi-0.39.7/src/axi_multicut.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_mux.sv",
+      "path": "deps/axi-0.39.7/src/axi_mux.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_pkg.sv",
+      "path": "deps/axi-0.39.7/src/axi_pkg.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_rw_join.sv",
+      "path": "deps/axi-0.39.7/src/axi_rw_join.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_sim_mem.sv",
+      "path": "deps/axi-0.39.7/src/axi_sim_mem.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_test.sv",
+      "path": "deps/axi-0.39.7/src/axi_test.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_xbar.sv",
+      "path": "deps/axi-0.39.7/src/axi_xbar.sv"
+    },
+    {
+      "source": "deps/axi-0.39.7/src/axi_xbar_unmuxed.sv",
+      "path": "deps/axi-0.39.7/src/axi_xbar_unmuxed.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/LICENSE",
+      "path": "deps/common_cells-1.37.0/LICENSE"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/include/common_cells/assertions.svh",
+      "path": "deps/common_cells-1.37.0/include/common_cells/assertions.svh"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/include/common_cells/registers.svh",
+      "path": "deps/common_cells-1.37.0/include/common_cells/registers.svh"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/addr_decode.sv",
+      "path": "deps/common_cells-1.37.0/src/addr_decode.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/addr_decode_dync.sv",
+      "path": "deps/common_cells-1.37.0/src/addr_decode_dync.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/cf_math_pkg.sv",
+      "path": "deps/common_cells-1.37.0/src/cf_math_pkg.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/counter.sv",
+      "path": "deps/common_cells-1.37.0/src/counter.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/delta_counter.sv",
+      "path": "deps/common_cells-1.37.0/src/delta_counter.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/fall_through_register.sv",
+      "path": "deps/common_cells-1.37.0/src/fall_through_register.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/fifo_v3.sv",
+      "path": "deps/common_cells-1.37.0/src/fifo_v3.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/lfsr_16bit.sv",
+      "path": "deps/common_cells-1.37.0/src/lfsr_16bit.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/lzc.sv",
+      "path": "deps/common_cells-1.37.0/src/lzc.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/passthrough_stream_fifo.sv",
+      "path": "deps/common_cells-1.37.0/src/passthrough_stream_fifo.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/rr_arb_tree.sv",
+      "path": "deps/common_cells-1.37.0/src/rr_arb_tree.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/spill_register.sv",
+      "path": "deps/common_cells-1.37.0/src/spill_register.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/spill_register_flushable.sv",
+      "path": "deps/common_cells-1.37.0/src/spill_register_flushable.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/stream_delay.sv",
+      "path": "deps/common_cells-1.37.0/src/stream_delay.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/stream_fifo.sv",
+      "path": "deps/common_cells-1.37.0/src/stream_fifo.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/stream_fifo_optimal_wrap.sv",
+      "path": "deps/common_cells-1.37.0/src/stream_fifo_optimal_wrap.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/stream_fork.sv",
+      "path": "deps/common_cells-1.37.0/src/stream_fork.sv"
+    },
+    {
+      "source": "deps/common_cells-1.37.0/src/stream_register.sv",
+      "path": "deps/common_cells-1.37.0/src/stream_register.sv"
+    },
+    {
+      "source": "deps/common_verification-0.2.5/LICENSE",
+      "path": "deps/common_verification-0.2.5/LICENSE"
+    },
+    {
+      "source": "deps/common_verification-0.2.5/src/rand_id_queue.sv",
+      "path": "deps/common_verification-0.2.5/src/rand_id_queue.sv"
+    },
+    {
+      "source": "sim/standalone/common/clean.sh",
+      "path": "sim/standalone/common/clean.sh"
+    },
+    {
+      "source": "sim/standalone/common/simulator.mk",
+      "path": "sim/standalone/common/simulator.mk"
+    },
+    {
+      "source": "sim/standalone/nmu/Makefile",
+      "path": "sim/standalone/nmu/Makefile"
+    },
+    {
+      "source": "sim/standalone/nmu/config.mk",
+      "path": "sim/standalone/nmu/config.mk"
+    },
+    {
+      "source": "sim/standalone/nmu/perf.sh",
+      "path": "sim/standalone/nmu/perf.sh"
+    },
+    {
+      "source": "sim/standalone/nmu/signals.rc",
+      "path": "sim/standalone/nmu/signals.rc"
+    },
+    {
+      "source": "sim/standalone/nmu/tb_nmu_standalone.sv",
+      "path": "sim/standalone/nmu/tb_nmu_standalone.sv"
+    },
+    {
+      "source": "sim/standalone/nmu/workstation.mk",
+      "path": "sim/standalone/nmu/workstation.mk"
+    },
+    {
+      "source": "sim/test_patterns/cosim/capacity_perf.json",
+      "path": "sim/test_patterns/cosim/capacity_perf.json"
+    },
+    {
+      "source": "sim/test_patterns/cosim/cases.json",
+      "path": "sim/test_patterns/cosim/cases.json"
+    },
+    {
+      "source": "sim/test_patterns/standalone/cases.json",
+      "path": "sim/test_patterns/standalone/cases.json"
+    },
+    {
+      "source": "sim/test_patterns/standalone/in_order_perf.json",
+      "path": "sim/test_patterns/standalone/in_order_perf.json"
+    },
+    {
+      "source": "sim/test_patterns/standalone/mixed_perf.json",
+      "path": "sim/test_patterns/standalone/mixed_perf.json"
+    },
+    {
+      "source": "sim/test_patterns/standalone/out_of_order_perf.json",
+      "path": "sim/test_patterns/standalone/out_of_order_perf.json"
+    },
+    {
+      "source": "sim/tools/address_map.py",
+      "path": "sim/tools/address_map.py"
+    },
+    {
+      "source": "sim/tools/axi_file_format.py",
+      "path": "sim/tools/axi_file_format.py"
+    },
+    {
+      "source": "sim/tools/gen_nmu_standalone_patterns.py",
+      "path": "sim/tools/gen_nmu_standalone_patterns.py"
+    },
+    {
+      "source": "sim/tools/gen_standalone_patterns.py",
+      "path": "sim/tools/gen_standalone_patterns.py"
+    },
+    {
+      "source": "sim/tools/gen_tb_top.py",
+      "path": "sim/tools/gen_tb_top.py"
+    },
+    {
+      "source": "sim/tools/gen_test_patterns.py",
+      "path": "sim/tools/gen_test_patterns.py"
+    },
+    {
+      "source": "sim/tools/package_nmu_standalone.py",
+      "path": "sim/tools/package_nmu_standalone.py"
+    },
+    {
+      "source": "sim/tools/sync_nmu_workstation.py",
+      "path": "sim/tools/sync_nmu_workstation.py"
+    },
+    {
+      "source": "sim/tools/test_gen_standalone_patterns.py",
+      "path": "sim/tools/test_gen_standalone_patterns.py"
+    },
+    {
+      "source": "sim/tools/test_gen_test_patterns_filemaster.py",
+      "path": "sim/tools/test_gen_test_patterns_filemaster.py"
+    },
+    {
+      "source": "sim/tools/test_standalone_clean.py",
+      "path": "sim/tools/test_standalone_clean.py"
+    },
+    {
+      "source": "specgen/.gitignore",
+      "path": "specgen/.gitignore"
+    },
+    {
+      "source": "specgen/examples/use_constants.cpp",
+      "path": "specgen/examples/use_constants.cpp"
+    },
+    {
+      "source": "specgen/generated/cpp/ni_flit_constants.h",
+      "path": "specgen/generated/cpp/ni_flit_constants.h"
+    },
+    {
+      "source": "specgen/generated/cpp/ni_params.h",
+      "path": "specgen/generated/cpp/ni_params.h"
+    },
+    {
+      "source": "specgen/generated/cpp/ni_signals.h",
+      "path": "specgen/generated/cpp/ni_signals.h"
+    },
+    {
+      "source": "specgen/generated/json/ni_packet.json",
+      "path": "specgen/generated/json/ni_packet.json"
+    },
+    {
+      "source": "specgen/generated/json/ni_packet.schema.json",
+      "path": "specgen/generated/json/ni_packet.schema.json"
+    },
+    {
+      "source": "specgen/generated/json/ni_protocol_rule_index.json",
+      "path": "specgen/generated/json/ni_protocol_rule_index.json"
+    },
+    {
+      "source": "specgen/generated/json/ni_protocol_rule_index.schema.json",
+      "path": "specgen/generated/json/ni_protocol_rule_index.schema.json"
+    },
+    {
+      "source": "specgen/generated/json/ni_signals.json",
+      "path": "specgen/generated/json/ni_signals.json"
+    },
+    {
+      "source": "specgen/generated/json/ni_signals.schema.json",
+      "path": "specgen/generated/json/ni_signals.schema.json"
+    },
+    {
+      "source": "specgen/generated/sv/ni_flit_pkg.sv",
+      "path": "specgen/generated/sv/ni_flit_pkg.sv"
+    },
+    {
+      "source": "specgen/generated/sv/ni_params_pkg.sv",
+      "path": "specgen/generated/sv/ni_params_pkg.sv"
+    },
+    {
+      "source": "specgen/generated/sv/ni_signals_pkg.sv",
+      "path": "specgen/generated/sv/ni_signals_pkg.sv"
+    },
+    {
+      "source": "specgen/generated/sv/noc_types_pkg_vc1.sv",
+      "path": "specgen/generated/sv/noc_types_pkg_vc1.sv"
+    },
+    {
+      "source": "specgen/generated/sv/noc_types_pkg_vc2.sv",
+      "path": "specgen/generated/sv/noc_types_pkg_vc2.sv"
+    },
+    {
+      "source": "specgen/generated/sv/noc_types_pkg_vc4.sv",
+      "path": "specgen/generated/sv/noc_types_pkg_vc4.sv"
+    },
+    {
+      "source": "specgen/generated/sv/noc_types_pkg_vc8.sv",
+      "path": "specgen/generated/sv/noc_types_pkg_vc8.sv"
+    },
+    {
+      "source": "specgen/ni_spec/__init__.py",
+      "path": "specgen/ni_spec/__init__.py"
+    },
+    {
+      "source": "specgen/ni_spec/constants.py",
+      "path": "specgen/ni_spec/constants.py"
+    },
+    {
+      "source": "specgen/ni_spec/exceptions.py",
+      "path": "specgen/ni_spec/exceptions.py"
+    },
+    {
+      "source": "specgen/ni_spec/handshake_schema.py",
+      "path": "specgen/ni_spec/handshake_schema.py"
+    },
+    {
+      "source": "specgen/ni_spec/invariants.py",
+      "path": "specgen/ni_spec/invariants.py"
+    },
+    {
+      "source": "specgen/ni_spec/loader.py",
+      "path": "specgen/ni_spec/loader.py"
+    },
+    {
+      "source": "specgen/source/VERSION",
+      "path": "specgen/source/VERSION"
+    },
+    {
+      "source": "specgen/source/constants.yaml",
+      "path": "specgen/source/constants.yaml"
+    },
+    {
+      "source": "specgen/source/interface_handshake.json",
+      "path": "specgen/source/interface_handshake.json"
+    },
+    {
+      "source": "specgen/source/noc_function_blocks.json",
+      "path": "specgen/source/noc_function_blocks.json"
+    },
+    {
+      "source": "specgen/source/noc_function_blocks.schema.json",
+      "path": "specgen/source/noc_function_blocks.schema.json"
+    },
+    {
+      "source": "specgen/tests/__init__.py",
+      "path": "specgen/tests/__init__.py"
+    },
+    {
+      "source": "specgen/tests/conftest.py",
+      "path": "specgen/tests/conftest.py"
+    },
+    {
+      "source": "specgen/tests/cpp_smoke/test_pins_compile.cpp",
+      "path": "specgen/tests/cpp_smoke/test_pins_compile.cpp"
+    },
+    {
+      "source": "specgen/tests/golden/ni_flit_constants.h.golden",
+      "path": "specgen/tests/golden/ni_flit_constants.h.golden"
+    },
+    {
+      "source": "specgen/tests/golden/ni_flit_pkg.sv.golden",
+      "path": "specgen/tests/golden/ni_flit_pkg.sv.golden"
+    },
+    {
+      "source": "specgen/tests/golden/ni_params.h.golden",
+      "path": "specgen/tests/golden/ni_params.h.golden"
+    },
+    {
+      "source": "specgen/tests/golden/ni_params_pkg.sv.golden",
+      "path": "specgen/tests/golden/ni_params_pkg.sv.golden"
+    },
+    {
+      "source": "specgen/tests/golden/ni_signals.h.golden",
+      "path": "specgen/tests/golden/ni_signals.h.golden"
+    },
+    {
+      "source": "specgen/tests/golden/ni_signals_pkg.sv.golden",
+      "path": "specgen/tests/golden/ni_signals_pkg.sv.golden"
+    },
+    {
+      "source": "specgen/tests/sv/tb_ni_type_contract.sv",
+      "path": "specgen/tests/sv/tb_ni_type_contract.sv"
+    },
+    {
+      "source": "specgen/tests/test_byte_identical_golden.py",
+      "path": "specgen/tests/test_byte_identical_golden.py"
+    },
+    {
+      "source": "specgen/tests/test_codegen.py",
+      "path": "specgen/tests/test_codegen.py"
+    },
+    {
+      "source": "specgen/tests/test_codegen_sv.py",
+      "path": "specgen/tests/test_codegen_sv.py"
+    },
+    {
+      "source": "specgen/tests/test_constants_resolver.py",
+      "path": "specgen/tests/test_constants_resolver.py"
+    },
+    {
+      "source": "specgen/tests/test_field_descriptor_arrays.py",
+      "path": "specgen/tests/test_field_descriptor_arrays.py"
+    },
+    {
+      "source": "specgen/tests/test_flit_width_invariant.py",
+      "path": "specgen/tests/test_flit_width_invariant.py"
+    },
+    {
+      "source": "specgen/tests/test_foundation.py",
+      "path": "specgen/tests/test_foundation.py"
+    },
+    {
+      "source": "specgen/tests/test_function_blocks.py",
+      "path": "specgen/tests/test_function_blocks.py"
+    },
+    {
+      "source": "specgen/tests/test_handshake_schema.py",
+      "path": "specgen/tests/test_handshake_schema.py"
+    },
+    {
+      "source": "specgen/tests/test_id_profile.py",
+      "path": "specgen/tests/test_id_profile.py"
+    },
+    {
+      "source": "specgen/tests/test_mesh_flit_invariant.py",
+      "path": "specgen/tests/test_mesh_flit_invariant.py"
+    },
+    {
+      "source": "specgen/tests/test_ni_type_contract.py",
+      "path": "specgen/tests/test_ni_type_contract.py"
+    },
+    {
+      "source": "specgen/tests/test_order_invariance.py",
+      "path": "specgen/tests/test_order_invariance.py"
+    },
+    {
+      "source": "specgen/tests/test_pin_level_reset.py",
+      "path": "specgen/tests/test_pin_level_reset.py"
+    },
+    {
+      "source": "specgen/tests/test_signals_resolver.py",
+      "path": "specgen/tests/test_signals_resolver.py"
+    },
+    {
+      "source": "specgen/tests/test_signals_schema.py",
+      "path": "specgen/tests/test_signals_schema.py"
+    },
+    {
+      "source": "specgen/tools/codegen.py",
+      "path": "specgen/tools/codegen.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/__init__.py",
+      "path": "specgen/tools/elaborate/__init__.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/common.py",
+      "path": "specgen/tools/elaborate/common.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/cpp_packet.py",
+      "path": "specgen/tools/elaborate/cpp_packet.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/cpp_params.py",
+      "path": "specgen/tools/elaborate/cpp_params.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/cpp_signals.py",
+      "path": "specgen/tools/elaborate/cpp_signals.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/profile.py",
+      "path": "specgen/tools/elaborate/profile.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/sv_packet.py",
+      "path": "specgen/tools/elaborate/sv_packet.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/sv_params.py",
+      "path": "specgen/tools/elaborate/sv_params.py"
+    },
+    {
+      "source": "specgen/tools/elaborate/sv_signals.py",
+      "path": "specgen/tools/elaborate/sv_signals.py"
+    }
+  ]
+}
