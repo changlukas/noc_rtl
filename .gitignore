@@ -1,0 +1,9 @@
+/build/
+**/output/
+**/__pycache__/
+**/.pytest_cache/
+/sim/test_patterns/*/generated/
+/IMPLEMENTATION_PLAN.md
+*.fsdb
+*.vcd
+*.log

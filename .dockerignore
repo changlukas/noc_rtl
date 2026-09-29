@@ -1,0 +1,7 @@
+.git
+build
+**/output
+**/__pycache__
+**/.pytest_cache
+*.fsdb
+*.vcd

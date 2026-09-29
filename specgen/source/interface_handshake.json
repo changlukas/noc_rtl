@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "interfaces": {
+    "axi4_intf": {
+      "kind": "axi4",
+      "parameters": [
+        { "name": "ID_WIDTH",   "constants_yaml_key": "axi.AXI_ID_WIDTH"   },
+        { "name": "ADDR_WIDTH", "constants_yaml_key": "axi.ADDR_WIDTH" },
+        { "name": "DATA_WIDTH", "constants_yaml_key": "axi.DATA_WIDTH" }
+      ],
+      "channels": ["AW", "W", "B", "AR", "R"],
+      "signal_matrix_source": "IHI_0022H_TABLE_A9_1_to_A9_4",
+      "modports": ["master", "slave"]
+    },
+
+    "noc_intf": {
+      "kind": "noc_link",
+      "parameters": [
+        { "name": "NUM_VC",           "constants_yaml_key": "noc.DAT_NUM_VC" },
+        { "name": "FLIT_WIDTH",       "constants_yaml_key": "noc.DAT_FLIT_WIDTH" },
+        { "name": "ROUTER_VC_DEPTH",  "constants_yaml_key": "noc.ROUTER_VC_DEPTH" },
+        { "name": "NI_DAT_RX_VC_DEPTH", "constants_yaml_key": "noc.NI_DAT_RX_VC_DEPTH" }
+      ],
+      "signals": [
+        { "name": "req_valid",         "width_expr": "1",          "driven_by": "upstream" },
+        { "name": "req_flit",          "width_expr": "FLIT_WIDTH", "driven_by": "upstream" },
+        { "name": "req_credit_return", "width_expr": "NUM_VC",     "driven_by": "downstream" },
+        { "name": "rsp_valid",         "width_expr": "1",          "driven_by": "downstream" },
+        { "name": "rsp_flit",          "width_expr": "FLIT_WIDTH", "driven_by": "downstream" },
+        { "name": "rsp_credit_return", "width_expr": "NUM_VC",     "driven_by": "upstream" }
+      ],
+      "modports": ["upstream", "downstream"],
+      "protocol_semantics": {
+        "placeholder_convention": "<chan> ∈ {req, rsp} — protocol applies symmetrically to both channels of the bundle",
+        "transfer_condition": "producer-internal credit counter for selected VC > 0 AND <chan>_valid asserted; selected VC encoded inside <chan>_flit header. Each channel (req, rsp) has independent credit accounting.",
+        "credit_return_encoding": {
+          "scheme": "per_vc_credit_pulse_vector",
+          "semantics": "<chan>_credit_return[v] asserted for exactly 1 cycle releases 1 credit for VC v. Multi-hot permitted across VCs in the same cycle.",
+          "output_discipline": "registered (no combinational path from <chan>_valid input to <chan>_credit_return output)",
+          "reset_value": "all zeros",
+          "onehot_check_required": false
+        },
+        "initial_credits": {
+          "scheme": "configured_at_reset",
+          "value_per_vc": "downstream receive depth",
+          "note": "NI-to-Router starts with ROUTER_VC_DEPTH credits per VC; Router-to-NI LOCAL starts with NI_DAT_RX_VC_DEPTH credits per VC."
+        },
+        "valid_stability": "once <chan>_valid asserted, <chan>_valid + <chan>_flit MUST hold until handshake completes (always-accept on receiver side; backpressure via producer credit exhaustion). See IHI 0022H §A3.2.1 analog.",
+        "combinational_loops": "forbidden — <chan>_credit_return must be a registered output of the side receiving that channel's valid/flit (per <chan>)"
+      }
+    }
+  }
+}

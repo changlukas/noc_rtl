@@ -1,0 +1,338 @@
+{
+  "$schema_version": "ni-spec/2.0",
+  "meta": {
+    "block": "Network Interface (NI: NMU + NSU)",
+    "spec_version": "v0.6.0"
+  },
+  "flit": {
+    "field_widths": {
+      "X_WIDTH": 4,
+      "Y_WIDTH": 4,
+      "AXI_CH_WIDTH": 4,
+      "FIXED_VC_WIDTH": 1,
+      "VC_ID_WIDTH": 3,
+      "FLIT_TAIL_WIDTH": 1,
+      "ORDERING_REQ_WIDTH": 1,
+      "ORDERING_TAG_WIDTH": 8,
+      "COLLECTIVE_OP_WIDTH": 2,
+      "COLLECTIVE_MASK_WIDTH": 8,
+      "DST_PORT_ID_WIDTH": 2,
+      "SRC_PORT_ID_WIDTH": 2,
+      "AXI_ADDR_WIDTH": 48,
+      "NOC_ID_WIDTH": 3,
+      "NOC_DATA_WIDTH": 512,
+      "NOC_NARROW_DATA_WIDTH": 64,
+      "AXI_USER_WIDTH": 8,
+      "AXI_LEN_WIDTH": 8,
+      "AXI_SIZE_WIDTH": 3,
+      "AXI_BURST_WIDTH": 2,
+      "AXI_CACHE_WIDTH": 4,
+      "AXI_LOCK_WIDTH": 1,
+      "AXI_PROT_WIDTH": 3,
+      "AXI_REGION_WIDTH": 4,
+      "AXI_QOS_WIDTH": 4,
+      "AXI_RESP_WIDTH": 2,
+      "AXI_LAST_WIDTH": 1,
+      "WSTRB_WIDTH": 64,
+      "NARROW_WSTRB_WIDTH": 8,
+      "HEADER_TOTAL_WIDTH": 48
+    },
+    "header_fields": [
+      {
+        "name": "axi_ch",
+        "width_param": "AXI_CH_WIDTH",
+        "enabled": true,
+        "encoding": {
+          "0": "NarrowAw", "1": "NarrowW", "2": "NarrowAr", "3": "NarrowB", "4": "NarrowR",
+          "5": "DataAw", "6": "DataW", "7": "DataAr", "8": "DataB", "9": "DataR"
+        }
+      },
+      {
+        "name": "src_id",
+        "width_param": "X_WIDTH + Y_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "dst_id",
+        "width_param": "X_WIDTH + Y_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "fixed_vc",
+        "width_param": "FIXED_VC_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "vc_id",
+        "width_param": "VC_ID_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "flit_tail",
+        "width_param": "FLIT_TAIL_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "ordering_req",
+        "width_param": "ORDERING_REQ_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "ordering_tag",
+        "width_param": "ORDERING_TAG_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "collective_op",
+        "width_param": "COLLECTIVE_OP_WIDTH",
+        "enabled": true,
+        "encoding": {
+          "0": "UNICAST", "1": "MULTICAST"
+        }
+      },
+      {
+        "name": "collective_mask",
+        "width_param": "COLLECTIVE_MASK_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "dst_port_id",
+        "width_param": "DST_PORT_ID_WIDTH",
+        "enabled": true
+      },
+      {
+        "name": "src_port_id",
+        "width_param": "SRC_PORT_ID_WIDTH",
+        "enabled": true
+      }
+    ],
+    "payload_channels": [
+      {
+        "name": "AW",
+        "payload_width": 88,
+        "fields": [
+          {
+            "name": "awid",
+            "width_param": "NOC_ID_WIDTH"
+          },
+          {
+            "name": "awaddr",
+            "width_param": "AXI_ADDR_WIDTH"
+          },
+          {
+            "name": "awlen",
+            "width_param": "AXI_LEN_WIDTH"
+          },
+          {
+            "name": "awsize",
+            "width_param": "AXI_SIZE_WIDTH"
+          },
+          {
+            "name": "awburst",
+            "width_param": "AXI_BURST_WIDTH"
+          },
+          {
+            "name": "awcache",
+            "width_param": "AXI_CACHE_WIDTH"
+          },
+          {
+            "name": "awlock",
+            "width_param": "AXI_LOCK_WIDTH"
+          },
+          {
+            "name": "awprot",
+            "width_param": "AXI_PROT_WIDTH"
+          },
+          {
+            "name": "awregion",
+            "width_param": "AXI_REGION_WIDTH"
+          },
+          {
+            "name": "awqos",
+            "width_param": "AXI_QOS_WIDTH"
+          },
+          {
+            "name": "awuser",
+            "width_param": "AXI_USER_WIDTH"
+          }
+        ]
+      },
+      {
+        "name": "AR",
+        "payload_width": 88,
+        "fields": [
+          {
+            "name": "arid",
+            "width_param": "NOC_ID_WIDTH"
+          },
+          {
+            "name": "araddr",
+            "width_param": "AXI_ADDR_WIDTH"
+          },
+          {
+            "name": "arlen",
+            "width_param": "AXI_LEN_WIDTH"
+          },
+          {
+            "name": "arsize",
+            "width_param": "AXI_SIZE_WIDTH"
+          },
+          {
+            "name": "arburst",
+            "width_param": "AXI_BURST_WIDTH"
+          },
+          {
+            "name": "arcache",
+            "width_param": "AXI_CACHE_WIDTH"
+          },
+          {
+            "name": "arlock",
+            "width_param": "AXI_LOCK_WIDTH"
+          },
+          {
+            "name": "arprot",
+            "width_param": "AXI_PROT_WIDTH"
+          },
+          {
+            "name": "arregion",
+            "width_param": "AXI_REGION_WIDTH"
+          },
+          {
+            "name": "arqos",
+            "width_param": "AXI_QOS_WIDTH"
+          },
+          {
+            "name": "aruser",
+            "width_param": "AXI_USER_WIDTH"
+          }
+        ]
+      },
+      {
+        "name": "NARROW_W",
+        "payload_width": 81,
+        "fields": [
+          {
+            "name": "wlast",
+            "width_param": "AXI_LAST_WIDTH"
+          },
+          {
+            "name": "wuser",
+            "width_param": "AXI_USER_WIDTH"
+          },
+          {
+            "name": "wstrb",
+            "width_param": "NARROW_WSTRB_WIDTH"
+          },
+          {
+            "name": "wdata",
+            "width_param": "NOC_NARROW_DATA_WIDTH"
+          }
+        ]
+      },
+      {
+        "name": "DATA_W",
+        "payload_width": 585,
+        "fields": [
+          {
+            "name": "wlast",
+            "width_param": "AXI_LAST_WIDTH"
+          },
+          {
+            "name": "wuser",
+            "width_param": "AXI_USER_WIDTH"
+          },
+          {
+            "name": "wstrb",
+            "width_param": "WSTRB_WIDTH"
+          },
+          {
+            "name": "wdata",
+            "width_param": "NOC_DATA_WIDTH"
+          }
+        ]
+      },
+      {
+        "name": "B",
+        "payload_width": 13,
+        "fields": [
+          {
+            "name": "bid",
+            "width_param": "NOC_ID_WIDTH"
+          },
+          {
+            "name": "bresp",
+            "width_param": "AXI_RESP_WIDTH"
+          },
+          {
+            "name": "buser",
+            "width_param": "AXI_USER_WIDTH"
+          }
+        ]
+      },
+      {
+        "name": "NARROW_R",
+        "payload_width": 78,
+        "fields": [
+          {
+            "name": "rlast",
+            "width_param": "AXI_LAST_WIDTH"
+          },
+          {
+            "name": "rid",
+            "width_param": "NOC_ID_WIDTH"
+          },
+          {
+            "name": "rresp",
+            "width_param": "AXI_RESP_WIDTH"
+          },
+          {
+            "name": "ruser",
+            "width_param": "AXI_USER_WIDTH"
+          },
+          {
+            "name": "rdata",
+            "width_param": "NOC_NARROW_DATA_WIDTH"
+          }
+        ]
+      },
+      {
+        "name": "DATA_R",
+        "payload_width": 526,
+        "fields": [
+          {
+            "name": "rlast",
+            "width_param": "AXI_LAST_WIDTH"
+          },
+          {
+            "name": "rid",
+            "width_param": "NOC_ID_WIDTH"
+          },
+          {
+            "name": "rresp",
+            "width_param": "AXI_RESP_WIDTH"
+          },
+          {
+            "name": "ruser",
+            "width_param": "AXI_USER_WIDTH"
+          },
+          {
+            "name": "rdata",
+            "width_param": "NOC_DATA_WIDTH"
+          }
+        ]
+      }
+    ],
+    "networks": {
+      "NarrowAw": {"network": "REQ", "payload_channel": "AW"},
+      "NarrowW":  {"network": "REQ", "payload_channel": "NARROW_W"},
+      "NarrowAr": {"network": "REQ", "payload_channel": "AR"},
+      "DataAr":   {"network": "REQ", "payload_channel": "AR"},
+      "NarrowB":  {"network": "RSP", "payload_channel": "B"},
+      "NarrowR":  {"network": "RSP", "payload_channel": "NARROW_R"},
+      "DataB":    {"network": "RSP", "payload_channel": "B"},
+      "DataAw":   {"network": "DAT", "payload_channel": "AW"},
+      "DataW":    {"network": "DAT", "payload_channel": "DATA_W"},
+      "DataR":    {"network": "DAT", "payload_channel": "DATA_R"}
+    }
+  }
+}

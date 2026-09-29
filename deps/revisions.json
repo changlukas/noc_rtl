@@ -1,0 +1,38 @@
+[
+  {
+    "name": "common_cells-v2.0.0-beta.3",
+    "url": "https://github.com/pulp-platform/common_cells.git",
+    "revision": "63b7c50d43e462b59506f69d341ff1e40202866d"
+  },
+  {
+    "name": "tech_cells_generic-v0.2.14",
+    "url": "https://github.com/pulp-platform/tech_cells_generic.git",
+    "revision": "3a3de73632a06826b1bd9c65a0a2e92b32016845"
+  },
+  {
+    "name": "yaml-cpp",
+    "revision": "56e3bb550c91fd7005566f19c079cb7a503223cf"
+  },
+  {
+    "name": "googletest",
+    "revision": "f8d7d77c06936315286eb55f8de22cd23c188571"
+  },
+  {
+    "name": "axi-0.39.7",
+    "source_repository": "https://github.com/changlukas/noc_project.git",
+    "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
+    "source_path": "sim/dv/axi-0.39.7"
+  },
+  {
+    "name": "common_cells-1.37.0",
+    "source_repository": "https://github.com/changlukas/noc_project.git",
+    "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
+    "source_path": "sim/dv/common_cells-1.37.0"
+  },
+  {
+    "name": "common_verification-0.2.5",
+    "source_repository": "https://github.com/changlukas/noc_project.git",
+    "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
+    "source_path": "sim/dv/common_verification-0.2.5"
+  }
+]

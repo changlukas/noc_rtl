@@ -1,0 +1,73 @@
+#include "axi/scenario_parser.hpp"
+#include "common/tmp_path.hpp"
+#include <gtest/gtest.h>
+#include <fstream>
+#include <filesystem>
+
+namespace axi = ni::cmodel::axi;
+
+namespace {
+
+// Write YAML content to a temp file; return the file path as a string.
+std::string write_temp_yaml(const std::string& content) {
+    auto path = ni::cmodel::testing::unique_temp_path("axi_inject") + ".yaml";
+    std::ofstream f(path);
+    f << content;
+    return path;
+}
+
+}  // namespace
+
+TEST(AxiMasterInject, unknown_mode_throws_at_parse) {
+    const std::string yaml =
+        "config:\n"
+        "  inject:\n"
+        "    mode: bogus_mode\n"
+        "    cycle: 5\n"
+        "transactions:\n"
+        "  - op: read\n"
+        "    addr: 0x0\n"
+        "    id: 0\n"
+        "    len: 0\n"
+        "    size: 0\n"
+        "    burst: INCR\n"
+        "    dump_file: /dev/null\n";
+    auto path = write_temp_yaml(yaml);
+    EXPECT_THROW(axi::load_scenario(path), std::runtime_error);
+}
+
+TEST(AxiMasterInject, no_inject_field_means_mode_none) {
+    const std::string yaml =
+        "transactions:\n"
+        "  - op: read\n"
+        "    addr: 0x0\n"
+        "    id: 0\n"
+        "    len: 0\n"
+        "    size: 0\n"
+        "    burst: INCR\n"
+        "    dump_file: /dev/null\n";
+    auto path = write_temp_yaml(yaml);
+    auto sc = axi::load_scenario(path);
+    EXPECT_EQ(sc.config.inject.mode, axi::InjectConfig::Mode::None);
+    EXPECT_EQ(sc.config.inject.cycle, 0u);
+}
+
+TEST(AxiMasterInject, aw_unstable_at_cycle_n_parsed_correctly) {
+    const std::string yaml =
+        "config:\n"
+        "  inject:\n"
+        "    mode: aw_unstable\n"
+        "    cycle: 17\n"
+        "transactions:\n"
+        "  - op: read\n"
+        "    addr: 0x0\n"
+        "    id: 0\n"
+        "    len: 0\n"
+        "    size: 0\n"
+        "    burst: INCR\n"
+        "    dump_file: /dev/null\n";
+    auto path = write_temp_yaml(yaml);
+    auto sc = axi::load_scenario(path);
+    EXPECT_EQ(sc.config.inject.mode, axi::InjectConfig::Mode::AwUnstable);
+    EXPECT_EQ(sc.config.inject.cycle, 17u);
+}

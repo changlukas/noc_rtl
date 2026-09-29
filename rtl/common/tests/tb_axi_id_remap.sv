@@ -1,0 +1,265 @@
+`timescale 1ns / 1ps
+
+`include "axi/typedef.svh"
+
+module axi_id_remap_case #(
+    parameter int unsigned AXI_ID_WIDTH = 3,
+    parameter int unsigned NOC_ID_WIDTH = 3,
+    parameter bit NMU_REMAP = 0
+) (
+    input  wire logic  clk_i,
+    input  wire logic  rst_n_i,
+    output wire logic  done_o
+);
+
+    localparam int unsigned MAX_UNIQ_IDS =
+        1 << ((AXI_ID_WIDTH < NOC_ID_WIDTH) ? AXI_ID_WIDTH : NOC_ID_WIDTH);
+
+    typedef logic [AXI_ID_WIDTH-1:0] axi_id_t;
+    typedef logic [NOC_ID_WIDTH-1:0] noc_id_t;
+    typedef logic [31:0]             axi_addr_t;
+    typedef logic [31:0]             axi_data_t;
+    typedef logic [3:0]              axi_strb_t;
+    typedef logic                    axi_user_t;
+
+    `AXI_TYPEDEF_AW_CHAN_T(slv_aw_t, axi_addr_t, axi_id_t, axi_user_t)
+    `AXI_TYPEDEF_W_CHAN_T(slv_w_t, axi_data_t, axi_strb_t, axi_user_t)
+    `AXI_TYPEDEF_B_CHAN_T(slv_b_t, axi_id_t, axi_user_t)
+    `AXI_TYPEDEF_AR_CHAN_T(slv_ar_t, axi_addr_t, axi_id_t, axi_user_t)
+    `AXI_TYPEDEF_R_CHAN_T(slv_r_t, axi_data_t, axi_id_t, axi_user_t)
+    `AXI_TYPEDEF_REQ_T(slv_req_t, slv_aw_t, slv_w_t, slv_ar_t)
+    `AXI_TYPEDEF_RESP_T(slv_rsp_t, slv_b_t, slv_r_t)
+
+    `AXI_TYPEDEF_AW_CHAN_T(mst_aw_t, axi_addr_t, noc_id_t, axi_user_t)
+    `AXI_TYPEDEF_W_CHAN_T(mst_w_t, axi_data_t, axi_strb_t, axi_user_t)
+    `AXI_TYPEDEF_B_CHAN_T(mst_b_t, noc_id_t, axi_user_t)
+    `AXI_TYPEDEF_AR_CHAN_T(mst_ar_t, axi_addr_t, noc_id_t, axi_user_t)
+    `AXI_TYPEDEF_R_CHAN_T(mst_r_t, axi_data_t, noc_id_t, axi_user_t)
+    `AXI_TYPEDEF_REQ_T(mst_req_t, mst_aw_t, mst_w_t, mst_ar_t)
+    `AXI_TYPEDEF_RESP_T(mst_rsp_t, mst_b_t, mst_r_t)
+
+    slv_req_t slv_req = '0;
+    slv_rsp_t slv_rsp;
+    mst_req_t mst_req;
+    mst_rsp_t mst_rsp = '0;
+    logic done_reg = 1'b0;
+
+    assign done_o = done_reg;
+
+    logic test_rst_n = 1'b1;
+    wire local_rst_n = rst_n_i && test_rst_n;
+    if (NMU_REMAP) begin : gen_nmu
+    nmu_id_remap #(
+        .AXI_ID_WIDTH    (AXI_ID_WIDTH),
+        .MAX_ACTIVE_IDS (MAX_UNIQ_IDS),
+        .MAX_OUTSTANDING_PER_ID      (4           ),
+        .NOC_ID_WIDTH    (NOC_ID_WIDTH),
+        .slv_req_t            (slv_req_t   ),
+        .slv_resp_t           (slv_rsp_t   ),
+        .mst_req_t            (mst_req_t   ),
+        .mst_resp_t           (mst_rsp_t   )
+    ) dut (
+        .clk_i      (clk_i  ),
+        .rst_n_i    (local_rst_n),
+        .slv_req_i  (slv_req),
+        .slv_resp_o (slv_rsp),
+        .mst_req_o  (mst_req),
+        .mst_resp_i (mst_rsp)
+    );
+
+    end else begin : gen_upstream
+    axi_id_remap #(
+        .AxiSlvPortIdWidth    (AXI_ID_WIDTH),
+        .AxiSlvPortMaxUniqIds (MAX_UNIQ_IDS),
+        .AxiMaxTxnsPerId      (4           ),
+        .AxiMstPortIdWidth    (NOC_ID_WIDTH),
+        .slv_req_t            (slv_req_t   ),
+        .slv_resp_t           (slv_rsp_t   ),
+        .mst_req_t            (mst_req_t   ),
+        .mst_resp_t           (mst_rsp_t   )
+    ) dut (
+        .clk_i      (clk_i  ),
+        .rst_ni     (rst_n_i),
+        .slv_req_i  (slv_req),
+        .slv_resp_o (slv_rsp),
+        .mst_req_o  (mst_req),
+        .mst_resp_i (mst_rsp)
+    );
+
+    end
+
+    task automatic issue_aw(input axi_id_t axi_id, output noc_id_t noc_id);
+        @(negedge clk_i);
+        slv_req.aw.id    = axi_id;
+        slv_req.aw_valid = 1'b1;
+        @(posedge clk_i);
+        #1;
+        if (!mst_req.aw_valid || !slv_rsp.aw_ready) begin
+            $fatal(1, "AXI_ID_WIDTH=%0d: AW %0h was unexpectedly backpressured", AXI_ID_WIDTH,
+                   axi_id);
+        end
+        noc_id = mst_req.aw.id;
+        @(negedge clk_i);
+        slv_req.aw_valid = 1'b0;
+    endtask
+
+    task automatic return_b(input axi_id_t axi_id, input noc_id_t noc_id);
+        @(negedge clk_i);
+        mst_rsp.b.id    = noc_id;
+        mst_rsp.b_valid = 1'b1;
+        @(posedge clk_i);
+        #1;
+        if (!slv_rsp.b_valid || slv_rsp.b.id != axi_id) begin
+            $fatal(1, "AXI_ID_WIDTH=%0d: B restore failed: expected %0h, got %0h",
+                   AXI_ID_WIDTH, axi_id, slv_rsp.b.id);
+        end
+        @(negedge clk_i);
+        mst_rsp.b_valid = 1'b0;
+    endtask
+
+    initial begin : run_case
+        axi_id_t axi_id;
+        noc_id_t noc_id;
+        noc_id_t allocated_ids [0:7];
+
+        if (AXI_ID_WIDTH < 1 || AXI_ID_WIDTH > 8 || NOC_ID_WIDTH != 3) begin
+            $fatal(1, "illegal AXI/NoC ID-width contract");
+        end
+
+        slv_req.b_ready  = 1'b1;
+        mst_rsp.aw_ready = 1'b1;
+        mst_rsp.w_ready  = 1'b1;
+        mst_rsp.ar_ready = 1'b1;
+
+        wait (rst_n_i);
+        if (NMU_REMAP) begin
+            // Stall each direction, then both; the independent side must continue.
+            for (int mode = 0; mode < 3; mode++) begin
+                @(negedge clk_i);
+                slv_req.aw.id = AXI_ID_WIDTH'(1);
+                slv_req.ar.id = AXI_ID_WIDTH'(1);
+                slv_req.aw_valid = 1;
+                slv_req.ar_valid = 1;
+                slv_req.r_ready = 1;
+                mst_rsp.aw_ready = mode == 1;
+                mst_rsp.ar_ready = mode == 0;
+                #1;
+                if (!mst_req.aw_valid || !mst_req.ar_valid) $fatal(1, "initial offer missing");
+                @(posedge clk_i);
+                @(negedge clk_i);
+                for (int cycle = 0; cycle < 3; cycle++) begin
+                    #1;
+                    if (slv_rsp.aw_ready !== (mode == 1) || slv_rsp.ar_ready !== (mode == 0))
+                        $fatal(1, "cross-direction hold coupling mode=%0d", mode);
+                    if (mst_req.aw.id != 0 || mst_req.ar.id != 0) $fatal(1, "held ID changed");
+                    @(posedge clk_i);
+                    @(negedge clk_i);
+                end
+                slv_req.aw_valid = mode != 1;
+                slv_req.ar_valid = mode != 0;
+                mst_rsp.aw_ready = 1;
+                mst_rsp.ar_ready = 1;
+                #1;
+                if ((slv_req.aw_valid && !slv_rsp.aw_ready) ||
+                    (slv_req.ar_valid && !slv_rsp.ar_ready)) $fatal(1, "held request did not release");
+                @(posedge clk_i);
+                @(negedge clk_i);
+                slv_req.aw_valid = 0;
+                slv_req.ar_valid = 0;
+                for (int response = 0; response < 4; response++) begin
+                    mst_rsp.b.id = '0;
+                    mst_rsp.r.id = '0;
+                    mst_rsp.r.last = 1;
+                    mst_rsp.b_valid = response == 0 || mode == 1;
+                    mst_rsp.r_valid = response == 0 || mode == 0;
+                    #1;
+                    if ((mst_rsp.b_valid && slv_rsp.b.id != AXI_ID_WIDTH'(1)) ||
+                        (mst_rsp.r_valid && slv_rsp.r.id != AXI_ID_WIDTH'(1)))
+                        $fatal(1, "held mapping response restore failed");
+                    @(posedge clk_i);
+                    @(negedge clk_i);
+                end
+                mst_rsp.b_valid = 0;
+                mst_rsp.r_valid = 0;
+                slv_req.aw_valid = 1;
+                slv_req.ar_valid = 1;
+                mst_rsp.aw_ready = 0;
+                mst_rsp.ar_ready = 0;
+                @(posedge clk_i);
+                @(negedge clk_i);
+                // Reset occupied tables and held requests, including simultaneous holds.
+                test_rst_n = 0;
+                slv_req.aw_valid = 0;
+                slv_req.ar_valid = 0;
+                #1;
+                @(negedge clk_i);
+                test_rst_n = 1;
+                mst_rsp.aw_ready = 1;
+                mst_rsp.ar_ready = 1;
+            end
+        end
+        issue_aw(AXI_ID_WIDTH'(1), noc_id);
+        return_b(AXI_ID_WIDTH'(1), noc_id);
+
+        if (AXI_ID_WIDTH == 8) begin
+            for (int unsigned index = 0; index < 8; index++) begin
+                issue_aw(AXI_ID_WIDTH'(index), allocated_ids[index]);
+                if (allocated_ids[index] != NOC_ID_WIDTH'(index)) begin
+                    $fatal(1, "duplicate or non-lowest NoC ID allocation at %0d", index);
+                end
+            end
+
+            @(negedge clk_i);
+            slv_req.aw.id    = AXI_ID_WIDTH'(8);
+            slv_req.aw_valid = 1'b1;
+            @(posedge clk_i);
+            #1;
+            if (mst_req.aw_valid || slv_rsp.aw_ready) begin
+                $fatal(1, "NoC ID exhaustion did not backpressure a new AXI ID");
+            end
+
+            @(negedge clk_i);
+            mst_rsp.b.id    = allocated_ids[0];
+            mst_rsp.b_valid = 1'b1;
+            @(posedge clk_i);
+            #1;
+            if (!slv_rsp.b_valid || slv_rsp.b.id != AXI_ID_WIDTH'(0)) begin
+                $fatal(1, "exhaustion response did not restore AXI ID 0");
+            end
+            @(negedge clk_i);
+            mst_rsp.b_valid = 1'b0;
+            @(posedge clk_i);
+            #1;
+            if (!mst_req.aw_valid || mst_req.aw.id != NOC_ID_WIDTH'(0)) begin
+                $fatal(1, "released NoC ID was not reused for blocked AXI ID");
+            end
+            @(negedge clk_i);
+            slv_req.aw_valid = 1'b0;
+        end
+
+        done_reg = 1'b1;
+    end
+
+endmodule
+
+module tb_axi_id_remap #(parameter bit NMU_REMAP = 0);
+
+    logic clk = 1'b0;
+    logic rst_n = 1'b0;
+    logic done_1, done_3, done_8;
+
+    always #5 clk = ~clk;
+
+    axi_id_remap_case #(.AXI_ID_WIDTH(1), .NMU_REMAP(NMU_REMAP)) case_1 (.clk_i(clk), .rst_n_i(rst_n), .done_o(done_1));
+    axi_id_remap_case #(.AXI_ID_WIDTH(3), .NMU_REMAP(NMU_REMAP)) case_3 (.clk_i(clk), .rst_n_i(rst_n), .done_o(done_3));
+    axi_id_remap_case #(.AXI_ID_WIDTH(8), .NMU_REMAP(NMU_REMAP)) case_8 (.clk_i(clk), .rst_n_i(rst_n), .done_o(done_8));
+
+    initial begin
+        repeat (2) @(posedge clk);
+        rst_n = 1'b1;
+        wait (done_1 && done_3 && done_8);
+        $display("tb_axi_id_remap PASS");
+        $finish;
+    end
+
+endmodule

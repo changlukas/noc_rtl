@@ -1,0 +1,82 @@
+"""Verify the elaborator iterates source declaration order. Catches K-1 tripwire:
+if anyone applies sorted() inside the helper or elaborator, byte-identical
+golden tests still pass (alphabetic happens to match declaration in many
+cases) but THIS test specifically asserts the names appear in declaration
+order."""
+from __future__ import annotations
+import json
+import re
+from pathlib import Path
+
+SPECGEN_ROOT = Path(__file__).resolve().parent.parent
+HEADER_PATH = SPECGEN_ROOT / "generated" / "cpp" / "ni_flit_constants.h"
+JSON_PATH   = SPECGEN_ROOT / "generated" / "json" / "ni_packet.json"
+
+
+def _field_widths_section(text: str) -> str:
+    """Slice the '--- all field widths (from flit.field_widths) ---' block.
+
+    The header also emits <NAME>_WIDTH entries from header_fields above and
+    payload widths in between; only the field_widths block reflects JSON
+    insertion order, so scoping the regex to this section is required to
+    measure the invariant the docstring describes.
+    """
+    m = re.search(
+        r"//\s*---\s*all field widths.*?---\s*\n(.*?)(?=\n//\s*---|\Z)",
+        text,
+        flags=re.DOTALL,
+    )
+    assert m, "field_widths section marker missing from generated header"
+    return m.group(1)
+
+
+def test_field_widths_declaration_order_preserved_in_header():
+    """ni_flit_constants.h emits `constexpr int <NAME>_WIDTH = ...` lines for
+    each field_widths entry; their order must match field_widths{} insertion
+    order in the JSON (the canonical hand-edited source)."""
+    spec = json.loads(JSON_PATH.read_text(encoding="utf-8"))
+    text = HEADER_PATH.read_text(encoding="utf-8")
+    section = _field_widths_section(text)
+    header_order = re.findall(r"constexpr\s+int\s+(\w+_WIDTH)\s*=", section)
+    fw_names_in_order = list(spec["flit"]["field_widths"].keys())
+    assert header_order == fw_names_in_order, (
+        f"field_widths declaration order broken!\n"
+        f"  expected: {fw_names_in_order}\n"
+        f"  got:      {header_order}"
+    )
+
+
+def _header_namespace_section(text: str) -> str:
+    """Slice the `namespace header { ... }  // namespace header` block.
+
+    Per-payload-field _LSB constants live in `namespace payload::<ch> { ... }`
+    blocks emitted further down; scoping to the header namespace is required
+    so this invariant only inspects header fields.
+    """
+    m = re.search(
+        r"namespace\s+header\s*\{(.*?)\}\s*//\s*namespace header",
+        text,
+        flags=re.DOTALL,
+    )
+    assert m, "header namespace block missing from generated header"
+    return m.group(1)
+
+
+def test_header_fields_declaration_order_preserved():
+    """Header fields (DST_ID_LSB, SRC_ID_LSB, ...) must appear in declaration order.
+
+    Width-0 fields (e.g. noc_qos when NOC_QOS_WIDTH=0) are skipped because the
+    elaborator does not emit _LSB / _MSB constants for them (not bit-addressable).
+    Width is resolved via constants.header_field_width since the JSON no
+    longer stores a pre-computed ``width`` key on each header_fields entry.
+    """
+    from ni_spec import constants as C
+    spec = json.loads(JSON_PATH.read_text(encoding="utf-8"))
+    text = HEADER_PATH.read_text(encoding="utf-8")
+    section = _header_namespace_section(text)
+    lsb_order = re.findall(r"constexpr\s+int\s+(\w+)_LSB\s*=", section)
+    expected = []
+    for f in spec["flit"]["header_fields"]:
+        if C.header_field_width(spec, f["name"]) != 0:
+            expected.append(f["name"].upper())
+    assert lsb_order == expected

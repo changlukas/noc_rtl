@@ -1,0 +1,1637 @@
+#!/usr/bin/env python3
+"""Emit per-node pulp axi_file_master stimulus (write.txt/read.txt) for a traffic pattern.
+
+Usage:
+    gen_test_patterns.py --pattern neighbor \\
+        --topology <name> --out <dir>
+
+    gen_test_patterns.py --pattern uniform_random \\
+        --topology mesh_4x4_vc1 --out <dir> \\
+        --transactions-per-node 4 --seed 42
+
+Writes <out>/node<i>/{write,read}.txt for each node i. Each transaction:
+  - addr = base(dst_coord) + local_offset  (base from the topology's packed
+    address_map.tiles list; see address_map.py)
+  - src-partitioned local offset (alloc_unique_offset) so converging sources never collide
+  - INCR, atop=0, full strobe, address-in-data payload (byte A = A & 0xFF)
+
+Patterns
+--------
+neighbor  (ported from booksim2 NeighborTrafficPattern::dest, src/traffic.cpp:316)
+    Per dimension: digit += 1 mod k.  For (x,y): dst = ((x+1)%x_dim, (y+1)%y_dim).
+    Deterministic bijection; non-self when dim > 1.
+
+uniform_random  (ported from booksim2 UniformRandomTrafficPattern::dest,
+                 src/traffic.cpp:386-390)
+    Each packet independently draws a uniformly random destination from [0, nodes-1].
+    Self-traffic is PERMITTED by default (booksim-faithful); --exclude-self opts out.
+    Uses random.Random(seed) for reproducibility.
+
+transpose  (ported from booksim2 TransposeTrafficPattern::dest, src/traffic.cpp:244-250)
+    Bit-half-swap of the node id.  On a square k×k mesh (k a power of two) this is
+    equivalent to (x,y)→(y,x).  Requires x_dim == y_dim and x_dim a power of two.
+    Diagonal nodes (x==y) are self-traffic; permitted by default (booksim-faithful).
+    Each node's dst is fixed; all transactions_per_node pairs target the same dst.
+
+hotspot  (ported from booksim2 HotSpotTrafficPattern::dest, src/traffic.cpp:506-526)
+    Directs traffic to one or more hotspot nodes (--hotspot <linear-node-ids>).
+    Single hotspot: all packets go to that node.
+    Multiple hotspots: weighted selection by --hotspot-rates (default: equal weight).
+    Uses random.Random(seed) for reproducibility.
+    --hotspot-peripherals names the peripheral endpoints as the hotspot set
+    instead of node ids, which is the many-to-one shape a memory controller or
+    host bridge sees. Same booksim selection, --hotspot-rates included; only the
+    target set differs -- see peripheral_hotspot_dsts.
+
+multicast  (S4 collectives; stimulus intent ported from FlooNoC
+            tb_floo_rob_multicast.sv:30-49,189-195,379-395 masked-region writes)
+    Source nodes issue multicast writes whose AWUSER carries the address mask
+    (row / column / 2x2-submesh member sets, --mcast-shape, ONE shape per run),
+    then read back every member replica; non-source nodes carry unicast filler
+    plus (config topologies) cross-node narrow probes. The issue schedule obeys
+    restriction R1: same-shape trees are pairwise disjoint across sources, and
+    each source's own multicasts share one AXI id so the NMU's R2 gate
+    serializes them on the merged B. See the "Multicast pattern" section below.
+    Ignores --ids-per-initiator (one id per node is the serialization mechanism).
+
+many_to_many
+    Write-only clockwise exchange between four 2x2 regions on a 4x4 mesh.
+    Every node writes each of the four nodes in the next region. Four
+    transactions per node form one complete round; partial rounds are rejected.
+
+Address allocation
+------------------
+alloc_unique_offset(dst_node, src_node, seq, base_offset, n_nodes, region_bytes, ...)
+    Assigns a globally unique local offset within the dst node's memory window so
+    converging sources never collide on an absolute address.  The neighbor pattern
+    is a bijection (no convergence), but the allocator contract is shared with
+    future patterns (T2/T3 synthetic/uniform/hotspot/transpose).
+
+        offset = base_offset + src_node * stride + seq * (n_nodes * stride)
+    (row-major in seq: each src is one stride apart; each seq jumps a full
+    n_nodes-wide band, so src + seq*n_nodes is injective for src,seq in [0,n_nodes)).
+    The allocator ASSERTS the chosen offset + the slot's reserved bytes stays within
+    [base_offset, base_offset + region_bytes); a violation raises ValueError rather
+    than silently overflowing into the next dst tile (the contract T2/T3 rely on).
+    region_bytes is auto-derived in main() as n_nodes * transactions_per_node * stride
+    (stride = max(_SLOT_STRIDE, burst_footprint)), a tight upper bound on the
+    allocator's max offset + reserved, so the ValueError never fires in practice.
+
+Constants
+---------
+X_WIDTH = 4  -- mirrors c_model addr_trans.hpp / ni_flit_constants.h
+DST_ID_WIDTH = 8  -- mirrors ni_flit_constants.h header::DST_ID_WIDTH (X_WIDTH + Y_WIDTH)
+
+Per-tile base address = base(dst_id), expanded from the config file's
+address_map.tiles list (see address_map.py). Mirrors c_model SamTable::packed's
+base formula (addr_trans.hpp): base = space_base[space] + ((y << x_bits) | x) *
+slot[space].
+"""
+
+import argparse
+import json
+import os
+import random as _random_module
+import sys
+from pathlib import Path
+
+import yaml
+
+import address_map
+
+# Must mirror c_model addr_trans.hpp SamTable::packed:
+#   dst_id = (y << X_WIDTH) | x
+#   base = space_base[space] + ((y << x_bits) | x) * slot[space]
+X_WIDTH = 4
+Y_WIDTH = 4          # mirrors ni_flit_constants.h width::Y_WIDTH
+DST_ID_WIDTH = 8     # header::DST_ID_WIDTH = X_WIDTH + Y_WIDTH; max nodes = 2**8 = 256
+_FILE_KEYS = ("data_file", "dump_file", "strb_file")
+_MAPPED_PATTERNS = {"tp_ring_step", "pp_shards", "expert_dispatch",
+                    "expert_return", "kv_handoff"}
+_AI_PATTERNS = {"broadcast", "gather", "alltoall", "neighbor_exchange", "pipeline"} | _MAPPED_PATTERNS
+
+# Per-transaction slot stride for the unique-offset allocator.  Must be at least
+# as large as the max transaction data payload (one cache-line = 64 B = 0x40).
+_SLOT_STRIDE = 0x40
+
+_CONSTANTS_YAML = Path(__file__).resolve().parents[2] / "specgen" / "source" / "constants.yaml"
+
+
+def axi_widths():
+    """AXI ID/ADDR/DATA widths from the DUT single source of truth
+    (specgen/source/constants.yaml -- the same file ni_params_pkg is generated from).
+    Read directly (values only); the specgen validator owns schema checking."""
+    axi = yaml.safe_load(_CONSTANTS_YAML.read_text(encoding="utf-8"))["axi"]
+    return {
+        "id":   int(axi["AXI_ID_WIDTH"]["default"]),
+        "addr": int(axi["ADDR_WIDTH"]["default"]),
+        "data": int(axi["DATA_WIDTH"]["default"]),
+    }
+
+
+from axi_file_format import encode_write_beats, _ax_fields
+
+
+def emit_file_master_node(out_dir, src_idx, dst_bases, n_nodes,
+                          base_local, region_bytes, axi_size, axi_len, data_width,
+                          id_rng, ids_per_initiator=1, num_axi_ids=256,
+                          extra=None, wrap_window=None, readback=True,
+                          direction=None):
+    """Write out_dir/{write,read}.txt for one node. One write+read pair per entry of
+    dst_bases, src-partitioned address, address-in-data payload. INCR, atop=0,
+    full strobe.
+
+    dst_bases: the destination WINDOW BASE per transaction, from
+    address_map.pack_config(). A base, not a coordinate: a peripheral shares its host
+    router's coordinate and is told apart by the port it hangs off, so the
+    coordinate no longer names one destination and the base does.
+
+    AXI ids: each initiator draws uniformly at random from a block of
+    `ids_per_initiator` ids starting at src_idx*ids_per_initiator (mod
+    num_axi_ids), mirroring axi_rand_master's `rand logic [IW-1:0] ax_id`
+    (deps/axi-0.39.7/src/axi_test.sv:233) over N_AXI_IDS = 2**IW (:715).
+    Ids repeat within an initiator (upstream UNIQUE_IDS = 1'b0, :710), so a run
+    carries both same-id pairs (must stay ordered) and cross-id pairs (may
+    reorder). Blocks overlap across initiators once
+    ids_per_initiator * n_nodes > num_axi_ids -- legal, because responses route
+    by the flit's src_id, not by AXI id (nsu/meta_buffer.hpp:21,
+    nsu/packetize.hpp:97,123), and upstream shares ids across nodes by
+    construction (each test node draws the full space). ids_per_initiator=1
+    gives each tile one id (= src_idx) and draws no randomness. VC allocation is
+    id-agnostic (VC id only), so this changes concurrency, not VC spread.
+
+    extra: optional (write_lines, read_lines) tuple appended after the regular
+    dst_bases transactions -- e.g. one narrow-class (config-space) probe for a
+    node that owns a config tile, so a single node routes both classes.
+    readback=False emits an empty read file for write-only performance traffic.
+    direction="write" or "read" emits one channel only; None preserves the
+    legacy write-plus-optional-readback behavior. The returned tuples describe
+    memory that a read-only run must prefill as (destination base, address,
+    byte count)."""
+    os.makedirs(out_dir, exist_ok=True)
+    reserved = (axi_len + 1) * (1 << axi_size)
+    id_base = (src_idx * ids_per_initiator) % num_axi_ids
+    write_lines, read_lines, read_prefills = [], [], []
+    emit_write = direction != "read"
+    emit_read = direction == "read" or (direction is None and readback)
+    for seq, dst_base in enumerate(dst_bases):
+        if wrap_window is not None:
+            # Config-space narrow traffic: the 4 KB aperture cannot hold one
+            # unique slot per (src, seq), so slots wrap inside the window and
+            # addresses repeat (see --space help: measurement modes only).
+            stride = max(_SLOT_STRIDE, reserved)
+            local_off = base_local + \
+                (src_idx * stride + seq * (n_nodes * stride)) % wrap_window
+        else:
+            local_off = alloc_unique_offset(dst_base, src_idx, seq, base_local,
+                                            n_nodes, region_bytes, reserved=reserved)
+        addr = dst_base + local_off
+        # Uniform over the tile's block, reuse allowed: axi_test.sv:233 draws
+        # ax_id over the whole space and axi_rand_master's UNIQUE_IDS defaults
+        # to 0 (:710), so same-id pairs (ordered) and cross-id pairs
+        # (reorderable) both occur. randrange(1) is 0, so a one-id block still
+        # emits id == src_idx.
+        axid = (id_base + id_rng.randrange(ids_per_initiator)) % num_axi_ids
+        if emit_write:
+            write_lines += _ax_fields(axid, addr, axi_len, axi_size, include_atop=True)
+            write_lines += encode_write_beats(addr, axi_size, axi_len, data_width)
+        if emit_read:
+            read_lines += _ax_fields(axid, addr, axi_len, axi_size, include_atop=False)
+            if direction == "read":
+                read_prefills.append((dst_base, addr, reserved))
+    if extra is not None:
+        extra_write, extra_read = extra
+        write_lines += extra_write
+        read_lines += extra_read
+    with open(os.path.join(out_dir, "write.txt"), "w") as f:
+        f.write("\n".join(write_lines) + ("\n" if write_lines else ""))
+    with open(os.path.join(out_dir, "read.txt"), "w") as f:
+        f.write("\n".join(read_lines) + ("\n" if read_lines else ""))
+    return read_prefills
+
+
+
+def unicast_pair_lines(axid, addr, axi_size, axi_len, data_width):
+    """(write_lines, read_lines) for one unicast write and its readback at addr."""
+    write = _ax_fields(axid, addr, axi_len, axi_size, include_atop=True)
+    write += encode_write_beats(addr, axi_size, axi_len, data_width)
+    read = _ax_fields(axid, addr, axi_len, axi_size, include_atop=False)
+    return write, read
+
+
+def xy_route_edges(nodes, source, destination):
+    """Directed router-index edges for the emitted topology's XY route."""
+    coords = {node: (x, y) for node, x, y, _cid in nodes}
+    node_at = {(x, y): node for node, x, y, _cid in nodes}
+    x, y = coords[source]
+    dst_x, dst_y = coords[destination]
+    edges = []
+    while x != dst_x:
+        next_x = x + (1 if dst_x > x else -1)
+        next_node = node_at[(next_x, y)]
+        edges.append((node_at[(x, y)], next_node))
+        x = next_x
+    while y != dst_y:
+        next_y = y + (1 if dst_y > y else -1)
+        next_node = node_at[(x, next_y)]
+        edges.append((node_at[(x, y)], next_node))
+        y = next_y
+    return edges
+
+
+def emit_channel_compare_pattern(out_root, nodes, bases, config_bases, sizes,
+                                 peripherals, channel_case, data_width, rounds):
+    """Emit Control probes plus Pipeline P2P background traffic."""
+    if len(nodes) <= 3:
+        raise SystemExit("channel_compare requires at least four mesh nodes")
+    control_target_cid = nodes[3][3]
+    if control_target_cid not in bases or control_target_cid not in config_bases:
+        raise SystemExit("channel_compare requires node 3 memory and config SAM ranges")
+
+    control_probes = 64
+    transactions_per_flow = 2
+    background_bursts = rounds * transactions_per_flow
+    data_end = 0x1000 + len(nodes) * background_bursts * 0x1000
+    if sizes["config"][control_target_cid] < control_probes * 8 or any(
+            sizes["memory"][cid] < data_end for _idx, _x, _y, cid in nodes):
+        raise SystemExit("channel_compare node 3 SAM ranges are too small for the transfers")
+
+    order = pipeline_order(len({x for _idx, x, _y, _cid in nodes}),
+                           len({y for _idx, _x, y, _cid in nodes}))
+    payload_edges = list(zip(order[1:-1], order[2:]))
+    request_map = dict(payload_edges)
+    control_edges = xy_route_edges(nodes, order[0], nodes[3][0])
+    try:
+        shared_source, shared_destination = next(
+            edge for edge in payload_edges if edge in control_edges)
+    except StopIteration:
+        raise SystemExit("channel_compare Control and Pipeline routes share no directed edge")
+    shared_edge = f"{shared_source}to{shared_destination}"
+    traffic = {}
+    for node in range(len(nodes)):
+        writes, reads = [], []
+        if node == 0:
+            destinations = [(control_target_cid, seq * 8, 0)
+                            for seq in range(control_probes)]
+        elif node in request_map:
+            destination_cid = nodes[request_map[node]][3]
+            destinations = [
+                (destination_cid, 0x1000 + (node * background_bursts + seq) * 0x1000, 255)
+                for seq in range(background_bursts)
+            ]
+        else:
+            destinations = []
+        for destination_cid, offset, axi_len in destinations:
+            aperture = config_bases if node == 0 else bases
+            addr = aperture[destination_cid] + offset
+            write, read = unicast_pair_lines(node, addr, 3, axi_len, data_width)
+            writes += write
+            reads += read
+        traffic[node] = writes, reads
+    endpoint_count = len(nodes) + len(peripherals)
+    for node in range(endpoint_count):
+        node_dir = Path(out_root) / f"node{node}"
+        node_dir.mkdir(parents=True, exist_ok=True)
+        write_lines, read_lines = traffic.get(node, ([], []))
+        if channel_case != "read":
+            read_lines = []
+        (node_dir / "write.txt").write_text(
+            "\n".join(write_lines) + ("\n" if write_lines else ""), encoding="utf-8")
+        (node_dir / "read.txt").write_text(
+            "\n".join(read_lines) + ("\n" if read_lines else ""), encoding="utf-8")
+    metadata = {
+        "direction": channel_case,
+        "rounds": rounds,
+        "transactions_per_flow": transactions_per_flow,
+        "control_probes": control_probes,
+        "background_bursts_per_flow": background_bursts,
+        "background_beats_per_flow": background_bursts * 256,
+        "background_nodes": len(request_map),
+        "shared_directed_edge": shared_edge,
+        "control_resource": f"req_{shared_edge}",
+        "rr_background_resource": f"req_{shared_edge}",
+        "rrd_background_resource": f"dat_{shared_edge}",
+    }
+    (Path(out_root) / "traffic_meta.json").write_text(
+        json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+
+
+def narrow_config_probe_lines(axid, config_base, data_width):
+    """(write_lines, read_lines) for one narrow-class config-space probe: a
+    2-beat INCR burst at AxSIZE=3 (8 B, the narrow lane width) targeting a
+    config-space aperture. Emitted on every pattern, not tied to one: a
+    config-space topology has to exercise both classes whatever drives the
+    data-class traffic. encode_write_beats already gives per-lane-distinct
+    bytes and full per-beat strobe. Two beats ('a couple') proves lane
+    re-anchor holds across an address increment; the narrow class's 81 b
+    NarrowW payload carries the whole 8 B lane in one flit, so a single beat
+    would prove nothing a wider one does not. AxSIZE<=3 is required -- narrow
+    class rejects larger (S2 design doc sec 1)."""
+    axi_len, axi_size = 1, 3
+    write = _ax_fields(axid, config_base, axi_len, axi_size, include_atop=True)
+    write += encode_write_beats(config_base, axi_size, axi_len, data_width)
+    read = _ax_fields(axid, config_base, axi_len, axi_size, include_atop=False)
+    return write, read
+
+
+# ---------------------------------------------------------------------------
+# Coordinate helpers
+# ---------------------------------------------------------------------------
+
+def coord_id(x, y):
+    """Coordinate-encoded node id = (y << X_WIDTH) | x.  Mirrors addr_trans.xy_route."""
+    return (y << X_WIDTH) | x
+
+
+def neighbor_dst(x, y, x_dim, y_dim):
+    """Booksim2 NeighborTrafficPattern::dest (traffic.cpp:316): +1 per dimension, wrap.
+
+    Returns (dst_x, dst_y).  Deterministic bijection; non-self when x_dim > 1 and
+    y_dim > 1.
+    """
+    return (x + 1) % x_dim, (y + 1) % y_dim
+
+
+def transpose_dst(x, y):
+    """Booksim2 TransposeTrafficPattern::dest (traffic.cpp:244): bit-half-swap of node id.
+
+    On a square k×k mesh (k a power of two), booksim's row-major node id y*k+x has
+    equal-width x and y fields; the bit-half-swap is equivalent to swapping the two
+    coordinate fields, giving dst = (y, x).
+
+    Caller MUST have already validated that x_dim == y_dim and x_dim is a power of two
+    (see _check_transpose_guard).  Diagonal nodes (x==y) map to themselves, which is
+    booksim-faithful (booksim does NOT special-case self-traffic).
+
+    Returns (dst_x, dst_y).
+    """
+    return y, x
+
+
+# Bit and digit permutations operate on booksim's linear node id, which is
+# row-major (idx = y * x_dim + x) -- the same index this generator's node list
+# already carries. _linear / _coords are the two conversions, spelled out once so
+# each pattern below reads like its source.
+def _linear(x, y, x_dim):
+    return y * x_dim + x
+
+
+def _coords(idx, x_dim):
+    return idx % x_dim, idx // x_dim
+
+
+def bit_complement_dst(x, y, x_dim, y_dim):
+    """Booksim2 BitCompTrafficPattern::dest (traffic.cpp:220-225): ~src, masked.
+
+    Every node pairs with the one diagonally opposite, so every packet crosses
+    the full diameter in both dimensions. Table 7.2 of On-Chip Networks 2e puts
+    it at 0.25 of capacity on an 8x8 with XY routing.
+
+    Caller MUST have validated the node count is a power of two
+    (_check_bit_permutation_guard).
+    """
+    mask = x_dim * y_dim - 1
+    return _coords(~_linear(x, y, x_dim) & mask, x_dim)
+
+
+def bit_reverse_dst(x, y, x_dim, y_dim):
+    """Booksim2 BitRevTrafficPattern::dest (traffic.cpp:257-266): reverse the id bits.
+
+    The tightest of the standard permutations at 0.14 on an 8x8, alongside
+    transpose -- it concentrates traffic on the few nodes whose id is its own
+    reverse.
+
+    Caller MUST have validated the node count is a power of two.
+    """
+    nodes = x_dim * y_dim
+    src = _linear(x, y, x_dim)
+    result = 0
+    n = nodes
+    while n > 1:
+        result = (result << 1) | (src & 1)
+        src >>= 1
+        n >>= 1
+    return _coords(result, x_dim)
+
+
+def shuffle_dst(x, y, x_dim, y_dim):
+    """Booksim2 ShuffleTrafficPattern::dest (traffic.cpp:275-280): rotate the id left.
+
+    0.25 on an 8x8. FlooNoC's gen_jobs.py writes the same permutation as a
+    halves split (util/gen_jobs.py, traffic_type "shuffle").
+
+    Caller MUST have validated the node count is a power of two.
+    """
+    nodes = x_dim * y_dim
+    shifted = _linear(x, y, x_dim) << 1
+    return _coords((shifted & (nodes - 1)) | bool(shifted & nodes), x_dim)
+
+
+def bit_rotation_dst(x, y, x_dim, y_dim):
+    """FlooNoC util/gen_jobs.py traffic_type "bit_rotation": rotate the id right.
+
+    The inverse of shuffle, and the one member of the standard permutation set
+    booksim2 does not carry -- hence the different source.
+
+    Caller MUST have validated the node count is a power of two.
+    """
+    nodes = x_dim * y_dim
+    src = _linear(x, y, x_dim)
+    dst = src // 2 if src % 2 == 0 else src // 2 + nodes // 2
+    return _coords(dst, x_dim)
+
+
+def tornado_dst(x, y, x_dim, y_dim):
+    """Booksim2 TornadoTrafficPattern::dest (traffic.cpp:295-308) at xr=1.
+
+    Each coordinate advances by ceil(k/2) - 1, so every packet travels just under
+    half the ring in both dimensions. This is the middle of the band the set
+    covers -- 0.33 on an 8x8 -- which nothing else in the suite occupies.
+
+    Caller MUST have validated a uniform radix (_check_tornado_guard); a mesh
+    whose dimensions differ has no single k.
+
+    Booksim shifts every dimension (its dest() loops over _n); FlooNoC's
+    gen_jobs.py shifts X only. This follows booksim, like the rest of the suite.
+    """
+    k = x_dim
+    shift = (k + 1) // 2 - 1
+    return (x + shift) % k, (y + shift) % k
+
+
+def uniform_random_dsts(src_node, n_nodes, n_txn, rng, exclude_self=False):
+    """Booksim2 UniformRandomTrafficPattern::dest (traffic.cpp:386-390): uniform random node.
+
+    Returns a list of n_txn destination linear node indices.  Each packet draws its
+    own dst independently (per-packet random, not one dst per node).
+
+    Self-traffic policy (booksim-faithful by default):
+      - booksim `RandomInt(nodes-1)` returns a uniform node in [0, nodes-1] and
+        PERMITS self (no source exclusion).  This is the default.
+      - pass exclude_self=True to re-sample until dst != src (clean NoC-only
+        measurement; opt-in via --exclude-self).
+    """
+    dsts = []
+    for _ in range(n_txn):
+        while True:
+            d = rng.randint(0, n_nodes - 1)
+            if not exclude_self or d != src_node:
+                break
+        dsts.append(d)
+    return dsts
+
+
+def all_to_all_dsts(src_node, n_nodes, n_txn):
+    """Every node walks every other node in turn (MPI_Alltoall's spatial shape).
+
+    Booksim2 and FlooNoC both lack this one: their sets are permutations, which
+    give a node ONE destination, plus uniform/hotspot, which draw randomly. This
+    is the deterministic complement -- the destination changes on every
+    transaction by construction.
+
+    That is the point of it. The NMU allocates a reorder-buffer slot only when a
+    same-id transaction goes somewhere other than the previous one; a repeat
+    takes the same-destination bypass and no slot (nmu-spec.md:142). Under
+    uniform_random a repeat comes up 1/n_nodes of the time, so the RoB is never
+    fully loaded. Here it never repeats, so with one id per initiator every
+    transaction takes the allocating branch.
+
+    Starts at src_node + 1 and skips src_node itself, so no transaction is
+    tile-local -- a local request is answered by the tile crossbar and never
+    reaches the NMU (user_node_endpoint.sv), which would break the guarantee.
+    """
+    others = [(src_node + 1 + k) % n_nodes for k in range(n_nodes - 1)]
+    return [others[i % len(others)] for i in range(n_txn)]
+
+
+def ai_alltoall_dsts(src_node, n_nodes, rounds):
+    """One equal-size transfer from a source to every other node per round."""
+    return all_to_all_dsts(src_node, n_nodes, rounds * (n_nodes - 1))
+
+
+def reverse_payload_edges(source_dsts):
+    """Turn producer->consumer payload edges into consumer->producer Read requests."""
+    reversed_dsts = {node: [] for node in source_dsts}
+    for producer, consumers in source_dsts.items():
+        for consumer in consumers:
+            reversed_dsts[consumer].append(producer)
+    return reversed_dsts
+
+
+def gather_dsts(src_node, x_dim, y_dim, rounds, shape, root_node):
+    """Global or approved 4x4 local-Gather destination list for one source."""
+    n_nodes = x_dim * y_dim
+    if not 0 <= root_node < n_nodes:
+        raise ValueError(f"--root-node must be in 0..{n_nodes - 1}")
+    if shape == "global":
+        return [] if src_node == root_node else [root_node] * rounds
+    if shape != "submesh":
+        raise ValueError(f"unknown gather shape {shape!r}")
+    if (x_dim, y_dim) != (4, 4):
+        raise ValueError(f"local Gather requires a 4x4 mesh (got {x_dim}x{y_dim})")
+    leaders = {
+        0: 5, 1: 5, 4: 5, 5: 5,
+        2: 6, 3: 6, 6: 6, 7: 6,
+        8: 9, 9: 9, 12: 9, 13: 9,
+        10: 10, 11: 10, 14: 10, 15: 10,
+    }
+    leader = leaders[src_node]
+    return [] if src_node == leader else [leader] * rounds
+
+
+def neighbor_exchange_dsts(src_node, x_dim, y_dim, rounds):
+    """Valid west/east/north/south neighbors without wraparound."""
+    x, y = _coords(src_node, x_dim)
+    neighbors = []
+    if x > 0:
+        neighbors.append(_linear(x - 1, y, x_dim))
+    if x + 1 < x_dim:
+        neighbors.append(_linear(x + 1, y, x_dim))
+    if y > 0:
+        neighbors.append(_linear(x, y - 1, x_dim))
+    if y + 1 < y_dim:
+        neighbors.append(_linear(x, y + 1, x_dim))
+    return neighbors * rounds
+
+
+def mapped_payload_dsts(pattern, x_dim, y_dim, rounds):
+    """L1 payload edges for the approved 4x4 ownership, not L2 execution.
+
+    Coordinates have bottom-left origin. Each group orders ranks as lower
+    left, lower right, upper left, upper right. Read requests reverse these
+    edges in the common emitter so returned payload retains this direction.
+    """
+    if (x_dim, y_dim) != (4, 4):
+        raise ValueError("mapped AI patterns require the approved 4x4 placement")
+    if pattern not in _MAPPED_PATTERNS or rounds <= 0:
+        raise ValueError("invalid mapped pattern or nonpositive rounds")
+    groups = {name: tuple((y + dy) * x_dim + x + dx
+                         for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)))
+              for name, (x, y) in {"A": (0, 2), "B": (2, 2),
+                                    "C": (2, 0), "D": (0, 0)}.items()}
+    a, b, c, d = (groups[name] for name in ("A", "B", "C", "D"))
+    if pattern == "tp_ring_step":
+        ring = (a[0], a[1], a[3], a[2])
+        edges = list(zip(ring, ring[1:] + ring[:1]))
+    elif pattern == "pp_shards":
+        edges = list(zip(a, b))
+    elif pattern in ("expert_dispatch", "expert_return"):
+        edges = [(owner, expert) for owner in a[:2] for expert in (b[0], c[0])]
+        if pattern == "expert_return":
+            edges = [(dst, src) for src, dst in edges]
+    else:
+        edges = list(zip(a, d)) + list(zip(b, c))
+    destinations = {node: [] for node in range(x_dim * y_dim)}
+    for src, dst in edges:
+        destinations[src].append(dst)
+    return {src: targets * rounds for src, targets in destinations.items()}
+
+
+def pipeline_order(x_dim, y_dim):
+    """Row-snake order used by the forward inference pipeline."""
+    return [_linear(x, y, x_dim)
+            for y in range(y_dim)
+            for x in (range(x_dim) if y % 2 == 0
+                      else range(x_dim - 1, -1, -1))]
+
+
+def pipeline_dsts(src_node, x_dim, y_dim, rounds):
+    order = pipeline_order(x_dim, y_dim)
+    pos = order.index(src_node)
+    return [] if pos + 1 == len(order) else [order[pos + 1]] * rounds
+
+
+def many_to_many_dsts(src_node, x_dim, y_dim, n_txn):
+    """Destinations for complete clockwise exchanges between four 2x2 regions."""
+    if (x_dim, y_dim) != (4, 4):
+        sys.exit(f"ERROR: many_to_many requires a 4x4 mesh (got {x_dim}x{y_dim})")
+    if n_txn <= 0 or n_txn % 4:
+        sys.exit("ERROR: many_to_many transactions-per-node must be a positive multiple of 4")
+
+    regions = (
+        ((0, 1, 4, 5), (2, 3, 6, 7)),
+        ((2, 3, 6, 7), (10, 11, 14, 15)),
+        ((10, 11, 14, 15), (8, 9, 12, 13)),
+        ((8, 9, 12, 13), (0, 1, 4, 5)),
+    )
+    destinations = next(dst for src, dst in regions if src_node in src)
+    return [destinations[i % 4] for i in range(n_txn)]
+
+
+def hotspot_dsts(src_node, n_nodes, n_txn, rng, hotspots, rates=None, exclude_self=False):
+    """Booksim2 HotSpotTrafficPattern::dest (traffic.cpp:506-526): weighted hotspot selection.
+
+    hotspots: list of linear node indices (0..n_nodes-1).
+    rates:    weights parallel to hotspots (default: all 1, i.e. equal weight).
+              Must be positive integers.
+
+    Single hotspot: all packets go to that node (booksim fast path, traffic.cpp:510;
+    returns the hotspot UNCONDITIONALLY -- even when src == hotspot).
+    Multiple hotspots: weighted cumulative selection (traffic.cpp:514-525); booksim
+    applies NO source exclusion.
+
+    Self-traffic policy (booksim-faithful by default): permit self.  Pass
+    exclude_self=True (--exclude-self) to re-sample until dst != src; if no non-self
+    dst exists (e.g. single hotspot == src) the selection falls back to the
+    booksim-faithful value rather than raising.
+    """
+    if not hotspots:
+        raise ValueError("hotspot pattern requires at least one --hotspot node id")
+    for h in hotspots:
+        if not (0 <= h < n_nodes):
+            raise ValueError(f"hotspot node id {h} out of range [0, {n_nodes})")
+
+    if rates is None:
+        rates = [1] * len(hotspots)
+    if len(rates) != len(hotspots):
+        raise ValueError("--hotspot-rates length must match --hotspot length")
+    for r in rates:
+        if r <= 0:
+            raise ValueError(f"hotspot rate {r} must be positive")
+
+    max_val = sum(rates) - 1  # mirrors booksim _max_val accumulation
+    # True only if every hotspot equals src -- then exclude_self cannot succeed and we
+    # fall back to the booksim-faithful value (no raise; booksim never raises).
+    all_hotspots_are_self = all(h == src_node for h in hotspots)
+
+    def _select():
+        if len(hotspots) == 1:
+            # booksim fast path: single hotspot -> return it directly (traffic.cpp:510)
+            return hotspots[0]
+        # booksim weighted cumulative select (traffic.cpp:514-525)
+        pct = rng.randint(0, max_val)
+        for i in range(len(hotspots) - 1):
+            if rates[i] > pct:
+                return hotspots[i]
+            pct -= rates[i]
+        return hotspots[-1]  # mirrors booksim assert-backed fallthrough
+
+    dsts = []
+    for _ in range(n_txn):
+        d = _select()
+        if exclude_self and not all_hotspots_are_self:
+            # Re-sample until non-self (bounded; only meaningful for multi-hotspot).
+            while d == src_node:
+                d = _select()
+        dsts.append(d)
+    return dsts
+
+
+def _linear_to_coord(node, x_dim):
+    """Convert linear node index to (x, y) mesh coordinates."""
+    return node % x_dim, node // x_dim
+
+
+# ---------------------------------------------------------------------------
+# Global unique-offset allocator
+# ---------------------------------------------------------------------------
+
+def alloc_unique_offset(dst_node, src_node, seq, base_offset, n_nodes,
+                        region_bytes, reserved=_SLOT_STRIDE, stride=_SLOT_STRIDE):
+    """Return a local offset that is globally unique across all (src_node, seq) pairs.
+
+    Layout within the dst node's memory window (row-major in seq, column in src):
+        stride = max(stride, reserved)   # a slot must be at least its footprint
+        offset = base_offset + src_node * stride + seq * (n_nodes * stride)
+
+    Uniqueness AND disjointness: distinct (src_node, seq) map to distinct slots
+    spaced by `stride`, and since stride >= reserved each slot's footprint fits
+    inside its own spacing — no two slots overlap even under many-to-one traffic.
+    A burst footprint larger than the default _SLOT_STRIDE therefore widens the
+    stride (callers size region_bytes to n_nodes * n_seq * stride to hold them all).
+
+    Bounds: the chosen offset plus the slot's reserved bytes must stay within the
+    dst tile's memory window [base_offset, base_offset + region_bytes).  A violation
+    raises ValueError instead of silently overflowing into the next dst tile.
+
+    Args:
+        dst_node: the destination window (informational only — not used in the
+                  formula; the caller adds the returned offset to it).
+        src_node: linear index of the sending node.
+        seq:      0-based transaction-pair index within this src_node's sequence.
+        base_offset: base local address from the scenario (memory_base & 0xFFFFFFFF).
+        n_nodes:  total node count in the topology (upper bound on src_node and seq).
+        region_bytes: dst tile's memory window size (auto-derived in main() as
+                  n_nodes * transactions_per_node * stride); the offset + reserved
+                  must stay below base_offset + region_bytes.
+        reserved: bytes the slot occupies (default one slot = stride); for a burst,
+                  pass the burst's total byte length so the tail also fits.
+        stride:   byte step between adjacent slots (default _SLOT_STRIDE = 0x40).
+
+    Raises:
+        ValueError: if offset + reserved would exceed base_offset + region_bytes.
+    """
+    _ = dst_node  # unused in formula; kept for caller clarity and T2/T3 reuse
+    # A slot occupies `reserved` bytes; the spacing between slots must be at least
+    # that, or a burst footprint larger than the default stride overlaps its
+    # neighbour (root cause of BUR-002/003 hotspot off-by-0x40 under many-to-one).
+    stride = max(stride, reserved)
+    offset = base_offset + src_node * stride + seq * (n_nodes * stride)
+    if (offset - base_offset) + reserved > region_bytes:
+        raise ValueError(
+            f"alloc_unique_offset: local offset {offset:#x} (+{reserved:#x} reserved) "
+            f"exceeds memory window [{base_offset:#x}, {base_offset + region_bytes:#x}) "
+            f"(region_bytes={region_bytes:#x}); reduce transactions-per-node"
+        )
+    return offset
+
+
+# ---------------------------------------------------------------------------
+# Multicast pattern (S4 collectives)
+# ---------------------------------------------------------------------------
+#
+# One mask SHAPE per run (--mcast-shape row|col|submesh): concurrent multicast
+# spanning trees must be pairwise disjoint (restriction R1, s4-phase0-design
+# §1.3). Row trees live in their own row's links, column trees in their own
+# column's, 2x2-block trees in their own block's -- disjoint across sources by
+# construction. Mixing shapes in one run would overlap trees at shared eject
+# outputs, which R1 forbids for concurrently in-flight multicasts.
+#
+# Within one source every transaction shares ONE AXI id, so the NMU's R2 gate
+# (one outstanding collective per (NMU, id); nmu/rob.hpp) serializes that
+# source's own multicasts on the merged B -- the "issuer waits for the merged
+# B" arm of R1, enforced by the DUT, not by file pacing.
+#
+# Per-node roles:
+#   source nodes  : T data-class multicast writes over the member set (the AW
+#                   names the source's own tile; AWUSER carries the address
+#                   mask) +
+#                   on a config topology one narrow-class multicast into the
+#                   members' config tiles (config-space message replication).
+#                   Readback phase reads EVERY member replica (scoreboard keys
+#                   by (dst_id, local_addr) -- full address = base + offset).
+#   other nodes   : T unicast neighbor write+read pairs (filler traffic) + on
+#                   a config topology one narrow 2-beat write+read probe into
+#                   the NEXT node's config tile -- cross-node narrow transit
+#                   traffic, so the CollectB join contends on RSP with responses
+#                   it does not own. (Every B and R beat is stamped flit_tail=1
+#                   at nsu/packetize.hpp:99,125, so RSP carries no multi-flit
+#                   worm and this probe cannot exercise a mid-worm hold.)
+#
+# Local-offset partitions inside a tile. The two spaces sit at different bases
+# in the map itself, so a config offset can never collide with a memory one;
+# these windows stay disjoint within their own space:
+#   [0x0,    0x10)                 config multicast slot (16 B narrow burst)
+#   [0x800,  0x800 + n*0x40)       cross-node config probes (one per node)
+#   [0x1000, 0x1000 + region)      unicast filler slots (alloc_unique_offset)
+#   [0x1000 + region, ... )        data multicast slots (seq * stride)
+
+_MCAST_SHAPES = ("row", "col", "submesh", "global")
+_CONFIG_PROBE_BASE = 0x800  # cross-node config probe window, below base_local
+
+
+def collective_addr_mask(bases, member_cids, addr_cid):
+    """OR of (base[m] XOR the named base) with wildcard-closure validation.
+
+    The AWUSER mask semantics (spec §6) require the member set to be exactly the
+    wildcard closure over the mask bits: the NMU and every router expand the
+    mask over the whole node-index field and deliver to every coordinate it
+    names (nmu::addr_trans::collective_translate, router::route_mask).  Mesh
+    dimensions are powers of two, so every coordinate the closure names is a
+    node and nothing is dropped.  The NMU re-checks this and aborts the run;
+    validating here turns a mask-unfriendly address map into a
+    stimulus-generation error instead of a co-sim abort.
+
+    `bases` must be the bases of ONE address space, and the caller is expected
+    to have picked the space that address lands in.  The node-index field sits
+    at `log2(block_size)` (spec §5.1), the same position for every space,
+    because tile-major gives every space one stride.  Deriving the mask from
+    the bases rather than from a constant is what keeps this correct without
+    the caller naming a bit position: mixing two spaces' bases in one call
+    still produces an invalid mask, which the wildcard check below rejects.
+    """
+    addr = bases[addr_cid]
+    mask = 0
+    for m in member_cids:
+        mask |= bases[m] ^ addr
+    lo = addr & ~mask
+    combos = set()
+    sub = mask
+    while True:
+        combos.add(lo | sub)
+        if sub == 0:
+            break
+        sub = (sub - 1) & mask
+    delivered = combos & set(bases.values())
+    if delivered != {bases[m] for m in member_cids}:
+        raise ValueError(
+            f"multicast member bases are not the wildcard over mask {mask:#x}: "
+            f"named {sorted(hex(bases[m]) for m in member_cids)}, "
+            f"the fabric would deliver {sorted(hex(b) for b in delivered)}")
+
+    if mask >> 48:
+        raise ValueError(f"collective address mask {mask:#x} exceeds AWUSER[57:10] (48 b)")
+    return mask
+
+
+def _awuser_multicast(addr_mask):
+    """AWUSER encode: [9:8] = MULTICAST (1), [57:10] = address mask."""
+    return (addr_mask << 10) | (1 << 8)
+
+
+def mcast_groups(shape, x_dim, y_dim):
+    """[(src_xy, [member_xy...]), ...] with pairwise-disjoint spanning trees."""
+    if shape == "row":
+        return [((0, y), [(x, y) for x in range(x_dim)]) for y in range(y_dim)]
+    if shape == "col":
+        return [((x, 0), [(x, y) for y in range(y_dim)]) for x in range(x_dim)]
+    if shape == "submesh":
+        if x_dim % 2 or y_dim % 2:
+            sys.exit(f"ERROR: --mcast-shape submesh requires even mesh dims (got {x_dim}x{y_dim})")
+        return [((bx, by), [(bx + dx, by + dy) for dy in (0, 1) for dx in (0, 1)])
+                for by in range(0, y_dim, 2) for bx in range(0, x_dim, 2)]
+    if shape == "global":
+        return [((0, 0), [(x, y) for y in range(y_dim) for x in range(x_dim)])]
+    raise ValueError(f"unknown mcast shape {shape!r}")
+
+
+def multicast_lines(axid, addr, addr_mask, member_addrs, axi_size, axi_len, data_width):
+    """(write_lines, read_lines) for one multicast write + per-member readback.
+
+    The write is ONE AW (the address it names, AWUSER mask) + its beats; the
+    fabric replicates it.  Reads are plain unicasts, one per member replica
+    address.  Address-in-data payload only uses addr[7:0], and replicas differ
+    from that address only in node-index bits (>= bit 12), so the beats it
+    encodes compare equal at every replica.
+    """
+    write = _ax_fields(axid, addr, axi_len, axi_size, include_atop=True,
+                       user=_awuser_multicast(addr_mask))
+    write += encode_write_beats(addr, axi_size, axi_len, data_width)
+    read = []
+    for m_addr in member_addrs:
+        read += _ax_fields(axid, m_addr, axi_len, axi_size, include_atop=False)
+    return write, read
+
+
+def emit_multicast_pattern(out_root, nodes, x_dim, y_dim, bases, config_bases,
+                           sizes, shape, n_txn, axi_size, axi_len, data_width,
+                           base_local, region_bytes, n_slots, readback=True,
+                           filler=True, config_probe=True):
+    """Write node<i>/{write,read}.txt for every node of the multicast pattern.
+
+    n_slots is the allocator band (endpoints, not router nodes): a peripheral
+    draws filler slots from the same band, and two initiators drawing from
+    bands of different widths can land on the same slot.
+    """
+    n_nodes = len(nodes)
+    # mcast_groups permutes ARRAY positions like every other pattern; the node
+    # list is what turns one into a route coordinate id.
+    cid_of = {(x, y): cid for _idx, x, y, cid in nodes}
+    groups = {cid_of[src]: [cid_of[m] for m in members]
+              for src, members in mcast_groups(shape, x_dim, y_dim)}
+    burst_footprint = (axi_len + 1) * (1 << axi_size)
+    stride = max(_SLOT_STRIDE, burst_footprint)
+    mcast_base = base_local + region_bytes  # after the unicast filler window
+    # Config space is all-or-nothing for the multicast pattern: narrow
+    # multicast needs a config tile per member.
+    config_all = config_probe and all(cid in config_bases for cid in cid_of.values())
+    if config_probe and config_bases and not config_all:
+        missing = [cid for cid in cid_of.values() if cid not in config_bases]
+        sys.exit("ERROR: multicast pattern needs a config tile on EVERY node "
+                 f"(missing {len(missing)}/{n_nodes}); extend the topology's config tiles")
+    # Bound the probe window by the CONFIG ENTRY, not by base_local: the two are
+    # both 0x1000 on today's maps, but base_local is a memory-space slot
+    # convention and has no say in how large a config aperture is. An overrun
+    # would not fault -- it falls into the next SAM entry, routes to a different
+    # node's config RAM, rebases to a legal tile-local offset there, and its
+    # readback agrees, so nothing downstream would notice.
+    if config_all:
+        config_bytes = min(sizes["config"].values())
+        if _CONFIG_PROBE_BASE + n_nodes * _SLOT_STRIDE > config_bytes:
+            sys.exit(f"ERROR: cross-node config probe window "
+                     f"{_CONFIG_PROBE_BASE:#x}+{n_nodes * _SLOT_STRIDE:#x} overruns the "
+                     f"{config_bytes:#x} B config entry; reduce node count, move "
+                     f"_CONFIG_PROBE_BASE, or enlarge the topology's config tiles")
+
+    for (idx, x, y, src_cid) in nodes:
+        write_lines, read_lines = [], []
+        axid = idx % 256
+        if src_cid in groups:
+            members = groups[src_cid]
+            addr_mask = collective_addr_mask(bases, members, src_cid)
+            for seq in range(n_txn):
+                off = mcast_base + seq * stride
+                tile_size = sizes["memory"][src_cid]
+                if off + burst_footprint > tile_size:
+                    raise ValueError(
+                        f"multicast slot {off:#x}+{burst_footprint:#x} exceeds tile "
+                        f"size {tile_size:#x}; reduce transactions-per-node or burst")
+                w, r = multicast_lines(axid, bases[src_cid] + off, addr_mask,
+                                       [bases[m] + off for m in members],
+                                       axi_size, axi_len, data_width)
+                write_lines += w
+                if readback:
+                    read_lines += r
+            if config_probe and config_all:
+                # Narrow config-space multicast: 2-beat 8 B burst at config
+                # offset 0 (config-space message replication use case).
+                cfg_mask = collective_addr_mask(config_bases, members, src_cid)
+                w, r = multicast_lines(axid, config_bases[src_cid], cfg_mask,
+                                       [config_bases[m] for m in members],
+                                       axi_size=3, axi_len=1, data_width=data_width)
+                write_lines += w
+                read_lines += r
+        elif filler:
+            # Filler: unicast neighbor write+read pairs (same shape as the
+            # neighbor pattern), src-partitioned offsets in the base_local
+            # window -- disjoint from every multicast slot by construction.
+            dst_cid = cid_of[neighbor_dst(x, y, x_dim, y_dim)]
+            reserved = burst_footprint
+            for seq in range(n_txn):
+                off = alloc_unique_offset(dst_cid, idx, seq, base_local,
+                                          n_slots, region_bytes, reserved=reserved)
+                addr = bases[dst_cid] + off
+                write_lines += _ax_fields(axid, addr, axi_len, axi_size, include_atop=True)
+                write_lines += encode_write_beats(addr, axi_size, axi_len, data_width)
+                read_lines += _ax_fields(axid, addr, axi_len, axi_size, include_atop=False)
+            if config_probe and config_all:
+                # Cross-node narrow probe (write then read back): transit
+                # NarrowB/NarrowR traffic on RSP contending with the CollectB join.
+                probe_cid = nodes[(idx + 1) % n_nodes][3]
+                probe_addr = config_bases[probe_cid] + _CONFIG_PROBE_BASE + idx * _SLOT_STRIDE
+                w, r = narrow_config_probe_lines(axid, probe_addr, data_width)
+                write_lines += w
+                read_lines += r
+        out_dir = os.path.join(out_root, f"node{idx}")
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, "write.txt"), "w") as f:
+            f.write("\n".join(write_lines) + ("\n" if write_lines else ""))
+        with open(os.path.join(out_dir, "read.txt"), "w") as f:
+            f.write("\n".join(read_lines) + ("\n" if read_lines else ""))
+
+
+def emit_repeated_unicast_broadcast_pattern(
+        out_root, nodes, x_dim, y_dim, bases, shape, rounds,
+        axi_size, axi_len, data_width, base_local, region_bytes):
+    """Emit one ordinary write per Broadcast member, including the local member."""
+    n_nodes = len(nodes)
+    node_at = {(x, y): idx for idx, x, y, _cid in nodes}
+    cid_at = {(x, y): cid for _idx, x, y, cid in nodes}
+    groups = {
+        node_at[source]: [node_at[member] for member in members]
+        for source, members in mcast_groups(shape, x_dim, y_dim)
+    }
+    source_dsts = {
+        idx: groups.get(idx, []) * rounds for idx in range(n_nodes)
+    }
+    num_axi_ids = 1 << axi_widths()["id"]
+    for idx, _x, _y, _cid in nodes:
+        dst_bases = [bases[cid_at[_coords(dst, x_dim)]]
+                     for dst in source_dsts[idx]]
+        emit_file_master_node(
+            os.path.join(out_root, f"node{idx}"), idx, dst_bases,
+            n_nodes, base_local, region_bytes, axi_size, axi_len, data_width,
+            id_rng=_random_module.Random(idx), ids_per_initiator=1,
+            num_axi_ids=num_axi_ids,
+            readback=False, direction="write")
+    return source_dsts
+
+
+def write_traffic_meta(out_root, source_dsts=None, broadcast_groups=None, rounds=1,
+                       direction="write", request_dsts=None,
+                       transactions_per_flow=1, burst_beats=1, bytes_per_beat=1,
+                       multicast_mode=None, pattern=None):
+    """Write dataflow and AXI-request counts for one AI traffic stimulus."""
+    destinations_per_source = None
+    if broadcast_groups is not None:
+        data_producers = len(broadcast_groups)
+        consumers = len({member for _source, members in broadcast_groups for member in members})
+        source_requests = data_producers * rounds * transactions_per_flow
+        payload_deliveries = sum(len(members) for _source, members in broadcast_groups) * \
+            rounds * transactions_per_flow
+        axi_initiators = data_producers
+        destinations_per_source = {len(members) for _source, members in broadcast_groups}
+    else:
+        request_dsts = request_dsts or source_dsts
+        data_producers = sum(bool(dsts) for dsts in source_dsts.values())
+        consumers = len({dst for dsts in source_dsts.values() for dst in dsts})
+        axi_initiators = sum(bool(dsts) for dsts in request_dsts.values())
+        source_requests = sum(map(len, request_dsts.values()))
+        payload_deliveries = sum(map(len, source_dsts.values()))
+        if multicast_mode is not None:
+            destinations_per_source = {
+                len(set(dsts)) for dsts in source_dsts.values() if dsts
+            }
+    Path(out_root).mkdir(parents=True, exist_ok=True)
+    payload = {
+        "direction": direction,
+        "rounds": rounds,
+        "transactions_per_flow": transactions_per_flow,
+        "burst_beats": burst_beats,
+        "bytes_per_beat": bytes_per_beat,
+        "bytes_per_flow_round": transactions_per_flow * burst_beats * bytes_per_beat,
+        "data_producers": data_producers,
+        "consumers": consumers,
+        "axi_initiators": axi_initiators,
+        "source_requests": source_requests,
+        "payload_deliveries": payload_deliveries,
+    }
+    if pattern in _MAPPED_PATTERNS:
+        payload["test_layer"] = "L1"
+        payload["traffic_mapping"] = pattern
+        payload["schedule"] = "independent_transfers"
+        payload["payload_edges"] = [[src, dst] for src, dsts in source_dsts.items()
+                                    for dst in dsts]
+    if multicast_mode is not None:
+        if len(destinations_per_source) != 1:
+            raise ValueError("Broadcast groups must have one destinations-per-source value")
+        payload["multicast_mode"] = multicast_mode
+        payload["destinations_per_source"] = destinations_per_source.pop()
+    (Path(out_root) / "traffic_meta.json").write_text(
+        json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def peripheral_hotspot_dsts(src_idx, peripherals, n_txn, rng, rates=None):
+    """The peripherals a tile targets under --hotspot-peripherals.
+
+    Booksim2 HotSpotTrafficPattern::dest (src/traffic.cpp:506-526) with the
+    peripheral endpoints as the target set instead of node ids: one peripheral
+    takes the single-hotspot fast path (:510) and every packet goes to it,
+    several draw from the weighted cumulative select (:514-525) that
+    --hotspot-rates parameterizes. A tile reaches every peripheral now, so the
+    target set needs no per-source filtering and booksim's own distribution is
+    what runs.
+
+    exclude_self does not apply: the source is a tile and the targets are
+    peripherals, so no draw can return the source.
+
+    Returns the peripheral records, in draw order.
+    """
+    picks = hotspot_dsts(src_idx, len(peripherals), n_txn, rng,
+                         list(range(len(peripherals))), rates)
+    return [peripherals[p] for p in picks]
+
+
+def peripheral_partner(periph, nodes):
+    """The tile a peripheral exchanges traffic with: the FARTHEST one.
+
+    Farthest, not nearest: the nearest tile is the router the peripheral hangs
+    off, so the pair would never take an inter-router hop and multi-hop
+    addressability would go untested.
+    """
+    return max(nodes, key=lambda t: abs(t[1] - periph["x"]) + abs(t[2] - periph["y"]))
+
+
+def emit_peripheral_nodes(out_root, peripherals, nodes, bases, n_slots, base_local, region_bytes,
+                          axi_size, axi_len, data_width, n_txn, id_rng, num_axi_ids,
+                          address_the_peripheral=True):
+    """Stimulus for every peripheral endpoint, and the lines that address it back.
+
+    A peripheral has an NI and an endpoint but no router, and is addressed
+    through its own region -- NOT through bases[cid], which is its host router's
+    tile: the two share a coordinate and only the region tells them apart. Each
+    peripheral writes its partner tile's window and reads it back (the
+    peripheral as initiator); with address_the_peripheral, that tile writes the
+    peripheral's region and reads it back too (the peripheral as target).
+
+    Slots come from alloc_unique_offset like every other initiator's, keyed by
+    the peripheral's own ENDPOINT index -- which is why n_slots (endpoints, not
+    router nodes) is the allocator's band everywhere: two initiators drawing
+    from bands of different widths can land on the same slot.
+
+    Returns {node_idx: (write_lines, read_lines)} to append to the partner
+    tile's own stimulus. Empty when address_the_peripheral is False, which is
+    the multicast pattern -- the router-to-peripheral link is where that run's
+    collective-clip evidence is measured, so nothing but the peripheral's own
+    responses may travel it -- and --hotspot-peripherals, where every tile
+    already addresses the peripheral and the partner's slots would be written
+    twice over.
+    """
+    extras = {}
+    reserved = (axi_len + 1) * (1 << axi_size)
+    for p, periph in enumerate(peripherals):
+        ep_idx = len(nodes) + p
+        partner = peripheral_partner(periph, nodes)
+        emit_file_master_node(os.path.join(out_root, f"node{ep_idx}"), ep_idx,
+                              [bases[partner[3]]] * n_txn, n_slots, base_local, region_bytes,
+                              axi_size, axi_len, data_width, id_rng,
+                              num_axi_ids=num_axi_ids)
+        if not address_the_peripheral:
+            continue
+        write_lines, read_lines = [], []
+        for seq in range(n_txn):
+            off = alloc_unique_offset(periph["base"], partner[0], seq, base_local, n_slots,
+                                      region_bytes, reserved=reserved)
+            w, r = unicast_pair_lines(partner[0] % num_axi_ids, periph["base"] + off,
+                                      axi_size, axi_len, data_width)
+            write_lines += w
+            read_lines += r
+        # merge, not assign: two peripherals can share a partner tile, and an
+        # overwrite would drop one peripheral's traffic while the run still passed.
+        extras[partner[0]] = merge_extra(extras.get(partner[0]), (write_lines, read_lines))
+    return extras
+
+
+def merge_extra(*parts):
+    """Concatenate (write_lines, read_lines) tuples; None for nothing at all.
+
+    emit_file_master_node takes ONE extra, and a node can
+    now owe two: its own config-space probe and a peripheral's traffic.
+    """
+    parts = [p for p in parts if p]
+    if not parts:
+        return None
+    return ([line for p in parts for line in p[0]],
+            [line for p in parts for line in p[1]])
+
+
+# ---------------------------------------------------------------------------
+# Topology loader
+# ---------------------------------------------------------------------------
+
+def _load_topology(name):
+    """Return (nodes, x_dim, y_dim, bases, config_bases, sizes, peripherals) where
+    nodes = [(idx, x, y, cid), ...] with x/y the ARRAY position and cid the ROUTE
+    coordinate id, bases = {dst_id: base} (memory space) and
+    config_bases = {dst_id: base} (config space, sparse -- most topologies
+    have none), both from address_map.pack_config(); sizes = {"memory": {dst_id:
+    size}, "config": {dst_id: size}} for capacity checks; peripherals =
+    address_map.pack_config()'s peripheral entries in declaration order, each carrying
+    its own base and size.
+
+    Peripherals come back as their own list because they cannot be recovered
+    from bases: a peripheral shares its host router's coordinate, so
+    bases[periph_cid] is the ROUTER'S TILE. They extend the ENDPOINT index space
+    (peripheral p is endpoint len(nodes) + p), in the order gen_tb_top.py's
+    _peripherals walks.
+
+    `name` is either a configuration name resolved against sim/configs/<name>.yml, or
+    a direct path to a config file (ends in .yml/.yaml or names an existing file).  The
+    path form lets callers point at a temp config without writing into the live tree.
+    """
+    if name.endswith((".yml", ".yaml")) or os.path.isfile(name):
+        topo_path = name
+    else:
+        here = os.path.dirname(os.path.abspath(__file__))
+        topo_path = os.path.join(here, "..", "configs", f"{name}.yml")
+    with open(topo_path) as f:
+        topo = yaml.safe_load(f)
+    # The router array IS the route coordinate space: a peripheral shares its
+    # host router's coordinate and takes none of its own, so a tile's array
+    # position is its coordinate.
+    x_dim, y_dim = address_map.router_array(topo)
+    bases, entries = address_map.pack_config(topo)
+    config_bases = {e["dst_id"]: e["base"] for e in entries if e["space"] == "config"}
+    sizes = {
+        "memory": {e["dst_id"]: e["size"] for e in entries if e["space"] == "memory"},
+        "config": {e["dst_id"]: e["size"] for e in entries if e["space"] == "config"},
+    }
+    peripherals = [e for e in entries if e["space"] == "peripheral"]
+    nodes = []
+    idx = 0
+    for y in range(y_dim):
+        for x in range(x_dim):
+            nodes.append((idx, x, y, coord_id(x, y)))
+            idx += 1
+    return nodes, x_dim, y_dim, bases, config_bases, sizes, peripherals
+
+
+# ---------------------------------------------------------------------------
+# Mesh capacity guard
+# ---------------------------------------------------------------------------
+
+def _check_mesh_capacity(x_dim, y_dim):
+    """Fail fast if the mesh exceeds the dst_id address space, or falls below the
+    per-dimension minimum.
+
+    coord_id = (y << X_WIDTH) | x, so the encoding requires PER-DIMENSION fit:
+      - x_dim <= 2**X_WIDTH  (else x aliases into the y field)
+      - y_dim <= 2**Y_WIDTH  (else y overflows DST_ID_WIDTH)
+      - x_dim * y_dim <= 2**DST_ID_WIDTH  (total node count fits dst_id)
+    The product check alone misses e.g. 17x15 (=255 <= 256 but x_dim 17 > 16 aliases)
+    or 32x8 (=256 but x_dim 32 > 16).  All three must hold.
+
+    Mesh dim minimum is 2 per dimension: a mesh communicating through NI +
+    router needs at least 2x2. 1x1 and 1xN meshes are illegal.
+    """
+    if x_dim < 2:
+        sys.exit(
+            f"ERROR: x_dim={x_dim} < 2; mesh dimension minimum is 2 "
+            f"(1x1/1xN meshes are illegal)."
+        )
+    if y_dim < 2:
+        sys.exit(
+            f"ERROR: y_dim={y_dim} < 2; mesh dimension minimum is 2 "
+            f"(1x1/1xN meshes are illegal)."
+        )
+    if x_dim > 2 ** X_WIDTH:
+        sys.exit(
+            f"ERROR: x_dim={x_dim} exceeds X_WIDTH={X_WIDTH} capacity "
+            f"({2**X_WIDTH} columns max); x would alias into the y field of coord_id. "
+            f"Reduce x_dim."
+        )
+    if y_dim > 2 ** Y_WIDTH:
+        sys.exit(
+            f"ERROR: y_dim={y_dim} exceeds Y_WIDTH={Y_WIDTH} capacity "
+            f"({2**Y_WIDTH} rows max); y would overflow DST_ID_WIDTH. Reduce y_dim."
+        )
+    if x_dim * y_dim > 2 ** DST_ID_WIDTH:
+        sys.exit(
+            f"ERROR: mesh {x_dim}x{y_dim} = {x_dim * y_dim} nodes exceeds "
+            f"DST_ID_WIDTH={DST_ID_WIDTH} capacity ({2**DST_ID_WIDTH} nodes max). "
+            f"Reduce x_dim or y_dim."
+        )
+
+
+def _check_transpose_guard(x_dim, y_dim):
+    """Fail fast if the mesh is unsuitable for transpose.
+
+    Booksim TransposeTrafficPattern::TransposeTrafficPattern (traffic.cpp:230-242)
+    requires the total node count to be an even power of two (it exit(-1)s otherwise).
+    For a square row-major mesh this additionally requires x_dim == y_dim and x_dim
+    to be a power of two.  Non-square meshes cannot satisfy the equal bit-field split
+    that makes the bit-half-swap equivalent to (x,y)→(y,x).
+    """
+    if x_dim != y_dim:
+        sys.exit(
+            f"ERROR: transpose pattern requires a square mesh (x_dim == y_dim); "
+            f"got {x_dim}x{y_dim}.  Use a square topology (e.g. a 4x4 square mesh)."
+        )
+    if x_dim == 0 or (x_dim & (x_dim - 1)) != 0:
+        sys.exit(
+            f"ERROR: transpose pattern requires x_dim to be a power of two "
+            f"(booksim requires even power-of-two node count); got x_dim={x_dim}."
+        )
+
+
+def _check_bit_permutation_guard(pattern, x_dim, y_dim):
+    """Booksim2 BitPermutationTrafficPattern (traffic.cpp:207-215) exit(-1)s unless
+    the node count is a power of two: a permutation of the id bits is only a
+    bijection over nodes when every bit pattern names a node."""
+    nodes = x_dim * y_dim
+    if nodes == 0 or (nodes & (nodes - 1)) != 0:
+        sys.exit(
+            f"ERROR: {pattern} pattern requires a power-of-two node count "
+            f"(booksim BitPermutationTrafficPattern); got {x_dim}x{y_dim} = {nodes}."
+        )
+
+
+def _check_tornado_guard(x_dim, y_dim):
+    """Tornado shifts every coordinate by the same ceil(k/2)-1, so the mesh needs
+    one radix. Booksim states k as a parameter of a k-ary n-cube; a mesh whose
+    dimensions differ has no single k to state."""
+    if x_dim != y_dim:
+        sys.exit(
+            f"ERROR: tornado pattern requires a uniform radix (x_dim == y_dim); "
+            f"got {x_dim}x{y_dim}."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Pattern dispatch
+# ---------------------------------------------------------------------------
+
+# Patterns whose destination is a pure function of the source coordinates. The
+# emission branch below and _dst_for read the SAME list: a pattern present in one
+# and missing from the other used to fall through to hotspot and emit the wrong
+# traffic silently.
+# Separates the AXI-id stream from the destination stream, both seeded from
+# --seed. Any fixed non-zero value works; it only has to keep the two apart.
+_ID_STREAM_SALT = 0x5A17
+
+_DETERMINISTIC_PATTERNS = ("neighbor", "transpose", "bit_complement", "bit_reverse",
+                           "shuffle", "bit_rotation", "tornado")
+
+
+def _dst_for(pattern, x, y, x_dim, y_dim):
+    """Return (dst_x, dst_y) for the given pattern and source coordinates (deterministic)."""
+    if pattern == "neighbor":
+        return neighbor_dst(x, y, x_dim, y_dim)
+    if pattern == "transpose":
+        return transpose_dst(x, y)
+    if pattern == "bit_complement":
+        return bit_complement_dst(x, y, x_dim, y_dim)
+    if pattern == "bit_reverse":
+        return bit_reverse_dst(x, y, x_dim, y_dim)
+    if pattern == "shuffle":
+        return shuffle_dst(x, y, x_dim, y_dim)
+    if pattern == "bit_rotation":
+        return bit_rotation_dst(x, y, x_dim, y_dim)
+    if pattern == "tornado":
+        return tornado_dst(x, y, x_dim, y_dim)
+    raise ValueError(f"Unknown pattern: {pattern!r} (use per-packet sampler for random patterns)")
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(
+        description="Emit per-node file_master write.txt/read.txt for a traffic pattern."
+    )
+    ap.add_argument("--pattern", required=True,
+                    choices=list(_DETERMINISTIC_PATTERNS) + ["uniform_random", "all_to_all",
+                                                             "hotspot", "multicast", "many_to_many",
+                                                             "broadcast", "gather", "alltoall",
+                                                             "neighbor_exchange", "pipeline",
+                                                             "channel_compare"] + sorted(_MAPPED_PATTERNS),
+                    help="Traffic pattern")
+    ap.add_argument("--channel-case", choices=("write", "read"), default=None,
+                    help="Directed channel_compare operation")
+    ap.add_argument("--mcast-shape", choices=list(_MCAST_SHAPES), default="row",
+                    help="Multicast mask shape (multicast pattern only). One shape "
+                         "per run: concurrent multicast trees must be pairwise "
+                         "disjoint (restriction R1)")
+    ap.add_argument("--gather-shape", choices=("global", "submesh"), default="global",
+                    help="Gather participant mapping")
+    ap.add_argument("--root-node", type=int, default=0,
+                    help="Global Gather root node (default 0)")
+    ap.add_argument("--rounds", type=int, default=None,
+                    help="Complete rounds for AI traffic patterns")
+    ap.add_argument("--transactions-per-flow", type=int, default=1,
+                    help="Transactions carried by each AI flow in one round")
+    ap.add_argument("--multicast-mode", choices=("hardware", "repeated_unicast"),
+                    default="hardware", help="Broadcast implementation")
+    ap.add_argument("--direction", choices=("write", "read"), default=None,
+                    help="AI payload direction measurement (default: write)")
+    ap.add_argument("--topology", default="mesh_4x4",
+                    help="Configuration name (matches sim/configs/<name>.yml) or a "
+                         "direct path to a config file")
+    ap.add_argument("--out", required=True,
+                    help="Output directory; writes <out>/node<i>/{write,read}.txt")
+    # Per-packet random pattern options
+    ap.add_argument("--transactions-per-node", type=int, default=1,
+                    help="Write+read pairs per node (synthetic / random patterns)")
+    ap.add_argument("--seed", type=int, default=0,
+                    help="RNG seed for reproducibility (uniform_random / hotspot)")
+    ap.add_argument("--exclude-self", action="store_true",
+                    help="Exclude dst == src (opt-in; default permits self, "
+                         "booksim-faithful)")
+    # Hotspot options
+    ap.add_argument("--hotspot", type=int, nargs="+", default=None,
+                    help="Linear node id(s) for hotspot pattern (0..N-1)")
+    ap.add_argument("--hotspot-rates", type=int, nargs="+", default=None,
+                    help="Weights for each hotspot (parallel to --hotspot; default: equal)")
+    ap.add_argument("--hotspot-peripherals", action="store_true",
+                    help="Hotspot pattern targets peripherals instead of --hotspot "
+                         "node ids: every tile draws from the peripheral endpoints, "
+                         "the many-to-one shape a memory controller sees")
+    # Synthetic payload shape
+    ap.add_argument("--space", choices=("memory", "config"), default="memory",
+                    help="Destination address space. memory = data class (DAT "
+                         "network). config = narrow class (REQ/RSP network, "
+                         "AxSIZE <= 3): offsets wrap inside the 4 KB config "
+                         "aperture, so addresses repeat and write-readback "
+                         "uniqueness does NOT hold -- measurement modes only, "
+                         "scoreboard-armed runs will miscompare")
+    ap.add_argument("--size", type=int, default=2,
+                    help="AxSIZE for synthetic transactions (0..7; default 2 = 4 bytes)")
+    ap.add_argument("--len", type=int, default=0, dest="burst_len",
+                    help="AxLEN for synthetic transactions (0..255; default 0 = single beat)")
+    ap.add_argument("--ids-per-initiator", type=int, default=1,
+                    help="Distinct AXI ids one initiator draws from (default 1 = one "
+                         "id per tile, = src_idx). >1 draws uniformly at random from "
+                         "the initiator's id block, ids repeating, so a run carries "
+                         "same-id and cross-id pairs at once and more transactions "
+                         "stay outstanding. Blocks overlap across initiators once "
+                         "ids_per_initiator x n_nodes exceeds the id space. "
+                         "Does not affect VC allocation (VC is id-agnostic).")
+    a = ap.parse_args(argv)
+
+    ai_round_patterns = _AI_PATTERNS | {"many_to_many"}
+    if a.direction is not None and a.pattern not in ai_round_patterns:
+        ap.error("--direction is valid only for AI traffic patterns")
+    if a.pattern == "broadcast" and a.direction == "read":
+        ap.error("Broadcast Read is not supported")
+    ai_direction = a.direction or "write"
+    if a.rounds is not None and a.pattern not in ai_round_patterns | {"channel_compare"}:
+        ap.error("--rounds is valid only for AI traffic patterns")
+    if a.rounds is not None and a.rounds <= 0:
+        ap.error("--rounds must be positive")
+    if a.transactions_per_flow <= 0:
+        ap.error("--transactions-per-flow must be positive")
+    if a.transactions_per_flow != 1 and a.pattern not in ai_round_patterns:
+        ap.error("--transactions-per-flow is valid only for AI traffic patterns")
+    if a.multicast_mode != "hardware" and a.pattern != "broadcast":
+        ap.error("--multicast-mode is valid only with --pattern broadcast")
+    rounds = a.rounds if a.rounds is not None else a.transactions_per_node
+    emitted_rounds = rounds * a.transactions_per_flow
+
+    nodes, x_dim, y_dim, bases, config_bases, sizes, peripherals = _load_topology(a.topology)
+    _check_mesh_capacity(x_dim, y_dim)
+    n_nodes = len(nodes)
+    # Spatial patterns permute ARRAY positions; the node list turns one into a
+    # route coordinate id, which is what the address map is keyed by.
+    cid_of = {(x, y): cid for _idx, x, y, cid in nodes}
+    n_slots = n_nodes + len(peripherals)
+
+    ai_dsts = None
+    if a.pattern in ai_round_patterns:
+        if peripherals:
+            ap.error(f"{a.pattern} requires a mesh without peripheral endpoints")
+        if a.space != "memory":
+            ap.error(f"{a.pattern} supports memory-space AI traffic only")
+        try:
+            if a.pattern in _MAPPED_PATTERNS:
+                ai_dsts = mapped_payload_dsts(a.pattern, x_dim, y_dim, emitted_rounds)
+            elif a.pattern == "gather":
+                ai_dsts = {idx: gather_dsts(idx, x_dim, y_dim, emitted_rounds,
+                                            a.gather_shape, a.root_node)
+                           for idx in range(n_nodes)}
+            elif a.pattern == "alltoall":
+                ai_dsts = {idx: ai_alltoall_dsts(idx, n_nodes, emitted_rounds)
+                           for idx in range(n_nodes)}
+            elif a.pattern == "neighbor_exchange":
+                ai_dsts = {idx: neighbor_exchange_dsts(idx, x_dim, y_dim, emitted_rounds)
+                           for idx in range(n_nodes)}
+            elif a.pattern == "pipeline":
+                ai_dsts = {idx: pipeline_dsts(idx, x_dim, y_dim, emitted_rounds)
+                           for idx in range(n_nodes)}
+            elif a.pattern == "many_to_many":
+                count = 4 * a.rounds if a.rounds is not None else a.transactions_per_node
+                ai_dsts = {idx: many_to_many_dsts(idx, x_dim, y_dim, count)
+                           for idx in range(n_nodes)}
+        except ValueError as exc:
+            ap.error(str(exc))
+    request_dsts = (reverse_payload_edges(ai_dsts)
+                    if ai_dsts is not None and ai_direction == "read" else ai_dsts)
+
+    widths = axi_widths()
+    if a.pattern == "channel_compare":
+        if a.channel_case is None:
+            ap.error("--pattern channel_compare requires --channel-case write|read")
+        emit_channel_compare_pattern(a.out, nodes, bases, config_bases, sizes,
+                                     peripherals, a.channel_case, widths["data"],
+                                     rounds)
+        return
+    if a.channel_case is not None:
+        ap.error("--channel-case is valid only with --pattern channel_compare")
+    base_local = 0x1000
+    # Auto-derived dst-tile window: one slot per endpoint per transaction, each
+    # `stride` bytes apart. stride matches alloc_unique_offset's own
+    # max(_SLOT_STRIDE, reserved) so this is a tight upper bound on its max
+    # offset + reserved (see alloc_unique_offset docstring).
+    burst_footprint = (a.burst_len + 1) * (1 << a.size)
+    stride = max(_SLOT_STRIDE, burst_footprint)
+    if a.pattern == "broadcast":
+        group_size = max(len(members) for _source, members in
+                         mcast_groups(a.mcast_shape, x_dim, y_dim))
+        allocator_txns = (emitted_rounds * group_size
+                          if a.multicast_mode == "repeated_unicast" else emitted_rounds)
+    elif request_dsts is not None:
+        allocator_txns = max(map(len, request_dsts.values()))
+    else:
+        allocator_txns = a.transactions_per_node
+    region_bytes = n_slots * allocator_txns * stride
+    # region_bytes is a formula over node/transaction count and burst footprint;
+    # it never looks at the destination tile's actual size, so nothing above
+    # would notice a footprint that overruns a shrunk tile until co-sim faults.
+    # The multicast pattern stacks its own window on top (mcast_base =
+    # base_local + region_bytes, emit_multicast_pattern), so it needs a wider
+    # extent checked here too.
+    mcast_txns = emitted_rounds if a.pattern == "broadcast" else a.transactions_per_node
+    extent = region_bytes + (mcast_txns * stride
+                             if a.pattern in ("multicast", "broadcast") else 0)
+    # Peripheral regions are in the min, not just memory tiles. They are
+    # addressed out of the same slot band, and they used to be memory tiles
+    # (so this min covered them) until they became their own space -- at which
+    # point nothing bounded them, and an overrun does not fault: it walks into
+    # the NEXT peripheral's region, the SAM routes it to that endpoint, and the
+    # readback of the same address agrees, so the run passes having delivered
+    # every peripheral transaction to the wrong place.
+    smallest_window = min(list(sizes["memory"].values()) + [p["size"] for p in peripherals])
+    if a.space == "memory" and base_local + extent > smallest_window:
+        ap.error(f"footprint base_local({base_local:#x}) + extent({extent:#x}) = "
+                 f"{base_local + extent:#x} overruns the smallest addressable window "
+                 f"{smallest_window:#x}; reduce --transactions-per-node, --len, or --size")
+    wrap_window = None
+    if a.space == "config":
+        if a.pattern == "multicast" or a.hotspot_peripherals:
+            ap.error("--space config supports the unicast patterns only "
+                     "(config-space multicast has its own machinery; "
+                     "peripherals own no config tile)")
+        if a.size > 3:
+            ap.error("--space config is the narrow class: AxSIZE <= 3 "
+                     "(8 B lane; S2 design doc sec 1)")
+        missing = [cid for (_i, _x, _y, cid) in nodes if cid not in config_bases]
+        if missing:
+            ap.error(f"--space config: topology {a.topology} declares no config "
+                     f"tile for cid(s) {missing}")
+        # Pattern slots live in [0x10, _CONFIG_PROBE_BASE), between the
+        # multicast slot and the cross-node probe window (layout table above).
+        base_local = 0x10
+        config_stride = max(_SLOT_STRIDE, burst_footprint)
+        wrap_window = ((_CONFIG_PROBE_BASE - base_local) // config_stride) * config_stride
+        if wrap_window == 0:
+            ap.error(f"burst footprint {burst_footprint:#x} does not fit the "
+                     f"config-aperture slot window; reduce --len or --size")
+    rng = _random_module.Random(a.seed)
+    # Ids draw from their own stream, so changing --ids-per-initiator moves the
+    # ids and nothing else. Sharing `rng` would shift every later destination
+    # too, and a multi-id run could not be compared against its one-id baseline.
+    id_rng = _random_module.Random(a.seed ^ _ID_STREAM_SALT)
+    # The selector reaches two places, and only one of them is inside the pattern
+    # dispatch. It steers destinations for `hotspot` alone, but it suppresses the
+    # partner tile's inbound lines below for whatever pattern is running, so on
+    # any other pattern it would silently leave the peripheral with no traffic
+    # aimed at it and still pass, the peripheral's own initiator stream keeping
+    # the run non-vacuous.
+    if a.hotspot_peripherals and a.pattern != "hotspot":
+        ap.error(f"--hotspot-peripherals names the hotspot pattern's target set; with "
+                 f"--pattern {a.pattern} it would only drop the traffic aimed at the peripheral")
+    # An empty target set is the one way this selector can still have nothing to
+    # choose from. hotspot_dsts would raise ValueError naming --hotspot node ids,
+    # which is not what the caller asked for.
+    if a.hotspot_peripherals and not peripherals:
+        ap.error(f"--hotspot-peripherals needs a topology that declares peripherals; "
+                 f"{a.topology} has none")
+    periph_extra = emit_peripheral_nodes(
+        a.out, peripherals, nodes, bases, n_slots, base_local, region_bytes, a.size, a.burst_len,
+        widths["data"], a.transactions_per_node, id_rng, num_axi_ids=(1 << widths["id"]),
+        address_the_peripheral=(a.pattern != "multicast" and not a.hotspot_peripherals))
+    if a.pattern == "transpose":
+        _check_transpose_guard(x_dim, y_dim)   # square-mesh precondition (legacy parity)
+    if a.pattern in ("bit_complement", "bit_reverse", "shuffle", "bit_rotation"):
+        _check_bit_permutation_guard(a.pattern, x_dim, y_dim)
+    if a.pattern == "tornado":
+        _check_tornado_guard(x_dim, y_dim)
+    if a.pattern in ("multicast", "broadcast"):
+        # One AXI id per node (R2 serializes a source's own multicasts on the
+        # merged B); --ids-per-initiator does not apply here.
+        if a.pattern == "broadcast" and a.multicast_mode == "repeated_unicast":
+            source_dsts = emit_repeated_unicast_broadcast_pattern(
+                a.out, nodes, x_dim, y_dim, bases, a.mcast_shape, mcast_txns,
+                a.size, a.burst_len, widths["data"], base_local, region_bytes)
+        else:
+            emit_multicast_pattern(a.out, nodes, x_dim, y_dim, bases, config_bases,
+                                   sizes, a.mcast_shape, mcast_txns,
+                                   a.size, a.burst_len, widths["data"],
+                                   base_local, region_bytes, n_slots,
+                                   readback=a.pattern == "multicast",
+                                   filler=a.pattern == "multicast",
+                                   config_probe=a.pattern == "multicast")
+        if a.pattern == "broadcast":
+            meta_args = ({"source_dsts": source_dsts}
+                         if a.multicast_mode == "repeated_unicast" else
+                         {"broadcast_groups": mcast_groups(a.mcast_shape, x_dim, y_dim)})
+            write_traffic_meta(
+                a.out, **meta_args, rounds=rounds, direction=ai_direction,
+                transactions_per_flow=a.transactions_per_flow,
+                burst_beats=a.burst_len + 1, bytes_per_beat=1 << a.size,
+                multicast_mode=a.multicast_mode)
+        return
+    read_prefills = {idx: [] for idx in range(n_nodes)}
+    base_to_node = {bases[cid]: idx for idx, _x, _y, cid in nodes}
+    for (idx, x, y, src_cid) in nodes:
+        # A node that owns a config-space tile also routes one narrow-class
+        # probe to it (self-targeted; config space is per-node, not spatial),
+        # so a config-space topology exercises both classes in one run
+        # regardless of which pattern drives the data-class traffic below.
+        narrow_extra = (narrow_config_probe_lines(idx, config_bases[src_cid], widths["data"])
+                        if src_cid in config_bases and a.pattern not in ai_round_patterns else None)
+        # A node bordering a peripheral also addresses it (emit_peripheral_nodes).
+        extra = merge_extra(narrow_extra, periph_extra.get(idx))
+        # Every branch names its destinations by WINDOW BASE. A peripheral
+        # shares its host router's coordinate, so a coordinate no longer names
+        # one destination and bases[cid] would send a peripheral's traffic to
+        # that router's tile.
+        space_bases = config_bases if a.space == "config" else bases
+        if a.pattern in _DETERMINISTIC_PATTERNS:
+            dst_x, dst_y = _dst_for(a.pattern, x, y, x_dim, y_dim)
+            dst_bases = [space_bases[cid_of[(dst_x, dst_y)]]] * a.transactions_per_node
+        elif a.pattern == "uniform_random":
+            dst_lin = uniform_random_dsts(idx, n_nodes, a.transactions_per_node,
+                                          rng, a.exclude_self)
+            dst_bases = [space_bases[cid_of[_linear_to_coord(d, x_dim)]] for d in dst_lin]
+        elif a.pattern == "all_to_all":
+            dst_lin = all_to_all_dsts(idx, n_nodes, a.transactions_per_node)
+            dst_bases = [space_bases[cid_of[_linear_to_coord(d, x_dim)]] for d in dst_lin]
+        elif a.pattern in ai_round_patterns:
+            dst_lin = request_dsts[idx]
+            dst_bases = [space_bases[cid_of[_linear_to_coord(d, x_dim)]] for d in dst_lin]
+        elif a.hotspot_peripherals:  # hotspot, on the boundary ports
+            dst_bases = [p["base"] for p in
+                         peripheral_hotspot_dsts(idx, peripherals, a.transactions_per_node,
+                                                 rng, a.hotspot_rates)]
+        else:  # hotspot
+            if a.hotspot is None:
+                ap.error("--hotspot is required for the hotspot pattern")
+            dst_lin = hotspot_dsts(idx, n_nodes, a.transactions_per_node, rng,
+                                   a.hotspot, a.hotspot_rates, a.exclude_self)
+            dst_bases = [space_bases[cid_of[_linear_to_coord(d, x_dim)]] for d in dst_lin]
+        prefills = emit_file_master_node(
+            os.path.join(a.out, f"node{idx}"), idx, dst_bases,
+            n_slots, base_local, region_bytes,
+            a.size, a.burst_len, widths["data"],
+            ids_per_initiator=a.ids_per_initiator,
+            num_axi_ids=(1 << widths["id"]), id_rng=id_rng,
+            extra=extra, wrap_window=wrap_window,
+            readback=a.pattern not in ai_round_patterns,
+            direction=ai_direction if a.pattern in ai_round_patterns else None)
+        for dst_base, addr, n_bytes in prefills:
+            read_prefills[base_to_node[dst_base]].append((addr, n_bytes))
+    if a.pattern in ai_round_patterns:
+        for idx, entries in read_prefills.items():
+            path = Path(a.out) / f"node{idx}" / "memory_init.txt"
+            path.write_text("".join(f"0x{addr:x} {n_bytes}\n" for addr, n_bytes in entries),
+                            encoding="utf-8")
+        write_traffic_meta(a.out, source_dsts=ai_dsts, request_dsts=request_dsts,
+                           rounds=rounds, direction=ai_direction,
+                           transactions_per_flow=a.transactions_per_flow,
+                           burst_beats=a.burst_len + 1,
+                           bytes_per_beat=1 << a.size, pattern=a.pattern)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

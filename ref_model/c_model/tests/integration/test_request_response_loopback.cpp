@@ -1,0 +1,489 @@
+// Full request/response e2e loopback through the
+// four packetize/depacketize modules + ChannelModel, sourced and oracled
+// by the AxiMaster / AxiSlave / Memory / Scoreboard fixtures.
+//
+// Wiring (request path: NMU -> NoC -> NSU):
+//
+//   AxiMaster (traffic source, YAML-driven)
+//      | push_aw / push_w / push_ar      ^ pop_b / pop_r
+//      v                                  |
+//   AxiSlavePort (NMU)                    |
+//      | (Packetizer pushes)              | (Depacketizer pops)
+//      v                                  |
+//   nmu::Packetize                        nmu::Depacketize
+//      |                                  ^
+//      v push_flit                        | pop_flit
+//   ChannelModel (req_out -> req_in,  rsp_out -> rsp_in,  optional N-cycle delay)
+//      |                                  ^
+//      v pop_flit                         | push_flit
+//   nsu::Depacketize                      nsu::Packetize
+//      ^                                  |
+//      | (Depacketizer pops)              | (Packetizer pushes)
+//      |                                  v
+//   AxiMasterPort (NSU)
+//      | pop_aw / pop_w / pop_ar          ^ push_b / push_r
+//      v                                  |
+//   AxiSlave + Memory + Scoreboard
+//
+// This test extends the port-pair loopback (test_port_pair_loopback.cpp)
+// by inserting the real four-packetize layers (nmu::Packetize +
+// nmu::Depacketize on the NMU side; nsu::Depacketize + nsu::Packetize on
+// the NSU side, sharing the per-AXI-ID MetaBuffer) between the two ports
+// instead of routing AW/W/AR/B/R beats through a single passthrough loopback.
+//
+// Per-fixture pass criterion: Scoreboard zero mismatch after master.done()
+// AND every NoC / port queue / NSU AxiSlave holdover is drained.
+//
+// At least one variant uses ChannelModel.set_req_delay / set_rsp_delay so
+// non-zero in-flight pipelines exercise multi-cycle ordering paths the
+// zero-latency case hides.
+//
+// same_id_multi_dst fixture acts as the real regression gate for ROB Enabled
+// mode reorder: 4 NSU stacks with per-NSU latency variance (NSU_0=10c,
+// NSU_1=2c, NSU_2=5c, NSU_3=3c) make NSU_1 return B for AW2 before NSU_0's B
+// for AW1. Rob Enabled must reorder before handing to AxiMaster so AXI4
+// IHI 0022 §A5.3 same-id submission order at the master boundary holds.
+#include "axi/axi_master.hpp"
+#include "axi/axi_slave.hpp"
+#include "axi/memory.hpp"
+#include "axi/scenario_parser.hpp"
+#include "axi/scoreboard.hpp"
+#include "common/channel_model.hpp"
+#include "common/channel_model_params.hpp"
+#include "common/test_logger.hpp"
+#include "nmu/nmu.hpp"
+#include "nmu/port_params.hpp"
+#include "nsu/nsu.hpp"
+#include "nsu/port_params.hpp"
+#include "common/tmp_path.hpp"
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <fstream>
+#include <gtest/gtest.h>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace axi = ni::cmodel::axi;
+namespace nmu = ni::cmodel::nmu;
+namespace nsu = ni::cmodel::nsu;
+namespace cmod = ni::cmodel;
+namespace test = ni::cmodel::testing;
+
+namespace {
+
+constexpr std::size_t kMaxCycles = 200'000;
+
+constexpr uint8_t kNmuSrcId = 0x01;
+constexpr uint8_t kNsuSrcId = 0x02;
+
+// Multi-NSU constants for the same_id_multi_dst regression gate.
+constexpr std::size_t kNumNsuMulti = 4;
+constexpr std::array<uint8_t, kNumNsuMulti> kNsuSrcIdsMulti = {0x10, 0x11, 0x12, 0x13};
+
+// PerIdOrderTracker — verifies per-id B/R beat arrival order at AxiMaster.
+// same_id_multi_dst: id=0x05 B beats must arrive in submission order (AW1, AW2)
+// regardless of physical NoC latency (AXI4 IHI 0022 §A5.3). Without Rob
+// Enabled mode reordering, NSU_1 (faster) returns B2 before NSU_0's B1,
+// violating the per-id order. We assert this directly as the regression
+// gate (positive ordering check, not expected-failure pattern).
+struct PerIdOrderTracker {
+    std::array<std::vector<uint64_t>, 256> b_seq;
+    std::array<std::vector<uint64_t>, 256> r_seq;
+    void record_b(uint8_t id, uint64_t marker) { b_seq[id].push_back(marker); }
+    void record_r(uint8_t id, uint64_t marker) { r_seq[id].push_back(marker); }
+    bool verify_b_in_order(uint8_t id) const {
+        const auto& v = b_seq[id];
+        for (std::size_t i = 1; i < v.size(); ++i) {
+            if (v[i] < v[i - 1]) return false;
+        }
+        return true;
+    }
+    bool verify_r_in_order(uint8_t id) const {
+        const auto& v = r_seq[id];
+        for (std::size_t i = 1; i < v.size(); ++i) {
+            if (v[i] < v[i - 1]) return false;
+        }
+        return true;
+    }
+};
+
+struct LoopbackResult {
+    std::size_t scoreboard_mismatches;
+    std::size_t cycle_count;
+    bool b_order_ok = true;
+    bool r_order_ok = true;
+    bool is_multi_dst = false;
+};
+
+// ORD-003 (same_id_multi_dst) stimulus, written inline to a per-test temp dir so
+// the test carries its own scenario (no external sim/test_patterns/ tree). Two
+// same-id writes + two same-id reads at XY-routing dst boundaries (0x100 -> dst0,
+// 0x10100 -> dst1); data.txt is the 32-byte write payload the writes reference.
+std::string write_ord003_scenario() {
+    const std::string dir = ni::cmodel::testing::unique_temp_dir("ord003");
+    std::ofstream(dir + "/data.txt") << "DE AD BE EF CA FE BA BE 11 22 33 44 55 66 77 88 "
+                                        "99 AA BB CC DD EE FF 00 01 02 03 04 05 06 07 08\n";
+    std::ofstream(dir + "/scenario.yaml") << R"YAML(
+schema_version: 1
+metadata:
+  name: AX4-ORD-003_same_id_multi_dst
+  category: ordering
+config:
+  memory_base: 0x0
+  memory_size: 0x12000
+  write_latency: 0
+  read_latency: 0
+transactions:
+  - { op: write, addr: 0x100,   id: 0x5, len: 0, size: 5, burst: INCR, data_file: data.txt }
+  - { op: write, addr: 0x10100, id: 0x5, len: 0, size: 5, burst: INCR, data_file: data.txt }
+  - { op: read,  addr: 0x100,   id: 0x5, len: 0, size: 5, burst: INCR, dump_file: unused }
+  - { op: read,  addr: 0x10100, id: 0x5, len: 0, size: 5, burst: INCR, dump_file: unused }
+)YAML";
+    return dir + "/scenario.yaml";
+}
+
+LoopbackResult run_fixture(const std::string& yaml_path, const std::string& read_dump_path,
+                           unsigned req_delay, unsigned rsp_delay, std::size_t num_vc = 1) {
+    auto sc = axi::load_scenario(yaml_path);
+
+    axi::Memory mem(sc.config.memory_base, sc.config.memory_size, sc.config.write_latency,
+                    sc.config.read_latency);
+    axi::AxiSlave slave(mem);
+    slave.set_memory_bounds(sc.config.memory_base, sc.config.memory_size);
+
+    nmu::PortParams nmu_params{};
+    nsu::PortParams nsu_params{};
+    test::ChannelModelParams cm_params{};
+
+    // This test now runs only the ORD-003 same_id_multi_dst gate (inlined above).
+    const bool is_multi_dst = true;
+    const nmu::RobMode rob_mode = is_multi_dst ? nmu::RobMode::Enabled : nmu::RobMode::Disabled;
+
+    // NoC test fixture: single-NSU for legacy fixtures (preserves existing
+    // global req/rsp delay path), multi-NSU for same_id_multi_dst so we can
+    // wire 4 dst boundaries to 4 independent NSU stacks with per-NSU latency.
+    std::unique_ptr<test::ChannelModel> channel_ptr;
+    if (is_multi_dst) {
+        channel_ptr = std::make_unique<test::ChannelModel>(
+            /*num_nsu=*/kNumNsuMulti,
+            /*req_q_depth_per_nsu=*/cm_params.req_depth,
+            /*rsp_q_depth_total=*/cm_params.rsp_depth);
+        // same_id_multi_dst addresses: 0x100 -> dst=0, 0x10100 -> dst=1 via
+        // addr_trans::xy_route. Map dst_id {0..3} -> NSU {0..3}.
+        channel_ptr->set_dst_route(0x00, 0);
+        channel_ptr->set_dst_route(0x01, 1);
+        channel_ptr->set_dst_route(0x02, 2);
+        channel_ptr->set_dst_route(0x03, 3);
+        // Per-NSU response latency: NSU_0 slow (10c), NSU_1 fast (2c) exposes
+        // out-of-order B arrival; Rob Enabled mode must reorder to preserve AXI4
+        // IHI 0022 §A5.3 same-id submission order.
+        channel_ptr->set_nsu_latency(0, 10);
+        channel_ptr->set_nsu_latency(1, 2);
+        channel_ptr->set_nsu_latency(2, 5);
+        channel_ptr->set_nsu_latency(3, 3);
+    } else {
+        channel_ptr =
+            std::make_unique<test::ChannelModel>(cm_params.req_depth, cm_params.rsp_depth);
+        channel_ptr->set_req_delay(req_delay);
+        channel_ptr->set_rsp_delay(rsp_delay);
+    }
+    test::ChannelModel& channel = *channel_ptr;
+
+    // NMU top-level: encapsulates AxiSlavePort, Rob, Packetize,
+    // WormholeArbiter, VcAllocator, and Depacketize into one object.
+    nmu::NmuConfig nmu_cfg{};
+    nmu_cfg.src_id = kNmuSrcId;
+    // 16x16 uniform, 4 GB/tile, no rebase: reproduces the retired
+    // addr_trans::xy_route mapping (dst = addr[39:32], local_addr = addr
+    // unchanged) so scenario-driven stimulus addressing is unaffected by the
+    // migration off xy_route.
+    nmu_cfg.sam = nmu::addr_trans::SamTable::uniform(16, 16, 0x100000000ull);
+    nmu_cfg.read_rob_mode = rob_mode;  // B RoB is always on; rob_mode now controls R only
+    nmu_cfg.port_params = nmu_params;
+    nmu_cfg.num_vc = num_vc;
+    // DAT face (S3a T6 steering: legacy_sam() below is data class, so AW/W
+    // now ride this face for real). ChannelModel is a network-agnostic
+    // testbench stub (keys purely off the flit's own dst_id/vc_id header
+    // fields, per common/channel_model.hpp's class comment) -- reusing the
+    // same REQ/RSP adapter objects as the DAT sink/source funnels DAT
+    // traffic through the same per-NSU queues as REQ/RSP instead of adding a
+    // third parallel adapter set that only this ctest-only stub would use.
+    nmu::Nmu nmu(nmu_cfg, channel.nmu_req_out(), channel.nmu_rsp_in(), channel.nmu_req_out(),
+                 channel.nmu_rsp_in());
+
+    // NSU stacks: 1 for legacy fixtures, 4 for same_id_multi_dst.
+    // Each NSU owns its own MetaBuffer / Depacketize / Packetize / AxiMasterPort
+    // so per-NSU response ordering is independent and the testbench stresses the
+    // cross-NSU reorder path inside Rob (Enabled mode).
+    const std::size_t nsu_count = is_multi_dst ? kNumNsuMulti : 1u;
+    std::vector<std::unique_ptr<nsu::Nsu>> nsus;
+    nsus.reserve(nsu_count);
+    for (std::size_t i = 0; i < nsu_count; ++i) {
+        const uint8_t this_nsu_src = is_multi_dst ? kNsuSrcIdsMulti[i] : kNsuSrcId;
+        nsu::NsuConfig nsu_cfg{};
+        nsu_cfg.src_id = this_nsu_src;
+        nsu_cfg.port_params = nsu_params;
+        nsu_cfg.num_vc = num_vc;
+        // DAT face (S3a T6 steering): reuses the same per-NSU REQ/RSP
+        // adapters as the DAT sink/source (see the NMU construction above
+        // for rationale).
+        nsus.emplace_back(std::make_unique<nsu::Nsu>(nsu_cfg, channel.nsu_req_in(i),
+                                                     channel.nsu_rsp_out(i), channel.nsu_req_in(i),
+                                                     channel.nsu_rsp_out(i)));
+    }
+
+    // Per-fixture override for ROB stall coverage: same_id_multi_dst needs
+    // max_outstanding_write >= 2 so AxiMaster admits both same-id writes
+    // concurrently, forcing Rob to stall the 2nd until the 1st B returns.
+    // ScenarioConfig defaults to 1 outstanding when the YAML omits the field,
+    // so keep the override testbench-side rather than adding a YAML knob.
+    std::size_t mow = sc.config.max_outstanding_write;
+    std::size_t mor = sc.config.max_outstanding_read;
+    if (is_multi_dst) {
+        mow = std::max<std::size_t>(mow, 2);
+        mor = std::max<std::size_t>(mor, 2);
+    }
+
+    // Endpoints + oracle.
+    axi::AxiMasterT<nmu::AxiSlavePort> master(yaml_path, nmu.axi_slave_port(), read_dump_path, mow,
+                                              mor);
+
+    // Observability hook: AxiMasterObserver tracks per-transaction counts,
+    // AXI4 IHI 0022 §A5.3 per-id ordering, and (under NOC_LOG=1) emits a
+    // parse-friendly trace line per AW/B/AR/R. RAII dtor prints
+    // [summary:NMU] at scope exit; ok()-driven hard fail is not yet wired up.
+    //
+    // Wiring note: this testbench uses AxiMasterT<nmu::AxiSlavePort> (not
+    // the default AxiMasterT<AxiSlave> = axi::AxiMaster type expected by
+    // the observer's master-binding ctor), so we use the test-only ctor
+    // and chain test_inject_write_result / test_inject_read_result into
+    // the existing scoreboard callbacks below. This keeps the master's
+    // single on_write_completed / on_read_observed slot owned by the
+    // scoreboard (the test's primary oracle) while still feeding the
+    // observer one event per completed transaction.
+    test::AxiMasterObserver obs("NMU");
+
+    axi::Scoreboard sb;
+    PerIdOrderTracker tracker;
+    // Submission-order markers: use scenario_line (strictly increasing in
+    // YAML submission order; AW1=line 25, AW2=line 32 for same_id_multi_dst).
+    // record_b in completion order; verify_b_in_order checks the recorded
+    // sequence is non-decreasing per id. If Rob fails to reorder and B2
+    // arrives at AxiMaster before B1, the recorded sequence for id=0x05
+    // is {line(AW2)=32, line(AW1)=25} and verify_b_in_order returns false.
+    master.on_write_completed([&](const axi::WriteResult& wr) {
+        sb.handle_write_completed(wr, wr.data, wr.strb_per_beat);
+        tracker.record_b(wr.id, wr.scenario_line);
+        obs.test_inject_write_result(wr);
+    });
+    master.on_read_observed([&](const axi::ReadResult& rr) {
+        sb.handle_read_observed(rr);
+        tracker.record_r(rr.id, rr.scenario_line);
+        obs.test_inject_read_result(rr);
+    });
+
+    // Per-run AxiMasterPort <-> AxiSlave holdovers (one deque per NSU): when
+    // AxiSlave's input queue or the NSU port's response queue is full, hold
+    // the beat for next-cycle retry rather than dropping it. Function-local
+    // to keep each test invocation clean (no state leak across fixtures).
+    std::vector<std::deque<axi::BBeat>> b_holdovers(nsu_count);
+    std::vector<std::deque<axi::RBeat>> r_holdovers(nsu_count);
+
+    // Per-AXI-ID FIFO of NSU index that issued each outstanding AW / AR.
+    // AxiSlave preserves per-id response order (AXI4 IHI 0022 §A5.3), so
+    // popping the front entry on each B / R(last) recovers the original NSU.
+    // This is essential for multi-NSU: when AW1 (id=5) routes via NSU_0 and
+    // AW2 (id=5) routes via NSU_1, the slave still emits B1 before B2, and
+    // the testbench must hand B1 back to NSU_0 (whose MetaBuffer holds the
+    // matching dst/src entry) and B2 back to NSU_1.
+    std::array<std::deque<std::size_t>, 256> b_owner_nsu;
+    std::array<std::deque<std::size_t>, 256> r_owner_nsu;
+
+    std::size_t cycle = 0;
+    while (!master.done()) {
+        master.tick();
+        nmu.tick();
+        for (std::size_t i = 0; i < nsu_count; ++i) {
+            nsus[i]->tick();
+        }
+
+        // Shuttle requests from each NSU AxiMasterPort downstream face into the
+        // shared AxiSlave. Default queue sizing absorbs everything the ports
+        // forward; a rejected push indicates a sizing mismatch, surfaced as
+        // test failure.
+        for (std::size_t i = 0; i < nsu_count; ++i) {
+            auto& port = nsus[i]->axi_master_port();
+            while (auto aw = port.pop_aw()) {
+                uint8_t id = aw->id;
+                if (!slave.push_aw(*aw)) {
+                    ADD_FAILURE() << "AxiSlave rejected AW push; queue sizing mismatch "
+                                  << "(nsu=" << i << ")";
+                    break;
+                }
+                b_owner_nsu[id].push_back(i);
+            }
+            while (auto w = port.pop_w()) {
+                if (!slave.push_w(*w)) {
+                    ADD_FAILURE() << "AxiSlave rejected W push; queue sizing mismatch "
+                                  << "(nsu=" << i << ")";
+                    break;
+                }
+            }
+            while (auto ar = port.pop_ar()) {
+                uint8_t id = ar->id;
+                if (!slave.push_ar(*ar)) {
+                    ADD_FAILURE() << "AxiSlave rejected AR push; queue sizing mismatch "
+                                  << "(nsu=" << i << ")";
+                    break;
+                }
+                r_owner_nsu[id].push_back(i);
+            }
+        }
+
+        slave.tick();
+        mem.tick();
+
+        // Shuttle responses from AxiSlave back into the correct NSU
+        // AxiMasterPort upstream face. With multiple NSUs the testbench must
+        // route each B / R beat back to the NSU that owns the matching
+        // outstanding AW / AR. AxiSlave preserves per-id submission order, so
+        // the front of b_owner_nsu[id] / r_owner_nsu[id] is always the correct
+        // destination. R bursts: keep the owner entry until r->last so every
+        // beat of a multi-beat burst routes to the same NSU.
+        // Drain holdovers first (per-NSU), then pull from slave.
+        for (std::size_t i = 0; i < nsu_count; ++i) {
+            auto& port = nsus[i]->axi_master_port();
+            while (!b_holdovers[i].empty()) {
+                if (!port.push_b(b_holdovers[i].front())) break;
+                b_holdovers[i].pop_front();
+            }
+            while (!r_holdovers[i].empty()) {
+                if (!port.push_r(r_holdovers[i].front())) break;
+                r_holdovers[i].pop_front();
+            }
+        }
+
+        // Pull every B from the slave and route to the owning NSU.
+        while (auto b = slave.pop_b()) {
+            uint8_t id = b->id;
+            if (b_owner_nsu[id].empty()) {
+                ADD_FAILURE() << "B beat for id=" << static_cast<int>(id)
+                              << " with no outstanding AW owner (FIFO empty)";
+                break;
+            }
+            std::size_t i = b_owner_nsu[id].front();
+            b_owner_nsu[id].pop_front();
+            auto& port = nsus[i]->axi_master_port();
+            if (!b_holdovers[i].empty() || !port.push_b(*b)) {
+                b_holdovers[i].push_back(*b);
+            }
+        }
+        while (auto r = slave.pop_r()) {
+            uint8_t id = r->id;
+            if (r_owner_nsu[id].empty()) {
+                ADD_FAILURE() << "R beat for id=" << static_cast<int>(id)
+                              << " with no outstanding AR owner (FIFO empty)";
+                break;
+            }
+            std::size_t i = r_owner_nsu[id].front();
+            if (r->last) {
+                r_owner_nsu[id].pop_front();
+            }
+            auto& port = nsus[i]->axi_master_port();
+            if (!r_holdovers[i].empty() || !port.push_r(*r)) {
+                r_holdovers[i].push_back(*r);
+            }
+        }
+
+        // Advance the channel's per-cycle delay pipes after all producers /
+        // consumers have run for this cycle. Mirrors port-pair test ordering.
+        channel.tick();
+
+        if (++cycle > kMaxCycles) {
+            LoopbackResult r{sb.mismatch_count(), cycle, true, true, is_multi_dst};
+            if (is_multi_dst) {
+                r.b_order_ok = tracker.verify_b_in_order(0x05);
+                r.r_order_ok = tracker.verify_r_in_order(0x05);
+            }
+            return r;
+        }
+    }
+
+    LoopbackResult result{sb.mismatch_count(), cycle, true, true, is_multi_dst};
+    if (is_multi_dst) {
+        result.b_order_ok = tracker.verify_b_in_order(0x05);
+        result.r_order_ok = tracker.verify_r_in_order(0x05);
+    }
+    return result;
+}
+
+struct FixtureParam {
+    std::string yaml;
+    unsigned req_delay;
+    unsigned rsp_delay;
+    std::size_t num_vc = 1;
+};
+
+}  // namespace
+
+class PacketizeLoopbackFixture : public ::testing::TestWithParam<FixtureParam> {};
+
+TEST_P(PacketizeLoopbackFixture, ScoreboardZeroMismatch) {
+    auto p = GetParam();
+    std::string yaml_path = write_ord003_scenario();
+    std::string rpath = std::string(::testing::TempDir()) + "/" + p.yaml + ".pkt_e2e_q" +
+                        std::to_string(p.req_delay) + "_s" + std::to_string(p.rsp_delay) + "_vc" +
+                        std::to_string(p.num_vc) + ".read.txt";
+    auto r = run_fixture(yaml_path, rpath, p.req_delay, p.rsp_delay, p.num_vc);
+    EXPECT_EQ(r.scoreboard_mismatches, 0u)
+        << "scoreboard mismatches in " << p.yaml << " (req_delay=" << p.req_delay
+        << " rsp_delay=" << p.rsp_delay << " num_vc=" << p.num_vc << ")";
+    EXPECT_LE(r.cycle_count, kMaxCycles)
+        << "watchdog tripped on " << p.yaml << " (req_delay=" << p.req_delay
+        << " rsp_delay=" << p.rsp_delay << " num_vc=" << p.num_vc << ")";
+    if (r.is_multi_dst) {
+        EXPECT_TRUE(r.b_order_ok)
+            << "same_id_multi_dst: id=0x05 B beats arrived out of submission "
+            << "order at AxiMaster. Rob Enabled mode failed to reorder despite "
+            << "per-NSU latency variance (NSU_0=10c, NSU_1=2c).";
+        EXPECT_TRUE(r.r_order_ok)
+            << "same_id_multi_dst: id=0x05 R beats arrived out of submission "
+            << "order at AxiMaster. Rob Enabled mode failed to reorder despite "
+            << "per-NSU latency variance (NSU_0=10c, NSU_1=2c).";
+    }
+}
+
+// Shared name generator: yaml_stem + _q<req_delay> + _s<rsp_delay> + _vc<num_vc>.
+// Ensures uniqueness across the Fixtures (num_vc=1) and MultiVc (num_vc>1)
+// instantiation sets that run the same scenario YAMLs. Replace '-' with '_'
+// since gtest names disallow hyphens.
+static auto fixture_name_gen = [](const ::testing::TestParamInfo<FixtureParam>& info) {
+    auto n = info.param.yaml;
+    std::replace(n.begin(), n.end(), '-', '_');
+    return n + "_q" + std::to_string(info.param.req_delay) + "_s" +
+           std::to_string(info.param.rsp_delay) + "_vc" + std::to_string(info.param.num_vc);
+};
+
+INSTANTIATE_TEST_SUITE_P(Fixtures, PacketizeLoopbackFixture,
+                         ::testing::Values(
+                             // Only the ORD-003 multi-NSU ROB-reorder fixture is kept: the
+                             // other scoreboard-clean fixtures (BUR/STR/BND) duplicate the
+                             // wire-level co-sim end-to-end coverage. ORD-003 injects per-NSU
+                             // latency skew {10,2,5,3} that co-sim does not set up, forcing
+                             // out-of-order B/R. At num_vc=1 the NMU single-outstanding interlock
+                             // must keep per-id order.
+                             FixtureParam{std::string{"AX4-ORD-003_same_id_multi_dst"}, 0u, 0u,
+                                          1u}),
+                         fixture_name_gen);
+
+// ORD-003 reorder gate at num_vc=2: Rob Enabled must reorder per-id B/R back
+// into submission order. RoB ordering_tag ordering is VC-count independent, so
+// vc4/vc8 add no new boundary and were dropped.
+INSTANTIATE_TEST_SUITE_P(MultiVc, PacketizeLoopbackFixture,
+                         ::testing::Values(FixtureParam{
+                             std::string{"AX4-ORD-003_same_id_multi_dst"}, 0u, 0u, 2u}),
+                         fixture_name_gen);

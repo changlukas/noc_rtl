@@ -1,0 +1,98 @@
+# Routing bounds only: the TB instantiates one router at (1,1).
+name: nmu_cosim
+network_type: axi
+routing:
+  route_algo: XY
+  use_id_table: true
+endpoints:
+- name: nmu
+  num: 1
+  mgr_port_protocol:
+  - axi
+- name: nsu_west
+  num: 1
+  sbr_port_protocol:
+  - axi
+  addr_range:
+  - base: 0
+    size: 33554432
+    space: memory
+  - base: 33554432
+    size: 4096
+    space: config
+- name: nsu_north
+  num: 1
+  sbr_port_protocol:
+  - axi
+  addr_range:
+  - base: 4294967296
+    size: 33554432
+    space: memory
+  - base: 4328521728
+    size: 4096
+    space: config
+- name: nsu_east
+  num: 1
+  sbr_port_protocol:
+  - axi
+  addr_range:
+  - base: 8589934592
+    size: 33554432
+    space: memory
+  - base: 8623489024
+    size: 4096
+    space: config
+- name: nsu_south
+  num: 1
+  sbr_port_protocol:
+  - axi
+  addr_range:
+  - base: 12884901888
+    size: 33554432
+    space: memory
+  - base: 12918456320
+    size: 4096
+    space: config
+routers:
+- name: router
+  array:
+  - 4
+  - 4
+  degree: 5
+  auto_connect: false
+connections:
+- src: nmu
+  dst: router
+  src_idx:
+  - 0
+  dst_idx:
+  - 5
+  dst_dir: 4
+- src: nsu_west
+  dst: router
+  src_idx:
+  - 0
+  dst_idx:
+  - 4
+  dst_dir: 4
+- src: nsu_north
+  dst: router
+  src_idx:
+  - 0
+  dst_idx:
+  - 9
+  dst_dir: 4
+- src: nsu_east
+  dst: router
+  src_idx:
+  - 0
+  dst_idx:
+  - 6
+  dst_dir: 4
+- src: nsu_south
+  dst: router
+  src_idx:
+  - 0
+  dst_idx:
+  - 1
+  dst_dir: 4

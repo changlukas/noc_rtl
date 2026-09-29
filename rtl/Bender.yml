@@ -1,0 +1,40 @@
+# Production RTL dependencies. Exact revisions keep builds reproducible.
+package:
+  name: noc_rtl
+
+include_dirs:
+  - ../deps/axi-0.39.7/include
+  - ../deps/common_cells-1.37.0/include
+
+dependencies:
+  common_cells:
+    git: https://github.com/pulp-platform/common_cells.git
+    rev: 63b7c50d43e462b59506f69d341ff1e40202866d
+
+sources:
+  - ../deps/common_cells-1.37.0/src/cf_math_pkg.sv
+  - ../deps/common_cells-1.37.0/src/lzc.sv
+  - ../deps/common_cells-1.37.0/src/rr_arb_tree.sv
+  - ../deps/axi-0.39.7/src/axi_pkg.sv
+  - ../deps/axi-0.39.7/src/axi_id_remap.sv
+  - common/axi_if.sv
+  - common/ni_types_pkg.sv
+  - common/ni_sam.sv
+  - common/stream_register.sv
+  - common/axi_async_fifo.sv
+  - nmu/sam/sam.sv
+  - nmu/request_path/id_remap.sv
+  - nmu/request_path/request_path.sv
+  - nmu/response_fifo/response_fifo.sv
+  - nmu/ordering/reorder_storage.sv
+  - nmu/ordering/ordering.sv
+  - nmu/channel_assign/channel_assign.sv
+  - nmu/request_path/write_context.sv
+  - nmu/channel_assign/request_buffer.sv
+  - nmu/request_packetize/request_packetize.sv
+  - nmu/response_depacketize/response_buffer.sv
+  - nmu/channel_assign/rx_channel_assign.sv
+  - nmu/response_depacketize/response_depacketize.sv
+  - nmu/response_path/response_path.sv
+  - nmu/top/nmu.sv
+  - nmu/request_fifo/request_fifo.sv

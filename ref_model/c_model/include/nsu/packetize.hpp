@@ -1,0 +1,225 @@
+#pragma once
+// NSU-side response packetizer. Implements the S1 stage register (accepts
+// B/R beats from AxiMasterPort) and the S2 transform (builds Flit from S1,
+// pushes into the S2→S3 stage register = WormholeArbiter pending queue).
+//
+// Stage model:
+//   S1: push_b/r() accepts ≤1 beat/channel into s1_b_/s1_r_ stage registers.
+//       Returns false (backpressure) when the S1 register is occupied.
+//   S2: tick() reads S1, builds Flit (MetaBuffer peek), pushes to b_out_/r_out_
+//       (= WormholeArbiter input = the S2→S3 stage register boundary).
+//       MetaBuffer commit_* fires on successful push to the S2→S3 boundary.
+//   Arbiter-final-stage: Packetize::tick() runs after
+//   WormholeArbiter::tick() in the reverse-order tick sequence (Nsu::tick()),
+//   so a flit written into the arbiter's pending queue in this tick cannot
+//   escape to NoC until the next tick — no same-tick Packetize→NoC path.
+//
+// Implements ResponsePacketizer (B/R only; NSU never emits requests).
+//
+// Network steering (S3a T6, spec :348 axi_ch -> network map): B (both
+// Narrow and Data class) always pushes to b_out_ (RSP) -- B never splits,
+// per the stage design §2 write-path note. R pushes to r_out_ (RSP) for
+// Narrow class, dat_r_out_ (DAT) for Data class -- the only asymmetry.
+#include "axi/types.hpp"
+#include "flit.hpp"
+#include "ni/channel_mode.hpp"
+#include "router/rsp_out.hpp"
+#include "ni/pipeline_stage.hpp"
+#include "nsu/meta_buffer.hpp"
+#include "response_io.hpp"
+#include <cassert>
+#include <cstdint>
+#include <cstdlib>
+
+namespace ni::cmodel::nsu {
+
+class Packetize : public ResponsePacketizer {
+  public:
+    // dat_r_out: DAT face for Data-class R (S3a T6 steering). B has no DAT
+    // counterpart -- b_out_ (RSP) is the only B sink, both classes.
+    Packetize(router::NocRspOut& b_out, router::NocRspOut& r_out, router::NocRspOut& dat_r_out,
+              MetaBuffer& meta, uint8_t src_id, uint8_t port_id = 0)
+        : Packetize(b_out, r_out, dat_r_out, dat_r_out, dat_r_out, meta, src_id, port_id) {}
+
+    Packetize(router::NocRspOut& b_out, router::NocRspOut& r_out,
+              router::NocRspOut& native_dat_r_out, router::NocRspOut& dat_b_out,
+              router::NocRspOut& dat_r_out, MetaBuffer& meta, uint8_t src_id,
+              uint8_t port_id = 0)
+        : b_out_(b_out),
+          r_out_(r_out),
+          native_dat_r_out_(native_dat_r_out),
+          dat_b_out_(dat_b_out),
+          dat_r_out_(dat_r_out),
+          meta_(meta),
+          src_id_(src_id),
+          port_id_(port_id) {}
+
+    void set_channel_mode(ni::ChannelMode mode) noexcept { channel_mode_ = mode; }
+
+    // ---- ResponsePacketizer interface (S1 accept) ----
+    // Accepts ≤1 beat/channel into the S1 stage register.
+    // Returns false when the S1 register is full (backpressure to AxiMasterPort).
+    bool push_b(const axi::BBeat& b) override;
+    bool push_r(const axi::RBeat& b) override;
+
+    // ---- S2 stage transform ----
+    // Reads occupied S1 registers, builds Flit, pushes to WormholeArbiter
+    // input (S2→S3 boundary). Called by Nsu::tick() AFTER WormholeArbiter::tick()
+    // in reverse-order sequence, establishing the arbiter-final-stage property.
+    void tick();
+
+    // ---- Introspection ----
+    std::size_t s1_b_occupancy() const noexcept { return s1_b_.occupancy(); }
+    std::size_t s1_r_occupancy() const noexcept { return s1_r_.occupancy(); }
+
+  private:
+    router::NocRspOut& b_out_;
+    router::NocRspOut& r_out_;
+    router::NocRspOut& native_dat_r_out_;
+    router::NocRspOut& dat_b_out_;
+    router::NocRspOut& dat_r_out_;
+    MetaBuffer& meta_;
+    uint8_t src_id_;
+    // This NI's own endpoint at src_id, stamped into every response it issues.
+    uint8_t port_id_ = 0;
+    ni::ChannelMode channel_mode_ = ni::ChannelMode::Native;
+
+    // S1 stage registers: one per response channel. push_b/r() fills them;
+    // tick() (S2) drains and transforms into Flits toward the arbiter.
+    router::PipelineStage<axi::BBeat> s1_b_;
+    router::PipelineStage<axi::RBeat> s1_r_;
+
+    static Flit build_b_flit(const axi::BBeat& b, const MetaEntry& m, uint8_t src_id,
+                             uint8_t port_id);
+    static Flit build_r_flit(const axi::RBeat& b, const MetaEntry& m, uint8_t src_id,
+                             uint8_t port_id, uint16_t beat_idx, ni::ChannelMode mode);
+};
+
+// S1 accept: write into stage register (backpressure if full).
+inline bool Packetize::push_b(const axi::BBeat& b) {
+    if (s1_b_.full()) return false;
+    s1_b_.accept(b);
+    return true;
+}
+
+inline bool Packetize::push_r(const axi::RBeat& b) {
+    if (s1_r_.full()) return false;
+    s1_r_.accept(b);
+    return true;
+}
+
+// The slave echoes the DOWNSTREAM id, which is the MetaBuffer key. The flit
+// must carry the master's original id, recovered from the buffered entry (FlooNoC
+// floo_meta_buffer.sv:344-346, "Use original, buffered ID again for responses").
+// nsu::VcAllocator's same-destination-bypass fixed VC map keys on this restored rid.
+inline Flit Packetize::build_b_flit(const axi::BBeat& b, const MetaEntry& m, uint8_t src_id,
+                                    uint8_t port_id) {
+    Flit f;
+    f.set_header_field("axi_ch", m.cls == AxiClass::Data ? ::ni::AXI_CH_DataB : ::ni::AXI_CH_NarrowB);
+    f.set_header_field("src_id", src_id);
+    f.set_header_field("dst_id", m.src_id);
+    f.set_header_field("dst_port_id", m.src_port);
+    f.set_header_field("src_port_id", port_id);
+    f.set_header_field("vc_id", 0);
+    f.set_header_field("flit_tail", 1);
+    f.set_header_field("ordering_req", m.ordering_req);
+    f.set_header_field("ordering_tag", m.ordering_tag);
+    // Collective echo (design §3.1): the AW's op/mask, unmodified. No third
+    // opcode is needed for the reverse direction -- on RSP the only collective
+    // flits are Bs, so (collective_op != UNICAST, axi_ch in {NarrowB, DataB})
+    // IS mainline's CollectB. The RSP router's join recomputes the B's
+    // expected-input set from dst_id + this mask, so a wrong echo aborts there
+    // rather than merging silently.
+    f.set_header_field("collective_op", m.collective_op);
+    f.set_header_field("collective_mask", m.collective_mask);
+    f.set_payload_field("B", "bid", m.upstream_id);
+    f.set_payload_field("B", "bresp", static_cast<uint64_t>(b.resp));
+    f.set_payload_field("B", "buser", b.user);
+    return f;
+}
+
+inline Flit Packetize::build_r_flit(const axi::RBeat& b, const MetaEntry& m, uint8_t src_id,
+                                    uint8_t port_id, uint16_t beat_idx, ni::ChannelMode mode) {
+    const bool is_data = (m.cls == AxiClass::Data);
+    const bool narrow_payload = !is_data || mode != ni::ChannelMode::Native;
+    const char* ch = narrow_payload ? "NARROW_R" : "DATA_R";
+    Flit f;
+    f.set_header_field("axi_ch", is_data ? ::ni::AXI_CH_DataR : ::ni::AXI_CH_NarrowR);
+    f.set_header_field("src_id", src_id);
+    f.set_header_field("dst_id", m.src_id);
+    f.set_header_field("dst_port_id", m.src_port);
+    f.set_header_field("src_port_id", port_id);
+    f.set_header_field("vc_id", 0);
+    f.set_header_field("flit_tail", 1);
+    f.set_header_field("ordering_req", m.ordering_req);
+    f.set_header_field("ordering_tag", m.ordering_tag);
+    f.set_payload_field(ch, "rid", m.upstream_id);
+    f.set_payload_field(ch, "rresp", static_cast<uint64_t>(b.resp));
+    f.set_payload_field(ch, "ruser", b.user);
+    f.set_payload_field(ch, "rlast", b.last ? 1u : 0u);
+    if (!narrow_payload) {
+        f.set_payload_bytes(ch, "rdata", b.data.data(), ::ni::width::NOC_DATA_WIDTH);
+    } else {
+        // Narrow payload: the slave already placed this beat's data at its natural
+        // byte lane (AXI4 IHI 0022 A3.4.2); the MetaEntry's AR basis + the
+        // per-id running beat index (m is a snapshot -- the index lives in
+        // MetaBuffer, threaded in by the caller) recompute that lane here.
+        const uint64_t addr = axi::beat_addr(m.local_addr, m.len, m.size, m.burst, beat_idx);
+        const unsigned lane = axi::narrow_lane(addr);
+        f.set_payload_bytes(ch, "rdata", b.data.data() + lane * axi::NARROW_DATA_BYTES,
+                            ::ni::width::NOC_NARROW_DATA_WIDTH);
+    }
+    return f;
+}
+
+// S2 stage transform: ≤1 B and ≤1 R per tick.
+// MetaBuffer assert: a B/R beat in S1 must have a matching MetaBuffer entry
+// (the entry was allocated on the request path, in Depacketize::pop_aw / pop_ar).
+// Absence is a pipeline protocol violation (beat injected without a prior AW/AR
+// flit), not recoverable.
+inline void Packetize::tick() {
+    // B channel: read S1, build flit, push to S2→S3 boundary.
+    if (s1_b_.full()) {
+        const axi::BBeat& b = s1_b_.peek();
+        auto meta_opt = meta_.peek_write(b.id);
+        if (!meta_opt.has_value()) {
+            assert(false && "Packetize::tick: B in S1 with no matching AW MetaBuffer entry");
+            std::abort();
+        }
+        Flit f = build_b_flit(b, *meta_opt, src_id_, port_id_);
+        router::NocRspOut& sink = meta_opt->cls == AxiClass::Data &&
+                                          channel_mode_ == ni::ChannelMode::ThreeChannel64
+                                      ? dat_b_out_
+                                      : b_out_;
+        if (sink.push_flit(f)) {
+            s1_b_.take();
+            meta_.commit_write(b.id);  // commit on successful S2→S3 push
+        }
+        // On push failure: beat stays in S1 register; arbiter will drain
+        // its own pending queue next tick, freeing space.
+    }
+
+    // R channel: read S1, build flit, push to S2→S3 boundary.
+    if (s1_r_.full()) {
+        const axi::RBeat& b = s1_r_.peek();
+        auto meta_opt = meta_.peek_read(b.id);
+        if (!meta_opt.has_value()) {
+            assert(false && "Packetize::tick: R in S1 with no matching AR MetaBuffer entry");
+            std::abort();
+        }
+        Flit f = build_r_flit(b, *meta_opt, src_id_, port_id_, meta_.read_beat_index(b.id),
+                                  channel_mode_);
+        router::NocRspOut& r_sink =
+            meta_opt->cls != AxiClass::Data || channel_mode_ == ni::ChannelMode::TwoChannel64
+                ? r_out_
+                : channel_mode_ == ni::ChannelMode::ThreeChannel64 ? dat_r_out_
+                                                                   : native_dat_r_out_;
+        if (r_sink.push_flit(f)) {
+            s1_r_.take();
+            meta_.advance_read_beat(b.id);
+            if (b.last) meta_.commit_read(b.id);  // commit on rlast only (also resets beat index)
+        }
+    }
+}
+
+}  // namespace ni::cmodel::nsu

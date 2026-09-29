@@ -1099,10 +1099,6 @@
       "path": "sim/tools/test_gen_standalone_patterns.py"
     },
     {
-      "source": "sim/tools/test_gen_test_patterns_filemaster.py",
-      "path": "sim/tools/test_gen_test_patterns_filemaster.py"
-    },
-    {
       "source": "sim/tools/test_standalone_clean.py",
       "path": "sim/tools/test_standalone_clean.py"
     },
@@ -1365,6 +1361,34 @@
     {
       "source": "specgen/tools/elaborate/sv_signals.py",
       "path": "specgen/tools/elaborate/sv_signals.py"
+    },
+    {
+      "source": "sim/configs/mesh_2x2_periph.yml",
+      "path": "sim/configs/mesh_2x2_periph.yml"
+    },
+    {
+      "source": "sim/configs/mesh_4x4.yml",
+      "path": "sim/configs/mesh_4x4.yml"
+    },
+    {
+      "source": "sim/configs/mesh_4x4_dual_edge.yml",
+      "path": "sim/configs/mesh_4x4_dual_edge.yml"
+    },
+    {
+      "source": "sim/configs/mesh_4x4_dual_edge_large.yml",
+      "path": "sim/configs/mesh_4x4_dual_edge_large.yml"
+    },
+    {
+      "source": "sim/configs/mesh_4x4_periph4.yml",
+      "path": "sim/configs/mesh_4x4_periph4.yml"
+    },
+    {
+      "source": "sim/configs/sam_rules.golden",
+      "path": "sim/configs/sam_rules.golden"
     }
-  ]
+  ],
+  "extracted_helpers": {
+    "sim/tools/axi_file_parser.py": "sim/tools/test_gen_test_patterns_filemaster.py: _parse_read, _parse_write",
+    "sim/tools/gen_tb_top.py": "SAM/topology functions only"
+  }
 }
