@@ -116,26 +116,34 @@ module nmu_response_path #(
         .DAT_VC_MODE     (NOC_DAT_VC_MODE  ),
         .DAT_RX_VC_DEPTH (DAT_RX_VC_DEPTH  )
     ) i_rx_credit_buffer (
-        .clk_i   (noc_clk_i  ),
-        .rst_n_i (noc_rst_n_i),
+        .clk_i               (noc_clk_i                              ),
+        .rst_n_i             (noc_rst_n_i                            ),
         .s_dat_i             (ni_flit_pkg::dat_flit_t'(rx_dat_flit_i)),
-        .s_dat_valid_i       (rx_dat_valid_i   ),
-        .dat_credit_return_o (rx_dat_crdvalid_o),
+        .s_dat_valid_i       (rx_dat_valid_i                         ),
+        .dat_credit_return_o (rx_dat_crdvalid_o                      ),
         .s_rsp_i             (ni_flit_pkg::rsp_flit_t'(rx_rsp_flit_i)),
-        .s_rsp_valid_i (rx_rsp_valid_i),
-        .s_rsp_ready_o (rx_rsp_ready_o),
-        .m_rsp_o       (rx_rsp_head   ),
-        .m_rsp_valid_o (rx_rsp_valid  ),
-        .m_rsp_ready_i (rx_rsp_ready  ),
-        .m_dat_o       (rx_dat_head   ),
-        .m_dat_valid_o (rx_dat_valid  ),
-        .m_dat_ready_i (rx_dat_ready  )
+        .s_rsp_valid_i       (rx_rsp_valid_i                         ),
+        .s_rsp_ready_o       (rx_rsp_ready_o                         ),
+        .m_rsp_o             (rx_rsp_head                            ),
+        .m_rsp_valid_o       (rx_rsp_valid                           ),
+        .m_rsp_ready_i       (rx_rsp_ready                           ),
+        .m_dat_o             (rx_dat_head                            ),
+        .m_dat_valid_o       (rx_dat_valid                           ),
+        .m_dat_ready_i       (rx_dat_ready                           )
     );
+    wire ni_flit_pkg::rsp_flit_t selected_rsp;
+    wire selected_rsp_valid, selected_rsp_ready;
     wire ni_flit_pkg::dat_flit_t selected_dat;
     wire selected_dat_valid, selected_dat_ready;
     rx_vc_arbiter #(
         .NUM_DAT_VC (NUM_DAT_VC)
     ) i_rx_vc_arbiter (
+        .s_rsp_i       (rx_rsp_head       ),
+        .s_rsp_valid_i (rx_rsp_valid      ),
+        .s_rsp_ready_o (rx_rsp_ready      ),
+        .m_rsp_o       (selected_rsp      ),
+        .m_rsp_valid_o (selected_rsp_valid),
+        .m_rsp_ready_i (selected_rsp_ready),
         .clk_i         (noc_clk_i         ),
         .rst_n_i       (noc_rst_n_i       ),
         .s_dat_i       (rx_dat_head       ),
@@ -146,11 +154,10 @@ module nmu_response_path #(
         .m_dat_ready_i (selected_dat_ready)
     );
     rx_channel_assign i_rx_channel_assign (
-        .clk_i         (noc_clk_i         ),
         .rst_n_i       (noc_rst_n_i       ),
-        .s_rsp_i       (rx_rsp_head       ),
-        .s_rsp_valid_i (rx_rsp_valid      ),
-        .s_rsp_ready_o (rx_rsp_ready      ),
+        .s_rsp_i       (selected_rsp      ),
+        .s_rsp_valid_i (selected_rsp_valid),
+        .s_rsp_ready_o (selected_rsp_ready),
         .s_dat_i       (selected_dat      ),
         .s_dat_valid_i (selected_dat_valid),
         .s_dat_ready_o (selected_dat_ready),

@@ -233,12 +233,20 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credi
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/dat_empty
 endSubGroup "RX credit buffer"
 addSubGroup "RX VC arbiter" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/s_rsp_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/s_rsp_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/s_rsp_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/m_rsp_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/m_rsp_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/m_rsp_ready_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/s_dat_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/s_dat_valid_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/s_dat_ready_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/m_dat_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/m_dat_valid_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/m_dat_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_vc_arbiter/r_ready
 endSubGroup "RX VC arbiter"
 addSubGroup "RX channel assign" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_channel_assign/s_rsp_i
@@ -253,8 +261,6 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_chann
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_channel_assign/m_r_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_channel_assign/m_r_valid_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_channel_assign/m_r_ready_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_channel_assign/r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_channel_assign/r_ready
 endSubGroup "RX channel assign"
 addSubGroup "Ordering retirement" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_ordering/s_b_i
