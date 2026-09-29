@@ -2,15 +2,15 @@
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 module tb_nmu_cosim #(
-    parameter int unsigned AXI_ID_WIDTH = ni_params_pkg::AXI_ID_WIDTH,
-    parameter int unsigned MAX_ACTIVE_IDS = 1 << (AXI_ID_WIDTH < ni_params_pkg::NOC_ID_WIDTH ?
-        AXI_ID_WIDTH : ni_params_pkg::NOC_ID_WIDTH),
+    parameter int unsigned INPUT_ID_WIDTH  = ni_params_pkg::AXI_ID_WIDTH,
+    parameter int unsigned OUTPUT_ID_WIDTH = ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned MAX_OUTSTANDING_PER_ID = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
     parameter int unsigned RSP_DELAY_CYCLES = 0,
     parameter int unsigned OUTPUT_REG_TYPE = 0,
     parameter int unsigned IO_FIFO_DEPTH = 32
 );
     import ni_params_pkg::*;
+    localparam int unsigned NUM_IDS = 1 << (INPUT_ID_WIDTH < OUTPUT_ID_WIDTH ? INPUT_ID_WIDTH : OUTPUT_ID_WIDTH);
     localparam time CLK_PERIOD = 1ns;
     localparam time APPL_DELAY = CLK_PERIOD / 10;
     localparam time ACQ_DELAY  = CLK_PERIOD / 5;
@@ -68,13 +68,13 @@ module tb_nmu_cosim #(
         .init_no          ()
     );
     AXI_BUS_DV #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-        .AXI_ID_WIDTH   (AXI_ID_WIDTH),
+        .AXI_ID_WIDTH   (INPUT_ID_WIDTH),
         .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) vip(clk);
     axi_if #(.ADDR_W(AXI_ADDR_WIDTH), .DATA_W(AXI_DATA_WIDTH),
-        .ID_W     (AXI_ID_WIDTH),
+        .ID_W     (INPUT_ID_WIDTH),
         .AWUSER_W (AXI_AWUSER_WIDTH)) bus();
     typedef logic [AXI_ADDR_WIDTH-1:0] mon_addr_t;
-    typedef logic [AXI_ID_WIDTH-1:0] mon_id_t;
+    typedef logic [INPUT_ID_WIDTH-1:0] mon_id_t;
     typedef logic [AXI_DATA_WIDTH-1:0] mon_data_t;
     typedef logic [AXI_DATA_WIDTH/8-1:0] mon_strb_t;
     typedef logic [AXI_AWUSER_WIDTH-1:0] mon_user_t;
@@ -112,7 +112,7 @@ module tb_nmu_cosim #(
     `AXI_ASSIGN_TO_RESP(mon_mst_rsp, vip)
     axi_reorder_compare #(
         .NumSlaves      (NUM_NSUS),
-        .AxiIdWidth     (AXI_ID_WIDTH),
+        .AxiIdWidth     (INPUT_ID_WIDTH),
         .NumAddrRegions (topology_pkg::SAM_NUM_RULES),
         .addr_t         (mon_addr_t),
         .rule_t         (mon_rule_t),
@@ -194,8 +194,8 @@ module tb_nmu_cosim #(
         .DAT_W_REG_TYPE (OUTPUT_REG_TYPE),
         .B_REG_TYPE (OUTPUT_REG_TYPE),
         .R_REG_TYPE (OUTPUT_REG_TYPE),
-        .AXI_ID_WIDTH (AXI_ID_WIDTH),
-        .MAX_ACTIVE_IDS (MAX_ACTIVE_IDS),
+        .INPUT_ID_WIDTH (INPUT_ID_WIDTH),
+        .OUTPUT_ID_WIDTH (OUTPUT_ID_WIDTH),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
         .AXI_FIFO_DEPTH (IO_FIFO_DEPTH),
         .REQ_FIFO_DEPTH (IO_FIFO_DEPTH),
@@ -427,7 +427,7 @@ module tb_nmu_cosim #(
     typedef axi_test::axi_file_master #(
         .AW (AXI_ADDR_WIDTH),
         .DW (AXI_DATA_WIDTH),
-        .IW (AXI_ID_WIDTH),
+        .IW (INPUT_ID_WIDTH),
         .UW (AXI_AWUSER_WIDTH),
         .TA (APPL_DELAY),
         .TT (ACQ_DELAY)
@@ -435,14 +435,14 @@ module tb_nmu_cosim #(
     typedef axi_test::axi_scoreboard #(
         .AW (AXI_ADDR_WIDTH),
         .DW (AXI_DATA_WIDTH),
-        .IW (AXI_ID_WIDTH),
+        .IW (INPUT_ID_WIDTH),
         .UW (AXI_AWUSER_WIDTH),
         .TT (ACQ_DELAY)
     ) scoreboard_base_t;
     class scoreboard_t extends scoreboard_base_t;
         function new(virtual AXI_BUS_DV #(
             .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH(AXI_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) axi);
+            .AXI_ID_WIDTH(INPUT_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) axi);
             super.new(axi);
         endfunction
         task preload(input string filename);
@@ -459,12 +459,12 @@ module tb_nmu_cosim #(
     end
     int b_count = 0, r_count = 0, r_beats = 0, checked_bytes = 0;
     int expected_writes, expected_reads, expected_beats;
-    int live_w[2**AXI_ID_WIDTH] = '{default:0};
-    int live_r[2**AXI_ID_WIDTH] = '{default:0};
+    int live_w[2**INPUT_ID_WIDTH] = '{default:0};
+    int live_r[2**INPUT_ID_WIDTH] = '{default:0};
     int peak_w = 0, peak_r = 0, peak_unique_w = 0, peak_unique_r = 0;
     int min_outstanding = 1, min_unique = 1;
-    master_t::ax_beat_t expected_ar[2**AXI_ID_WIDTH][$];
-    int read_beat[2**AXI_ID_WIDTH] = '{default:0};
+    master_t::ax_beat_t expected_ar[2**INPUT_ID_WIDTH][$];
+    int read_beat[2**INPUT_ID_WIDTH] = '{default:0};
     master_t master, init_master, verify_master;
     scoreboard_t scoreboard;
     int init_phase = 0, concurrent_rw = 0, stall_cycles = 0, hold_cycles = 0;
@@ -780,7 +780,7 @@ module tb_nmu_cosim #(
     end
     final begin
         $display("CAPACITY_PERF active_ids=%0d per_id=%0d cycles=%0d wr_id_stall=%0d rd_id_stall=%0d wr_txn_stall=%0d rd_txn_stall=%0d",
-            MAX_ACTIVE_IDS, MAX_OUTSTANDING_PER_ID, perf_end-perf_start+1,
+            NUM_IDS, MAX_OUTSTANDING_PER_ID, perf_end-perf_start+1,
             wr_id_stall, rd_id_stall, wr_txn_stall, rd_txn_stall);
     end
 endmodule

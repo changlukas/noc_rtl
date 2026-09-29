@@ -20,9 +20,8 @@
 
 // Adapted from pulp-platform/axi v0.39.7 axi_id_remap; tables remain upstream.
 module nmu_id_remap #(
-    parameter int unsigned AXI_ID_WIDTH,
-    parameter int unsigned NOC_ID_WIDTH,
-    parameter int unsigned MAX_ACTIVE_IDS,
+    parameter int unsigned INPUT_ID_WIDTH,
+    parameter int unsigned OUTPUT_ID_WIDTH,
     parameter int unsigned MAX_OUTSTANDING_PER_ID,
     parameter type slv_req_t  = logic,
     parameter type slv_resp_t = logic,
@@ -36,13 +35,16 @@ module nmu_id_remap #(
     output wire mst_req_t  mst_req_o,
     input  wire mst_resp_t mst_resp_i
 );
-    localparam int unsigned ID_IDX_W = cf_math_pkg::idx_width(MAX_ACTIVE_IDS);
+
+    localparam int unsigned NUM_IDS =
+        1 << (INPUT_ID_WIDTH < OUTPUT_ID_WIDTH ? INPUT_ID_WIDTH : OUTPUT_ID_WIDTH);
+    localparam int unsigned ID_IDX_W = cf_math_pkg::idx_width(NUM_IDS);
     typedef logic [ID_IDX_W-1:0] id_idx_t;
 
     initial begin
-        if (AXI_ID_WIDTH < 1 || NOC_ID_WIDTH < ID_IDX_W ||
-            MAX_ACTIVE_IDS < 1 || MAX_OUTSTANDING_PER_ID < 1 ||
-            $clog2(MAX_ACTIVE_IDS) > AXI_ID_WIDTH)
+        if (INPUT_ID_WIDTH < 1 || OUTPUT_ID_WIDTH < ID_IDX_W ||
+            NUM_IDS < 1 || MAX_OUTSTANDING_PER_ID < 1 ||
+            $clog2(NUM_IDS) > INPUT_ID_WIDTH)
             $fatal(1, "Invalid NMU remap configuration (%m)");
     end
 
@@ -94,7 +96,7 @@ module nmu_id_remap #(
     assign wr_can_alloc        = (wr_exists && !wr_exists_full) || (!wr_exists && !wr_full);
     assign wr_alloc            = !aw_hold_reg && slv_req_i.aw_valid && wr_can_alloc;
     assign wr_alloc_id         = wr_exists ? wr_mapped_id : wr_free_id;
-    assign mst_req_o.aw.id     = NOC_ID_WIDTH'(aw_hold_reg ? aw_id_reg : wr_alloc_id);
+    assign mst_req_o.aw.id     = OUTPUT_ID_WIDTH'(aw_hold_reg ? aw_id_reg : wr_alloc_id);
     assign mst_req_o.aw_valid  = aw_hold_reg || wr_alloc;
     assign slv_resp_o.aw_ready = mst_req_o.aw_valid && mst_resp_i.aw_ready;
 
@@ -118,8 +120,8 @@ module nmu_id_remap #(
     end
 
     axi_id_remap_table #(
-        .InpIdWidth      (AXI_ID_WIDTH                   ),
-        .MaxUniqInpIds   (MAX_ACTIVE_IDS                 ),
+        .InpIdWidth      (INPUT_ID_WIDTH                   ),
+        .MaxUniqInpIds   (NUM_IDS                 ),
         .MaxTxnsPerId    (MAX_OUTSTANDING_PER_ID         )
     ) i_wr_table (
         .clk_i           (clk_i                          ),
@@ -161,7 +163,7 @@ module nmu_id_remap #(
     assign rd_can_alloc        = (rd_exists && !rd_exists_full) || (!rd_exists && !rd_full);
     assign rd_alloc            = !ar_hold_reg && slv_req_i.ar_valid && rd_can_alloc;
     assign rd_alloc_id         = rd_exists ? rd_mapped_id : rd_free_id;
-    assign mst_req_o.ar.id     = NOC_ID_WIDTH'(ar_hold_reg ? ar_id_reg : rd_alloc_id);
+    assign mst_req_o.ar.id     = OUTPUT_ID_WIDTH'(ar_hold_reg ? ar_id_reg : rd_alloc_id);
     assign mst_req_o.ar_valid  = ar_hold_reg || rd_alloc;
     assign slv_resp_o.ar_ready = mst_req_o.ar_valid && mst_resp_i.ar_ready;
 
@@ -185,8 +187,8 @@ module nmu_id_remap #(
     end
 
     axi_id_remap_table #(
-        .InpIdWidth      (AXI_ID_WIDTH                   ),
-        .MaxUniqInpIds   (MAX_ACTIVE_IDS                 ),
+        .InpIdWidth      (INPUT_ID_WIDTH                   ),
+        .MaxUniqInpIds   (NUM_IDS                 ),
         .MaxTxnsPerId    (MAX_OUTSTANDING_PER_ID         )
     ) i_rd_table (
         .clk_i           (clk_i                          ),

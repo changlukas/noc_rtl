@@ -18,13 +18,13 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     rtl_stage, out = Path(rtl_stage).resolve(), Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     profile = yaml.safe_load(Path(profile_path or ROOT / "sim/cosim/nmu/profile.yml").read_text())
-    noc_id_width = profile.get("noc_id_width", 3)
+    noc_id_width = profile.get("output_id_width", 3)
     # Wrapper records use the generated AXI width; NMU external width can be overridden separately.
-    pattern_id_width = profile.get("axi_id_width", noc_id_width)
+    pattern_id_width = profile.get("input_id_width", noc_id_width)
     if type(noc_id_width) is not int or not 1 <= noc_id_width <= 8:
-        raise ValueError("noc_id_width must be in [1, 8]")
+        raise ValueError("output_id_width must be in [1, 8]")
     if type(pattern_id_width) is not int or not 1 <= pattern_id_width <= 8:
-        raise ValueError("axi_id_width must be in [1, 8]")
+        raise ValueError("input_id_width must be in [1, 8]")
     source_list = []
     def copy(source, relative):
         target = out / relative
@@ -63,6 +63,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         source_list.append("repo/" + relative)
     for relative in (
         "sim/dv/tb_axi_reorder_compare.sv",
+        "rtl/common/tests/tb_axi_id_remap.sv",
         "rtl/nmu/ordering/tb_ordering.sv",
         "rtl/nmu/request_packetize/request_inject_tb_dut.sv",
         "rtl/nmu/request_packetize/tb_request_packetize.sv",
@@ -122,7 +123,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     from tools.elaborate.profile import emit as emit_profile
     emit_profile(ROOT, out, constants, noc_id_width)
     (out / "profile.yml").write_text(yaml.safe_dump(profile, sort_keys=False))
-    (out / "profile.mk").write_text(f"AXI_ID_WIDTH ?= {pattern_id_width}\n")
+    (out / "profile.mk").write_text(f"INPUT_ID_WIDTH ?= {pattern_id_width}\nOUTPUT_ID_WIDTH ?= {noc_id_width}\n")
     copy(ROOT / "sim/cosim/nmu/script/Makefile", "Makefile")
     copy(ROOT / "sim/cosim/nmu/script/run.py", "run.py")
     copy(ROOT / "sim/cosim/nmu/script/test_pipeline.py", "test_pipeline.py")

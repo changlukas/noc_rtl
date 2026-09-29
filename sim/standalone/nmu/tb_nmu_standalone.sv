@@ -168,7 +168,7 @@ module tb_nmu_standalone #(
     assign vip.r_resp   = bus.rresp;
     assign vip.r_last   = bus.rlast;
     assign vip.r_user   = '0;
-    nmu #(.AXI_ID_WIDTH(ID_WIDTH), .R_ROB_EN(R_ROB_EN),
+    nmu #(.INPUT_ID_WIDTH(ID_WIDTH), .R_ROB_EN(R_ROB_EN),
         .B_ROB_DEPTH (BUFFER_DEPTH),
         .R_ROB_DEPTH(BUFFER_DEPTH)) dut (
         .ACLK              (axi_clk  ),

@@ -6,7 +6,7 @@
 
 // Response decode, transaction ordering, and NoC-to-AXI CDC.
 module nmu_response_path #(
-    parameter int unsigned MAX_ACTIVE_IDS         = 1 << ni_params_pkg::NOC_ID_WIDTH,
+    parameter int unsigned NUM_IDS                = 1 << ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned NUM_DAT_VC             = ni_params_pkg::NUM_DAT_VC,
     parameter int unsigned NOC_DAT_VC_MODE        = ni_params_pkg::NOC_DAT_VC_MODE,
     parameter int unsigned DAT_RX_VC_DEPTH        = 32,
@@ -66,7 +66,7 @@ module nmu_response_path #(
     nmu_ordering #(
         .B_ROB_DEPTH            (B_ROB_DEPTH           ),
         .R_ROB_DEPTH            (R_ROB_DEPTH           ),
-        .MAX_ACTIVE_IDS         (MAX_ACTIVE_IDS        ),
+        .NUM_IDS                (NUM_IDS               ),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
         .R_ROB_EN               (R_ROB_EN              )
     ) i_ordering (

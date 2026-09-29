@@ -8,9 +8,8 @@
 
 // Request transport and ID ownership. Ordering is supplied by the response path.
 module nmu_request_path #(
-    parameter int unsigned AXI_ID_WIDTH                              = ni_params_pkg::AXI_ID_WIDTH,
-    parameter int unsigned NOC_ID_WIDTH                              = ni_params_pkg::NOC_ID_WIDTH,
-    parameter int unsigned MAX_ACTIVE_IDS                            = 1 << (AXI_ID_WIDTH < NOC_ID_WIDTH ? AXI_ID_WIDTH : NOC_ID_WIDTH),
+    parameter int unsigned INPUT_ID_WIDTH                            = ni_params_pkg::AXI_ID_WIDTH,
+    parameter int unsigned OUTPUT_ID_WIDTH                           = ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned AXI_ADDR_WIDTH                            = ni_params_pkg::AXI_ADDR_WIDTH,
     parameter int unsigned AXI_DATA_WIDTH                            = ni_params_pkg::AXI_DATA_WIDTH,
     parameter int unsigned AXI_AWUSER_WIDTH                          = ni_params_pkg::AXI_AWUSER_WIDTH,
@@ -82,8 +81,8 @@ module nmu_request_path #(
     // External ID ownership belongs to NMU. This boundary stays in axi_clk_i;
     // downstream request and response CDC carry only fixed-width NoC IDs.
 
-    typedef logic [AXI_ID_WIDTH-1:0] external_id_t;
-    typedef logic [NOC_ID_WIDTH-1:0] internal_id_t;
+    typedef logic [INPUT_ID_WIDTH-1:0] external_id_t;
+    typedef logic [OUTPUT_ID_WIDTH-1:0] internal_id_t;
     typedef logic [AXI_ADDR_WIDTH-1:0] address_t;
     typedef logic [AXI_DATA_WIDTH-1:0] data_t;
     typedef logic [AXI_DATA_WIDTH/8-1:0] strobe_t;
@@ -159,10 +158,9 @@ module nmu_request_path #(
     assign axi_rd_i.rvalid  = external_rsp.r_valid;
 
     nmu_id_remap #(
-        .AXI_ID_WIDTH           (AXI_ID_WIDTH          ),
-        .MAX_ACTIVE_IDS         (MAX_ACTIVE_IDS        ),
+        .INPUT_ID_WIDTH         (INPUT_ID_WIDTH        ),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
-        .NOC_ID_WIDTH           (NOC_ID_WIDTH          ),
+        .OUTPUT_ID_WIDTH        (OUTPUT_ID_WIDTH       ),
         .slv_req_t              (external_req_t        ),
         .slv_resp_t             (external_resp_t       ),
         .mst_req_t              (internal_req_t        ),
@@ -221,7 +219,7 @@ module nmu_request_path #(
     assign s_r_ready_o = internal_req.r_ready;
     nmu_request_fifo #(
         .AXI_FIFO_DEPTH (AXI_FIFO_DEPTH          ),
-        .AXI_ID_WIDTH   (NOC_ID_WIDTH            ),
+        .AXI_ID_WIDTH   (OUTPUT_ID_WIDTH            ),
         .aw_t           (ni_signals_pkg::noc_axi_aw_t),
         .w_t            (ni_signals_pkg::noc_axi_w_t ),
         .ar_t           (ni_signals_pkg::noc_axi_ar_t),

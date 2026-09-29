@@ -50,10 +50,9 @@ module axi_id_remap_case #(
     wire local_rst_n = rst_n_i && test_rst_n;
     if (NMU_REMAP) begin : gen_nmu
     nmu_id_remap #(
-        .AXI_ID_WIDTH    (AXI_ID_WIDTH),
-        .MAX_ACTIVE_IDS (MAX_UNIQ_IDS),
+        .INPUT_ID_WIDTH    (AXI_ID_WIDTH),
         .MAX_OUTSTANDING_PER_ID      (4           ),
-        .NOC_ID_WIDTH    (NOC_ID_WIDTH),
+        .OUTPUT_ID_WIDTH    (NOC_ID_WIDTH),
         .slv_req_t            (slv_req_t   ),
         .slv_resp_t           (slv_rsp_t   ),
         .mst_req_t            (mst_req_t   ),

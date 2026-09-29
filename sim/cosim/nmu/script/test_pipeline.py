@@ -35,7 +35,7 @@ cases = [
     ("tb_nmu_response_depacketize", {"NUM_DAT_VC": 6, "DAT_VC_MODE": 1, "DAT_RX_VC_DEPTH": 8}),
 ]
 if options.ordering_only:
-    cases = [("tb_nmu_ordering", {"MAX_ACTIVE_IDS": 3})]
+    cases = [("tb_nmu_ordering", {"NUM_IDS": 3})]
 results = []
 for top, params in cases:
     if options.rx_only and (top != "tb_nmu_response_depacketize" or params["NUM_DAT_VC"] != 2):

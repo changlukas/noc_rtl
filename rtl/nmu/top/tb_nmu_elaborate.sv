@@ -31,7 +31,7 @@ module tb_nmu_elaborate;
     logic         [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_crdvalid_o;
 
     nmu #(
-        .AXI_ID_WIDTH (8)
+        .INPUT_ID_WIDTH (8)
     ) dut (
         .ACLK              (ACLK             ),
         .ARESETn           (ARESETn          ),

@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module tb_nmu_ordering #(
-    parameter int unsigned MAX_ACTIVE_IDS = 1 << ni_params_pkg::NOC_ID_WIDTH
+    parameter int unsigned NUM_IDS = 1 << ni_params_pkg::NOC_ID_WIDTH
 );
     localparam int unsigned ID_W = ni_params_pkg::NOC_ID_WIDTH;
     localparam int unsigned LEN_W = 8;
@@ -31,7 +31,7 @@ module tb_nmu_ordering #(
     int unsigned b_retire_count = 0, r_retire_count = 0, cycle_count = 0;
 
     nmu_ordering #(
-        .MAX_ACTIVE_IDS         (MAX_ACTIVE_IDS),
+        .NUM_IDS         (NUM_IDS),
         .B_ROB_DEPTH            (8   ),
         .R_ROB_DEPTH            (16  ),
         .MAX_OUTSTANDING_PER_ID (4   ),
@@ -57,7 +57,7 @@ module tb_nmu_ordering #(
     task automatic send_aw(input int id, input int dst);
         @(negedge clk_i);
         s_aw_i                           = '0;
-        s_aw_i.axi.awid                  = ID_W'(id % MAX_ACTIVE_IDS);
+        s_aw_i.axi.awid                  = ID_W'(id % NUM_IDS);
         s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
         s_aw_valid_i                     = 1;
         do @(posedge clk_i); while (!s_aw_ready_o);
@@ -70,7 +70,7 @@ module tb_nmu_ordering #(
     task automatic send_b(input int id, input bit ordered, input int tag, input logic [1:0] resp);
         @(negedge clk_i);
         s_b_i                   = '0;
-        s_b_i.axi.bid           = ID_W'(id % MAX_ACTIVE_IDS);
+        s_b_i.axi.bid           = ID_W'(id % NUM_IDS);
         s_b_i.axi.bresp         = resp;
         s_b_i.meta.ordering_req = ordered;
         s_b_i.meta.ordering_tag = TAG_W'(tag);
@@ -83,7 +83,7 @@ module tb_nmu_ordering #(
     task automatic send_ar(input int id, input int dst, input int len);
         @(negedge clk_i);
         s_ar_i                     = '0;
-        s_ar_i.axi.arid            = ID_W'(id % MAX_ACTIVE_IDS);
+        s_ar_i.axi.arid            = ID_W'(id % NUM_IDS);
         s_ar_i.axi.arlen           = LEN_W'(len);
         s_ar_i.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
         s_ar_valid_i               = 1;
@@ -100,7 +100,7 @@ module tb_nmu_ordering #(
     );
         @(negedge clk_i);
         s_r_i                   = '0;
-        s_r_i.axi.rid           = ID_W'(id % MAX_ACTIVE_IDS);
+        s_r_i.axi.rid           = ID_W'(id % NUM_IDS);
         s_r_i.axi.rdata         = ni_params_pkg::AXI_DATA_WIDTH'(data);
         s_r_i.axi.rlast         = last;
         s_r_i.meta.ordering_req = ordered;
@@ -161,7 +161,7 @@ module tb_nmu_ordering #(
         // remains blocked until the collective response retires.
         @(negedge clk_i);
         s_aw_i                           = '0;
-        s_aw_i.axi.awid                  = ID_W'(4 % MAX_ACTIVE_IDS);
+        s_aw_i.axi.awid                  = ID_W'(4 % NUM_IDS);
         s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(1);
         s_aw_i.route.collective_op       = COLLECTIVE_OP_W'(ni_flit_pkg::COLLECTIVE_OP_MULTICAST);
         s_aw_valid_i                     = 1;
@@ -171,7 +171,7 @@ module tb_nmu_ordering #(
 
         @(negedge clk_i);
         s_aw_i                           = '0;
-        s_aw_i.axi.awid                  = ID_W'(4 % MAX_ACTIVE_IDS);
+        s_aw_i.axi.awid                  = ID_W'(4 % NUM_IDS);
         s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(1);
         s_aw_valid_i                     = 1;
         repeat (3) begin
@@ -185,7 +185,7 @@ module tb_nmu_ordering #(
         send_aw(4, 1);
         send_b(4, 0, 0, 2'b00);
 
-        $display("ORDERING_CAPACITY_PASS active_ids=%0d", MAX_ACTIVE_IDS);
+        $display("ORDERING_CAPACITY_PASS active_ids=%0d", NUM_IDS);
         $finish;
     end
 

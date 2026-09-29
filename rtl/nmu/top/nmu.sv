@@ -6,9 +6,8 @@
 
 // Network Master Unit production top-level interface and parameter contract.
 module nmu #(
-    parameter int unsigned AXI_ID_WIDTH                              = ni_params_pkg::AXI_ID_WIDTH,
-    parameter int unsigned NOC_ID_WIDTH                              = ni_params_pkg::NOC_ID_WIDTH,
-    parameter int unsigned MAX_ACTIVE_IDS                            = 1 << (AXI_ID_WIDTH < NOC_ID_WIDTH ? AXI_ID_WIDTH : NOC_ID_WIDTH),
+    parameter int unsigned INPUT_ID_WIDTH                            = ni_params_pkg::AXI_ID_WIDTH,
+    parameter int unsigned OUTPUT_ID_WIDTH                           = ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned AXI_ADDR_WIDTH                            = ni_params_pkg::AXI_ADDR_WIDTH,
     parameter int unsigned AXI_DATA_WIDTH                            = ni_params_pkg::AXI_DATA_WIDTH,
     parameter int unsigned AXI_AWUSER_WIDTH                          = ni_params_pkg::AXI_AWUSER_WIDTH,
@@ -72,21 +71,19 @@ module nmu #(
     output wire logic                        [NUM_DAT_VC-1:0] rx_dat_crdvalid_o
 );
 
+    localparam int unsigned NUM_IDS =
+        1 << (INPUT_ID_WIDTH < OUTPUT_ID_WIDTH ? INPUT_ID_WIDTH : OUTPUT_ID_WIDTH);
+
     localparam int unsigned REQ_FLIT_W = $bits(ni_flit_pkg::req_flit_t);
     localparam int unsigned RSP_FLIT_W = $bits(ni_flit_pkg::rsp_flit_t);
     localparam int unsigned DAT_FLIT_W = $bits(ni_flit_pkg::dat_flit_t);
 
-    if (AXI_ID_WIDTH < 1 || AXI_ID_WIDTH > 8) begin : gen_invalid_axi_id_width
-        initial $fatal(0, "Error: AXI_ID_WIDTH must be in [1, 8] (instance %m)");
+    if (INPUT_ID_WIDTH < 1 || INPUT_ID_WIDTH > 8) begin : gen_invalid_axi_id_width
+        initial $fatal(0, "Error: INPUT_ID_WIDTH must be in [1, 8] (instance %m)");
     end
 
-    if (MAX_ACTIVE_IDS < 1 || MAX_ACTIVE_IDS > (1 << NOC_ID_WIDTH) ||
-            MAX_ACTIVE_IDS > (1 << AXI_ID_WIDTH)) begin : gen_invalid_active_ids
-        initial $fatal(0, "MAX_ACTIVE_IDS exceeds the AXI or NoC ID space (%m)");
-    end
-
-    if (NOC_ID_WIDTH != ni_params_pkg::NOC_ID_WIDTH) begin : gen_invalid_noc_id_width
-        initial $fatal(0, "Error: NOC_ID_WIDTH must match the generated fixed width (instance %m)");
+    if (OUTPUT_ID_WIDTH != ni_params_pkg::NOC_ID_WIDTH) begin : gen_invalid_noc_id_width
+        initial $fatal(0, "Error: OUTPUT_ID_WIDTH must match the generated fixed width (instance %m)");
     end
 
     if (AXI_ADDR_WIDTH < 1 || AXI_ADDR_WIDTH > 64) begin : gen_invalid_axi_addr_width
@@ -182,8 +179,8 @@ module nmu #(
     wire logic                             axi_r_ready;
 
     nmu_request_path #(
-        .AXI_ID_WIDTH           (AXI_ID_WIDTH          ),
-        .NOC_ID_WIDTH           (NOC_ID_WIDTH          ),
+        .INPUT_ID_WIDTH         (INPUT_ID_WIDTH        ),
+        .OUTPUT_ID_WIDTH        (OUTPUT_ID_WIDTH       ),
         .AXI_ADDR_WIDTH         (AXI_ADDR_WIDTH        ),
         .AXI_DATA_WIDTH         (AXI_DATA_WIDTH        ),
         .AXI_AWUSER_WIDTH       (AXI_AWUSER_WIDTH      ),
@@ -192,7 +189,6 @@ module nmu #(
         .NOC_DAT_VC_MODE        (NOC_DAT_VC_MODE       ),
         .REQ_FIFO_DEPTH         (REQ_FIFO_DEPTH        ),
         .NOC_ROUTER_VC_DEPTH    (NOC_ROUTER_VC_DEPTH   ),
-        .MAX_ACTIVE_IDS         (MAX_ACTIVE_IDS        ),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
         .AW_SAM_REG_TYPE        (AW_SAM_REG_TYPE       ),
         .AR_SAM_REG_TYPE        (AR_SAM_REG_TYPE       ),
@@ -259,7 +255,7 @@ module nmu #(
         .B_ROB_DEPTH            (B_ROB_DEPTH           ),
         .R_ROB_DEPTH            (R_ROB_DEPTH           ),
         .R_ROB_EN               (R_ROB_EN              ),
-        .MAX_ACTIVE_IDS         (MAX_ACTIVE_IDS        ),
+        .NUM_IDS                (NUM_IDS               ),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
         .RSP_RX_FIFO_DEPTH      (RSP_RX_FIFO_DEPTH     ),
         .B_FIFO_DEPTH           (B_FIFO_DEPTH          ),

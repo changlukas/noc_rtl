@@ -6,7 +6,7 @@
 
 /* Shared NMU request-ordering and response-reordering subsystem. */
 module nmu_ordering #(
-    parameter int unsigned MAX_ACTIVE_IDS         = 1 << ni_params_pkg::NOC_ID_WIDTH,
+    parameter int unsigned NUM_IDS                = 1 << ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned B_ROB_DEPTH            = ni_params_pkg::NMU_ROB_B_DEPTH,
     parameter int unsigned R_ROB_DEPTH            = ni_params_pkg::NMU_ROB_R_DEPTH,
     parameter int unsigned MAX_OUTSTANDING_PER_ID = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
@@ -50,7 +50,6 @@ module nmu_ordering #(
     assign m_r_o = retire_response;
 
     localparam int unsigned ID_W              = $bits(s_aw_i.axi.awid);
-    localparam int unsigned NUM_IDS           = MAX_ACTIVE_IDS;
     localparam int unsigned ID_IDX_W          = NUM_IDS > 1 ? $clog2(NUM_IDS) : 1;
     localparam int unsigned TAG_W             = ni_flit_pkg::ORDERING_TAG_WIDTH;
     localparam int unsigned NUM_TAGS          = 1 << TAG_W;
@@ -60,8 +59,8 @@ module nmu_ordering #(
     localparam int unsigned B_ROB_ADDR_W      = B_ROB_DEPTH > 1 ? $clog2(B_ROB_DEPTH) : 1;
     localparam int unsigned R_ROB_ADDR_W      = R_ROB_DEPTH > 1 ? $clog2(R_ROB_DEPTH) : 1;
 
-    if (MAX_ACTIVE_IDS < 1 || MAX_ACTIVE_IDS > (1 << ID_W)) begin : gen_invalid_active_ids
-        initial $fatal(0, "MAX_ACTIVE_IDS exceeds the NoC ID space (%m)");
+    if (NUM_IDS < 1 || NUM_IDS > (1 << ID_W)) begin : gen_invalid_active_ids
+        initial $fatal(0, "NUM_IDS exceeds the NoC ID space (%m)");
     end
     if (B_ROB_DEPTH < 1 || B_ROB_DEPTH > NUM_TAGS) begin : gen_invalid_b_depth
         initial $fatal(0, "Error: B_ROB_DEPTH must be in [1, NUM_TAGS] (instance %m)");
