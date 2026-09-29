@@ -684,11 +684,6 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_nsu/axi_rsp_i.rvalid
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_nsu/axi_req_o.rready
 endSubGroup "WEST response delay"
 
-addGroup "Ordering coverage"
+addGroup "AXI ordering checker"
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/reorder_test
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/ingress_b_ooo
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/ingress_r_ooo
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/ingress_b_same_id_ooo
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/ingress_r_same_id_ooo
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/buffered_b_cnt
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/buffered_r_cnt
+addSignal -h 15 /tb_nmu_cosim/ordering_done

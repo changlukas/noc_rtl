@@ -38,10 +38,14 @@ log = r.stdout.decode(errors="replace")
 log_path = report / (a.case + ("_corrupt" if a.corrupt else "") + ".log")
 diagnostics = re.sub(r"Warning: [^\n]*\nMacro 'FFARN' is deprecated\. Use 'FF' instead\.\n", "", log)
 failed = r.returncode != 0 or bool(re.search(r"(?im)^(?:Warning:|Error:|Fatal:)|\b(?:mismatch|does not match|Assertion failed)\b", diagnostics))
-passed = "NMU_COSIM_COUNTS" in log and not failed
+passed = "NMU_COSIM_COUNTS" in log and "AXI_ORDERING_CHECK_DRAINED" in log and not failed
 if a.corrupt:
-    passed = (r.returncode == 0 and "Unexpected RData" in log and
-              "NMU_COSIM_COUNTS" in log and not re.search(r"(?m)^(?:Fatal:|Error:)", log))
+    errors = re.findall(r"(?m)^Error: [^\n]*\n([^\n]*)", log)
+    fatals = re.findall(r"(?m)^Fatal: [^\n]*\n([^\n]*)", log)
+    passed = (r.returncode in (0, 1) and "Unexpected RData" in log and
+              bool(errors) and all(message == "R mismatch" for message in errors) and
+              all(message == "AXI ordering checker has pending transactions" for message in fatals) and
+              "i_ordering_checker" in log)
 if passed:
     log += "NMU_COSIM_CORRUPTION_DETECTED\n" if a.corrupt else "NMU_COSIM_PASS\n"
 log_path.write_text(log)

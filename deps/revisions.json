@@ -34,5 +34,11 @@
     "source_repository": "https://github.com/changlukas/noc_project.git",
     "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
     "source_path": "sim/dv/common_verification-0.2.5"
+  },
+  {
+    "name": "floonoc-dv",
+    "url": "https://github.com/pulp-platform/FlooNoC.git",
+    "revision": "6ea0648407e7d989b7ec3a1ce6eaa2045b7cd114",
+    "source_path": "hw/test/axi_reorder_compare.sv"
   }
 ]

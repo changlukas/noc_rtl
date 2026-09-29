@@ -57,6 +57,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
                      "deps/common_cells-1.37.0/src/stream_delay.sv",
                      "deps/axi-0.39.7/src/axi_delayer.sv",
                      "deps/axi-0.39.7/src/axi_sim_mem.sv",
+                     "deps/floonoc-dv/axi_reorder_compare.sv",
                      "sim/cosim/nmu/tb_nmu_cosim.sv"):
         copy(ROOT / relative, "repo/" + relative)
         source_list.append("repo/" + relative)
@@ -69,6 +70,9 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         "rtl/nmu/response_depacketize/tb_response_depacketize.sv",
     ):
         copy(ROOT / relative, "repo/" + relative)
+    for path in (ROOT / "deps/floonoc-dv").rglob("*"):
+        if path.is_file() and path.suffix != ".sv":
+            copy(path, "repo/" + str(path.relative_to(ROOT)))
     topo = ROOT / "sim/cosim/nmu/topology.yml"
     (out / "topology_pkg.sv").write_text(emit_sam_pkg(yaml.safe_load(topo.read_text())))
     (out / "files.f").write_text("\n".join(source_list) + "\n")

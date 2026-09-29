@@ -1,5 +1,6 @@
 `timescale 1ps / 1ps
 `include "axi/assign.svh"
+`include "axi/typedef.svh"
 module tb_nmu_cosim #(
     parameter int unsigned AXI_ID_WIDTH = ni_params_pkg::AXI_ID_WIDTH,
     parameter int unsigned MAX_ACTIVE_IDS = 1 << (AXI_ID_WIDTH < ni_params_pkg::NOC_ID_WIDTH ?
@@ -72,6 +73,66 @@ module tb_nmu_cosim #(
     axi_if #(.ADDR_W(AXI_ADDR_WIDTH), .DATA_W(AXI_DATA_WIDTH),
         .ID_W     (AXI_ID_WIDTH),
         .AWUSER_W (AXI_AWUSER_WIDTH)) bus();
+    typedef logic [AXI_ADDR_WIDTH-1:0] mon_addr_t;
+    typedef logic [AXI_ID_WIDTH-1:0] mon_id_t;
+    typedef logic [AXI_DATA_WIDTH-1:0] mon_data_t;
+    typedef logic [AXI_DATA_WIDTH/8-1:0] mon_strb_t;
+    typedef logic [AXI_AWUSER_WIDTH-1:0] mon_user_t;
+    `AXI_TYPEDEF_ALL(mon, mon_addr_t, mon_id_t, mon_data_t, mon_strb_t, mon_user_t)
+    typedef struct packed {
+        int unsigned idx;
+        mon_addr_t start_addr;
+        mon_addr_t end_addr;
+    } mon_rule_t;
+    function automatic mon_rule_t [topology_pkg::SAM_NUM_RULES-1:0] monitor_rules();
+        for (int r = 0; r < topology_pkg::SAM_NUM_RULES; r++) begin
+            monitor_rules[r].start_addr = topology_pkg::SAM[r].start_addr;
+            monitor_rules[r].end_addr   = topology_pkg::SAM[r].end_addr;
+            for (int n = 0; n < NUM_NSUS; n++) begin
+                if (topology_pkg::SAM[r].idx.dst_id == nsu_id(n+1))
+                    monitor_rules[r].idx = n;
+            end
+        end
+    endfunction
+    localparam mon_rule_t [topology_pkg::SAM_NUM_RULES-1:0] MON_RULES = monitor_rules();
+    mon_req_t mon_mst_raw;
+    mon_req_t mon_mst_req;
+    mon_resp_t mon_mst_rsp;
+    mon_req_t [NUM_NSUS-1:0] mon_slv_req;
+    mon_resp_t [NUM_NSUS-1:0] mon_slv_rsp;
+    wire ordering_done;
+    `AXI_ASSIGN_TO_REQ(mon_mst_raw, vip)
+    // AWUSER is NI-local metadata; WUSER/ARUSER are tied off at the DUT input.
+    always_comb begin
+        mon_mst_req         = mon_mst_raw;
+        mon_mst_req.aw.user = '0;
+        mon_mst_req.w.user  = '0;
+        mon_mst_req.ar.user = '0;
+    end
+    `AXI_ASSIGN_TO_RESP(mon_mst_rsp, vip)
+    axi_reorder_compare #(
+        .NumSlaves      (NUM_NSUS),
+        .AxiIdWidth     (AXI_ID_WIDTH),
+        .NumAddrRegions (topology_pkg::SAM_NUM_RULES),
+        .addr_t         (mon_addr_t),
+        .rule_t         (mon_rule_t),
+        .AddrRegions    (MON_RULES),
+        .aw_chan_t      (mon_aw_chan_t),
+        .w_chan_t       (mon_w_chan_t),
+        .b_chan_t       (mon_b_chan_t),
+        .ar_chan_t      (mon_ar_chan_t),
+        .r_chan_t       (mon_r_chan_t),
+        .req_t          (mon_req_t),
+        .rsp_t          (mon_resp_t)
+    ) i_ordering_checker (
+        .clk_i          (clk),
+        .rst_ni         (axi_rst_n),
+        .mon_mst_req_i  (mon_mst_req),
+        .mon_mst_rsp_i  (mon_mst_rsp),
+        .mon_slv_req_i  (mon_slv_req),
+        .mon_slv_rsp_i  (mon_slv_rsp),
+        .end_of_sim_o   (ordering_done)
+    );
     longint unsigned router_ctx, nsu_ctx[NUM_NSUS];
     wire [NUM_PORTS-1:0] tx_req_valid, rx_req_valid;
     wire [NOC_REQ_FLIT_WIDTH-1:0] tx_req_flit [NUM_PORTS], rx_req_flit [NUM_PORTS];
@@ -194,6 +255,8 @@ module tb_nmu_cosim #(
         AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
             .AXI_ID_WIDTH   (NSU_AXI_ID_WIDTH),
             .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) delayed_bus();
+        `AXI_ASSIGN_TO_REQ(mon_slv_req[n], mem_bus)
+        `AXI_ASSIGN_TO_RESP(mon_slv_rsp[n], mem_bus)
         int b_wait_start = -1, r_wait_start = -1;
         int sample_cycle = 0;
         always @(posedge clk) begin
@@ -412,133 +475,6 @@ module tb_nmu_cosim #(
     int overlap_cnt = 0, w_during_read_cnt = 0, r_during_write_cnt = 0;
     bit concurrent_active = 0;
 
-    typedef struct packed {
-        int id;
-        int tag;
-        int dst;
-        int seq;
-        bit reorder;
-    } order_txn_t;
-    order_txn_t pending_b[$], pending_r[$];
-    order_txn_t expected_b[2**NOC_ID_WIDTH][$];
-    bit b_arrived[int];
-    int issue_b_cnt = 0, issue_r_cnt = 0;
-    int ingress_b_ooo = 0, ingress_r_ooo = 0;
-    int ingress_b_same_id_ooo = 0, ingress_r_same_id_ooo = 0;
-    int buffered_b_cnt = 0, buffered_r_cnt = 0;
-    ni_types_pkg::nmu_aw_request_t issued_aw;
-    ni_types_pkg::nmu_ar_request_t issued_ar;
-    ni_flit_pkg::rsp_flit_t ingress_rsp;
-    ni_flit_pkg::dat_flit_t ingress_dat;
-    assign issued_aw = dut.i_response_path.i_ordering.m_aw_o;
-    assign issued_ar = dut.i_response_path.i_ordering.m_ar_o;
-    assign ingress_rsp = tx_rsp_flit[NMU_PORT];
-    assign ingress_dat = tx_dat_flit[NMU_PORT];
-
-    task automatic check_arrival(input bit is_read, input int id, tag, dst,
-                                 input bit reorder, last);
-        order_txn_t txn;
-        int found;
-        found = -1;
-        if (is_read) begin
-            foreach (pending_r[i]) begin
-                if (found < 0 && pending_r[i].id == id && pending_r[i].dst == dst &&
-                    pending_r[i].reorder == reorder && (!reorder || pending_r[i].tag == tag))
-                    found = i;
-            end
-            if (found < 0) $fatal(1, "Unmatched R at NMU ingress");
-            if (last) begin
-                if (found != 0) ingress_r_ooo++;
-                for (int i = 0; i < found; i++) begin
-                    if (pending_r[i].id == id) begin
-                        ingress_r_same_id_ooo++;
-                        break;
-                    end
-                end
-                txn = pending_r[found];
-                pending_r.delete(found);
-            end
-        end else begin
-            foreach (pending_b[i]) begin
-                if (found < 0 && pending_b[i].id == id && pending_b[i].dst == dst &&
-                    pending_b[i].reorder == reorder && (!reorder || pending_b[i].tag == tag))
-                    found = i;
-            end
-            if (found < 0) $fatal(1, "Unmatched B at NMU ingress");
-            if (found != 0) ingress_b_ooo++;
-            for (int i = 0; i < found; i++) begin
-                if (pending_b[i].id == id) begin
-                    ingress_b_same_id_ooo++;
-                    break;
-                end
-            end
-            txn = pending_b[found];
-            b_arrived[txn.seq] = 1'b1;
-            pending_b.delete(found);
-        end
-        if (last) $display("INGRESS_ORDER channel=%s seq=%0d id=%0d src=%0h tag=%0d time=%0t",
-            is_read ? "R" : "B", txn.seq, id, dst, tag, $time);
-    endtask
-
-    always @(posedge clk) begin : check_order
-        order_txn_t txn;
-        int ch, id, tag, dst;
-        bit reorder, last;
-        if (noc_rst_n && reorder_test != 0) begin
-            if (dut.i_response_path.i_ordering.m_aw_valid_o && dut.i_response_path.i_ordering.m_aw_ready_i) begin
-                txn = '{int'(issued_aw.axi.awid), int'(issued_aw.meta.ordering_tag),
-                    int'(issued_aw.meta.route.domain.dst_id), issue_b_cnt++, issued_aw.meta.ordering_req};
-                pending_b.push_back(txn);
-                expected_b[txn.id].push_back(txn);
-            end
-            if (dut.i_response_path.i_ordering.m_ar_valid_o && dut.i_response_path.i_ordering.m_ar_ready_i) begin
-                txn = '{int'(issued_ar.axi.arid), int'(issued_ar.meta.ordering_tag),
-                    int'(issued_ar.meta.route.domain.dst_id), issue_r_cnt++, issued_ar.meta.ordering_req};
-                pending_r.push_back(txn);
-            end
-            if (tx_rsp_valid[NMU_PORT] && tx_rsp_ready[NMU_PORT]) begin
-                ch = ingress_rsp.header[ni_flit_pkg::AXI_CH_LSB +: ni_flit_pkg::AXI_CH_WIDTH];
-                reorder = ingress_rsp.header[ni_flit_pkg::ORDERING_REQ_LSB];
-                tag = ingress_rsp.header[ni_flit_pkg::ORDERING_TAG_LSB +: ni_flit_pkg::ORDERING_TAG_WIDTH];
-                dst = ingress_rsp.header[ni_flit_pkg::SRC_ID_LSB +: ni_flit_pkg::SRC_ID_WIDTH];
-                if (ch == ni_flit_pkg::AXI_CH_NarrowR) begin
-                    id = ingress_rsp.payload[ni_flit_pkg::NARROW_R_RID_LSB +: ni_flit_pkg::NARROW_R_RID_WIDTH];
-                    last = ingress_rsp.payload[ni_flit_pkg::NARROW_R_RLAST_LSB];
-                    check_arrival(1'b1, id, tag, dst, reorder, last);
-                end else begin
-                    id = ingress_rsp.payload[ni_flit_pkg::B_BID_LSB +: ni_flit_pkg::B_BID_WIDTH];
-                    check_arrival(1'b0, id, tag, dst, reorder, 1'b1);
-                end
-            end
-            if (tx_dat_valid[NMU_PORT]) begin
-                id = ingress_dat.payload[ni_flit_pkg::DATA_R_RID_LSB +: ni_flit_pkg::DATA_R_RID_WIDTH];
-                tag = ingress_dat.header[ni_flit_pkg::ORDERING_TAG_LSB +: ni_flit_pkg::ORDERING_TAG_WIDTH];
-                dst = ingress_dat.header[ni_flit_pkg::SRC_ID_LSB +: ni_flit_pkg::SRC_ID_WIDTH];
-                reorder = ingress_dat.header[ni_flit_pkg::ORDERING_REQ_LSB];
-                last = ingress_dat.payload[ni_flit_pkg::DATA_R_RLAST_LSB];
-                check_arrival(1'b1, id, tag, dst, reorder, last);
-            end
-            if (dut.i_response_path.i_ordering.b_retire) begin
-                id = dut.i_response_path.i_ordering.m_b_o.bid;
-                if (expected_b[id].size() == 0) $fatal(1, "Unsolicited B retirement");
-                txn = expected_b[id].pop_front();
-                if (!b_arrived.exists(txn.seq)) $fatal(1, "B retired before its response arrived");
-                if (dut.i_response_path.i_ordering.b_direct) begin
-                    if (txn.reorder != dut.i_response_path.i_ordering.s_b_i.meta.ordering_req ||
-                        (txn.reorder && txn.tag != dut.i_response_path.i_ordering.s_b_i.meta.ordering_tag))
-                        $fatal(1, "B direct retirement order mismatch");
-                end else begin
-                    if (!txn.reorder || txn.tag != dut.i_response_path.i_ordering.b_storage_rd_addr)
-                        $fatal(1, "B buffered retirement order mismatch");
-                    buffered_b_cnt++;
-                end
-                b_arrived.delete(txn.seq);
-            end
-            if (dut.i_response_path.i_ordering.r_retire && !dut.i_response_path.i_ordering.r_direct)
-                buffered_r_cnt++;
-        end
-    end
-
     function automatic void expect_reads(input master_t source);
         foreach (source.ar_queue[i]) begin
             expected_ar[source.ar_queue[i].ax_id].push_back(source.ar_queue[i]);
@@ -696,21 +632,8 @@ module tb_nmu_cosim #(
             $fatal(1, "Required capacity saturation was not reached");
         if (concurrent_rw && (overlap_cnt == 0 || w_during_read_cnt == 0 || r_during_write_cnt == 0))
             $fatal(1, "Read/write concurrency was not exercised");
-        $display("REORDER_COVERAGE b_ooo=%0d r_ooo=%0d b_same_id=%0d r_same_id=%0d b_buffered=%0d r_buffered=%0d",
-            ingress_b_ooo, ingress_r_ooo, ingress_b_same_id_ooo, ingress_r_same_id_ooo,
-            buffered_b_cnt, buffered_r_cnt);
-        for (int n = 0; n < NUM_NSUS; n++) begin
-            $display("DESTINATION port=%0d writes=%0d reads=%0d", n + 1, dst_wr_cnt[n], dst_rd_cnt[n]);
-            if (reorder_test != 0 && (dst_wr_cnt[n] == 0 || dst_rd_cnt[n] == 0))
-                $fatal(1, "Ordering case did not exercise every destination");
-        end
-        if (reorder_test != 0 && (pending_b.size() != 0 || pending_r.size() != 0))
-            $fatal(1, "Pending ingress responses remain");
-        if (reorder_test != 0 && (ingress_b_ooo == 0 || ingress_r_ooo == 0))
-            $fatal(1, "Required response disorder was not reached");
-        if (reorder_test == 2 && (ingress_b_same_id_ooo == 0 || ingress_r_same_id_ooo == 0 ||
-                buffered_b_cnt == 0 || buffered_r_cnt == 0))
-            $fatal(1, "Required same-ID reordering was not reached");
+        if (!ordering_done) $fatal(1, "AXI ordering checker has pending transactions");
+        $display("AXI_ORDERING_CHECK_DRAINED");
         scoreboard.reset();
         $display("NMU_COSIM_COUNTS writes=%0d reads=%0d r_beats=%0d checked_bytes=%0d",
             b_count, r_count, r_beats, checked_bytes);
