@@ -4,7 +4,7 @@
 `default_nettype none
 
 // Network injection: packet locks, VC ownership and local FIFO admission.
-module nmu_channel_assign #(
+module tx_channel_assign #(
     parameter int unsigned NUM_DAT_VC  = ni_params_pkg::NUM_DAT_VC,
     parameter int unsigned DAT_VC_MODE = ni_params_pkg::NOC_DAT_VC_MODE
 ) (

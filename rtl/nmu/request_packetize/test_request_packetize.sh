@@ -27,9 +27,10 @@ task_sources=(
     "$task_root/deps/common_cells-1.37.0/src/lzc.sv"
     "$task_root/deps/common_cells-1.37.0/src/rr_arb_tree.sv"
     "$task_root/rtl/common/stream_register.sv"
-    "$task_root/rtl/nmu/channel_assign/channel_assign.sv"
+    "$task_root/rtl/nmu/channel_assign/tx_channel_assign.sv"
     "$task_root/rtl/nmu/request_path/write_context.sv"
-    "$task_root/rtl/nmu/channel_assign/request_buffer.sv"
+    "$task_root/rtl/nmu/channel_assign/tx_credit_buffer.sv"
+    "$task_root/rtl/nmu/channel_assign/tx_vc_arbiter.sv"
     "$task_root/rtl/nmu/request_packetize/request_packetize.sv"
     "$task_root/rtl/nmu/request_packetize/request_inject_tb_dut.sv"
 )

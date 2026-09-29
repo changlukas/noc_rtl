@@ -129,7 +129,7 @@ module tb_nmu_request_packetize_stress #(
                 if (vc >= WRITE_VCS || credit[vc] == 0) $fatal(1, "illegal or empty DAT VC");
                 credit[vc]--;
                 pending_credit[vc]++;
-                if (vc != 0 && credit[0] == 0 && !dut.i_tx_buffer.dat_empty[0])
+                if (vc != 0 && credit[0] == 0 && !dut.i_tx_credit_buffer.dat_empty[0])
                     vc_bypass_count++;
                 case (int'(m_dat_o.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB]))
                     ni_flit_pkg::AXI_CH_DataAw: begin

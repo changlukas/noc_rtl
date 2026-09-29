@@ -25,6 +25,9 @@ module tb_nmu_response_depacketize #(
     logic [NUM_DAT_VC-1:0] expected_credit = '0;
     nmu_r_response_t held_r;
     bit held = 0;
+    int class_rr_checks = 0;
+    int class_rr_pending = 0;
+    bit last_data_class = 0;
     int fault = 0;
     initial void'($value$plusargs("fault=%d", fault));
 
@@ -35,7 +38,7 @@ module tb_nmu_response_depacketize #(
     wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] rx_dat_head;
     wire rx_rsp_valid, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] rx_dat_valid, rx_dat_ready;
-    nmu_response_buffer #(
+    rx_credit_buffer #(
         .RSP_FIFO_DEPTH  (2              ),
         .NUM_DAT_VC      (NUM_DAT_VC     ),
         .DAT_VC_MODE     (DAT_VC_MODE    ),
@@ -56,17 +59,29 @@ module tb_nmu_response_depacketize #(
         .m_dat_valid_o         (rx_dat_valid      ),
         .m_dat_ready_i         (rx_dat_ready      )
     );
-    nmu_rx_channel_assign #(
+    wire ni_flit_pkg::dat_flit_t selected_dat;
+    wire selected_dat_valid, selected_dat_ready;
+    rx_vc_arbiter #(
         .NUM_DAT_VC (NUM_DAT_VC)
-    ) i_rx_channel_assign (
+    ) i_rx_vc_arbiter (
+        .clk_i         (clk),
+        .rst_n_i       (rst_n_i),
+        .s_dat_i       (rx_dat_head),
+        .s_dat_valid_i (rx_dat_valid),
+        .s_dat_ready_o (rx_dat_ready),
+        .m_dat_o       (selected_dat),
+        .m_dat_valid_o (selected_dat_valid),
+        .m_dat_ready_i (selected_dat_ready)
+    );
+    rx_channel_assign i_rx_channel_assign (
         .clk_i         (clk),
         .rst_n_i       (rst_n_i),
         .s_rsp_i       (rx_rsp_head),
         .s_rsp_valid_i (rx_rsp_valid),
         .s_rsp_ready_o (rx_rsp_ready),
-        .s_dat_i       (rx_dat_head),
-        .s_dat_valid_i (rx_dat_valid),
-        .s_dat_ready_o (rx_dat_ready),
+        .s_dat_i       (selected_dat),
+        .s_dat_valid_i (selected_dat_valid),
+        .s_dat_ready_o (selected_dat_ready),
         .m_b_o         (buffered_b),
         .m_b_valid_o   (buffered_b_valid),
         .m_b_ready_i   (buffered_b_ready),
@@ -138,6 +153,7 @@ module tb_nmu_response_depacketize #(
     always @(posedge clk) begin : check
         int vc;
         if (~rst_n_i) begin
+            class_rr_pending = 0;
             held            = 0;
             expected_credit = '0;
             for (int n = 0; n <= NUM_DAT_VC; n++) begin
@@ -150,6 +166,18 @@ module tb_nmu_response_depacketize #(
             if (credit_return !== '0) $fatal(1, "credit pulse during reset");
         end else if (fault == 0) begin
             if (buffered_r_ready && |i_rx_channel_assign.r_valid && !buffered_r_valid) $fatal(1, "avoidable R output bubble");
+            // A held request snapshot can precede a newly arriving competitor.
+            // Check alternating grants after two continuously contended transfers.
+            if (buffered_r_valid && buffered_r_ready) begin
+                if (rx_rsp_valid && i_rx_channel_assign.is_r && selected_dat_valid) begin
+                    if (class_rr_pending >= 2 && last_data_class ==
+                            (buffered_r.header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataR)))
+                        $fatal(1, "control/data RR did not alternate under contention");
+                    if (class_rr_pending >= 2) class_rr_checks++;
+                    if (class_rr_pending < 2) class_rr_pending++;
+                    last_data_class = buffered_r.header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataR);
+                end else class_rr_pending = 0;
+            end
             if (held && (!r_valid || r !== held_r)) $fatal(1, "stalled R changed");
             held = r_valid && !r_ready; held_r = r;
             if (!$onehot0(credit_return)) $fatal(1, "multiple DAT pops");
@@ -277,6 +305,27 @@ module tb_nmu_response_depacketize #(
             if (total_b != start_b+1 || rd_cnt[NUM_DAT_VC] != start_r+1)
                 $fatal(1, "R-head recovery lost RSP response");
             $display("PASS shared RSP head wait: B/R, R/B, independent DAT, full/recovery");
+        end
+        begin : class_contention
+            // Exercise both arbitration levels with continuous control/data requests.
+            for (int cycle = 0; cycle < 96; cycle++) begin
+                sel = FIRST_VC + cycle % (NUM_DAT_VC-FIRST_VC);
+                if (credit[sel] + int'(credit_return[sel]) > 0) set_dat(sel);
+                else dat_valid = 0;
+                set_rsp(1);
+                @(negedge clk);
+            end
+            dat_valid = 0;
+            while (!rsp_ready) @(negedge clk);
+            @(negedge clk); rsp_valid = 0;
+            do begin
+                drained = 1;
+                for (int vc = 0; vc <= NUM_DAT_VC; vc++)
+                    if (rd_cnt[vc] != wr_cnt[vc]) drained = 0;
+                @(negedge clk);
+            end while (!drained);
+            if (class_rr_checks < 8) $fatal(1, "vacuous control/data RR coverage");
+            $display("PASS control/data two-level RR checks=%0d", class_rr_checks);
         end
         begin : throughput
             int sent, cycles, start_r;

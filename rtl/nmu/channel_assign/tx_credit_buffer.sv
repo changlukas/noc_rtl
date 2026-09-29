@@ -3,7 +3,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-module nmu_request_buffer #(
+module tx_credit_buffer #(
     parameter int unsigned REQ_FIFO_DEPTH  = 32,
     parameter int unsigned DAT_FIFO_DEPTH  = 32,
     parameter int unsigned NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
@@ -21,8 +21,9 @@ module nmu_request_buffer #(
     input  wire ni_flit_pkg::dat_flit_t                  s_dat_i,
     input  wire logic                                    s_dat_valid_i,
     output wire logic                   [NUM_DAT_VC-1:0] dat_ready_o,
-    output wire ni_flit_pkg::dat_flit_t                  m_dat_o,
-    output wire logic                                    m_dat_valid_o,
+    output wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
+    output wire logic                   [NUM_DAT_VC-1:0] m_dat_valid_o,
+    input  wire logic                   [NUM_DAT_VC-1:0] m_dat_ready_i,
     input  wire logic                   [NUM_DAT_VC-1:0] dat_credit_return_i
 );
     import ni_flit_pkg::*;
@@ -62,13 +63,13 @@ module nmu_request_buffer #(
         .pop_i   (m_req_valid_o && m_req_ready_i)
     );
     wire [VC_ID_WIDTH-1:0] wr_vc = s_dat_i.header[VC_ID_LSB +: VC_ID_WIDTH];
-    wire [NUM_WR_VC-1:0] dat_full, dat_empty, dat_pop, dat_grant, dat_req, credit_left;
+    wire [NUM_WR_VC-1:0] dat_full, dat_empty, dat_pop, dat_req, credit_left;
     wire dat_flit_t [NUM_WR_VC-1:0] dat_head;
-    wire dat_flit_t dat_sel;
-    wire dat_valid;
-    assign dat_pop = dat_grant & dat_req;
+    assign dat_pop = m_dat_ready_i[NUM_WR_VC-1:0] & dat_req;
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_dat_vc
         if (vc < NUM_WR_VC) begin : gen_write
+            assign m_dat_o[vc]       = dat_req[vc] ? dat_head[vc] : '0;
+            assign m_dat_valid_o[vc] = dat_req[vc];
             assign dat_ready_o[vc] = rst_n_i && !dat_full[vc];
             assign dat_req[vc] = rst_n_i && !dat_empty[vc] &&
                 (credit_left[vc] || dat_credit_return_i[vc]);
@@ -77,17 +78,17 @@ module nmu_request_buffer #(
                 .FallThrough (1'b0          ),
                 .data_t      (dat_flit_t    )
             ) i_fifo (
-                .clk_i   (clk_i),
-                .rst_ni  (rst_n_i),
-                .clr_i   (1'b0),
-                .flush_i (1'b0),
-                .full_o  (dat_full[vc]),
+                .clk_i   (clk_i        ),
+                .rst_ni  (rst_n_i      ),
+                .clr_i   (1'b0         ),
+                .flush_i (1'b0         ),
+                .full_o  (dat_full[vc] ),
                 .empty_o (dat_empty[vc]),
-                .usage_o (),
-                .data_i  (s_dat_i),
+                .usage_o (             ),
+                .data_i  (s_dat_i      ),
                 .push_i  (s_dat_valid_i && dat_ready_o[vc] && wr_vc == VC_ID_WIDTH'(vc)),
-                .data_o  (dat_head[vc]),
-                .pop_i   (dat_pop[vc])
+                .data_o (dat_head[vc]),
+                .pop_i  (dat_pop[vc] )
             );
             cc_credit_counter #(
                 .NumCredits (ROUTER_VC_DEPTH)
@@ -103,30 +104,11 @@ module nmu_request_buffer #(
                 .credit_full_o (                                  )
             );
         end else begin : gen_unused
-            assign dat_ready_o[vc] = 1'b0;
+            assign dat_ready_o[vc]   = 1'b0;
+            assign m_dat_o[vc]       = '0;
+            assign m_dat_valid_o[vc] = 1'b0;
         end
     end
-    rr_arb_tree #(
-        .NumIn     (NUM_WR_VC ),
-        .DataType  (dat_flit_t),
-        .AxiVldRdy (1'b1      ),
-        .LockIn    (1'b0      ),
-        .FairArb   (1'b1      )
-    ) i_dat_arb (
-        .clk_i   (clk_i    ),
-        .rst_ni  (rst_n_i  ),
-        .flush_i (1'b0     ),
-        .rr_i    ('0       ),
-        .req_i   (dat_req  ),
-        .gnt_o   (dat_grant),
-        .data_i  (dat_head ),
-        .req_o   (dat_valid),
-        .gnt_i   (rst_n_i  ),
-        .data_o  (dat_sel  ),
-        .idx_o   (         )
-    );
-    assign m_dat_valid_o = rst_n_i && dat_valid;
-    assign m_dat_o       = m_dat_valid_o ? dat_sel : '0;
     // synthesis translate_off
     always @(posedge clk_i) begin
         if (rst_n_i && s_dat_valid_i) begin

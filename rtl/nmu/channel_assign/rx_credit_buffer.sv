@@ -4,26 +4,26 @@
 `default_nettype none
 
 // Raw NoC ingress storage. Channel assignment consumes the FIFO heads.
-module nmu_response_buffer #(
+module rx_credit_buffer #(
     parameter int unsigned RSP_FIFO_DEPTH  = 32,
     parameter int unsigned NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
     parameter int unsigned DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
     parameter int unsigned DAT_RX_VC_DEPTH = 32
 ) (
-    input  wire logic                                     clk_i,
-    input  wire logic                                     rst_n_i,
-    input  wire ni_flit_pkg::rsp_flit_t                   s_rsp_i,
-    input  wire logic                                     s_rsp_valid_i,
-    output wire logic                                     s_rsp_ready_o,
-    input  wire ni_flit_pkg::dat_flit_t                   s_dat_i,
-    input  wire logic                                     s_dat_valid_i,
-    output wire logic                    [NUM_DAT_VC-1:0] dat_credit_return_o,
-    output wire ni_flit_pkg::rsp_flit_t                   m_rsp_o,
-    output wire logic                                     m_rsp_valid_o,
-    input  wire logic                                     m_rsp_ready_i,
-    output wire ni_flit_pkg::dat_flit_t  [NUM_DAT_VC-1:0] m_dat_o,
-    output wire logic                    [NUM_DAT_VC-1:0] m_dat_valid_o,
-    input  wire logic                    [NUM_DAT_VC-1:0] m_dat_ready_i
+    input  wire logic                                    clk_i,
+    input  wire logic                                    rst_n_i,
+    input  wire ni_flit_pkg::rsp_flit_t                  s_rsp_i,
+    input  wire logic                                    s_rsp_valid_i,
+    output wire logic                                    s_rsp_ready_o,
+    input  wire ni_flit_pkg::dat_flit_t                  s_dat_i,
+    input  wire logic                                    s_dat_valid_i,
+    output wire logic                   [NUM_DAT_VC-1:0] dat_credit_return_o,
+    output wire ni_flit_pkg::rsp_flit_t                  m_rsp_o,
+    output wire logic                                    m_rsp_valid_o,
+    input  wire logic                                    m_rsp_ready_i,
+    output wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
+    output wire logic                   [NUM_DAT_VC-1:0] m_dat_valid_o,
+    input  wire logic                   [NUM_DAT_VC-1:0] m_dat_ready_i
 );
     import ni_flit_pkg::*;
     if (RSP_FIFO_DEPTH < 1 || RSP_FIFO_DEPTH > 1024) begin : gen_invalid_depth

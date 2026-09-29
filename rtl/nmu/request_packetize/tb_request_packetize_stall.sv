@@ -89,15 +89,15 @@ module tb_nmu_request_packetize_stall;
     ni_flit_pkg::req_flit_t held_req;
     always @(negedge rst_n_i) begin
         #1ps;
-        if ({dut.i_channel_assign.req_write_lock_reg,
-             dut.i_channel_assign.dat_write_lock_reg} !== '0 ||
+        if ({dut.i_tx_channel_assign.req_write_lock_reg,
+             dut.i_tx_channel_assign.dat_write_lock_reg} !== '0 ||
             dut.i_write_context.active_reg !== 1'b0)
             $fatal(1, "Request state did not reset asynchronously");
     end
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_reset_check
         always @(negedge rst_n_i) begin
             #1ps;
-            if (int'(dut.i_tx_buffer.gen_dat_vc[vc].gen_write.i_credit.credit_o) !== ROUTER_VC_DEPTH)
+            if (int'(dut.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_credit.credit_o) !== ROUTER_VC_DEPTH)
                 $fatal(1, "DAT credits did not reset asynchronously");
         end
     end

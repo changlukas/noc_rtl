@@ -54,8 +54,8 @@ module tb_nmu_standalone #(
         #1ps;
         if (axi_rst_n !== 1'b0 || noc_rst_n !== 1'b0)
             $fatal(1, "Domain resets did not assert asynchronously");
-        if ({dut.i_request_path.i_channel_assign.req_write_lock_reg,
-             dut.i_request_path.i_channel_assign.dat_write_lock_reg,
+        if ({dut.i_request_path.i_tx_channel_assign.req_write_lock_reg,
+             dut.i_request_path.i_tx_channel_assign.dat_write_lock_reg,
              dut.i_response_path.i_ordering.b_complete,
              dut.i_response_path.i_ordering.r_complete} !== '0)
             $fatal(1, "NMU control/storage reset waited for a clock edge");
@@ -795,9 +795,9 @@ module tb_nmu_standalone #(
                 rx_dat_valid,
                 !dut.i_request_path.i_write_context.active_reg,
                 dut.i_request_path.i_write_context.active_reg,
-                dut.i_request_path.i_tx_buffer.req_full,
-                dut.i_request_path.i_tx_buffer.dat_full,
-                dut.i_request_path.i_tx_buffer.dat_empty,
+                dut.i_request_path.i_tx_credit_buffer.req_full,
+                dut.i_request_path.i_tx_credit_buffer.dat_full,
+                dut.i_request_path.i_tx_credit_buffer.dat_empty,
                 dut.i_response_path.i_ordering.aw_can_accept,
                 dut.i_response_path.i_ordering.ar_can_accept,
                 dut.i_response_path.decoded_b_valid,

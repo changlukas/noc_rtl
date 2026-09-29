@@ -160,35 +160,8 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/s_w_
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/s_ar_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/s_ar_valid_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/s_ar_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_channel_assign/m_req_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_channel_assign/m_req_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_channel_assign/m_req_ready_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_channel_assign/m_dat_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_channel_assign/m_dat_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/dat_credit_return_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_write_context/active_reg
 endSubGroup "Packetize"
-addSubGroup "TX output buffer"
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/s_req_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/s_req_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/s_req_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/m_req_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/m_req_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/m_req_ready_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/s_dat_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/s_dat_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/dat_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/m_dat_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/m_dat_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/dat_credit_return_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/req_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/req_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/dat_req
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/dat_pop
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_buffer/credit_left
-endSubGroup "TX output buffer"
 addSubGroup "Packet channels"
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/m_req_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/m_req_valid_o
@@ -197,11 +170,45 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/m_da
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/m_dat_valid_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_packetize/m_dat_ready_i
 endSubGroup "Packet channels"
+addSubGroup "TX channel assign" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/m_req_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/m_req_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/m_req_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/m_dat_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/m_dat_valid_o
+endSubGroup "TX channel assign"
+addSubGroup "TX credit buffer" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_credit_return_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/s_req_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/s_req_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/s_req_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/m_req_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/m_req_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/m_req_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/s_dat_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/s_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/m_dat_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/m_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/m_dat_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/req_full
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/req_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_req
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/credit_left
+endSubGroup "TX credit buffer"
+addSubGroup "TX VC arbiter" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_vc_arbiter/s_dat_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_vc_arbiter/s_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_vc_arbiter/s_dat_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_vc_arbiter/m_dat_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_vc_arbiter/m_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_vc_arbiter/m_dat_ready_i
+endSubGroup "TX VC arbiter"
 addGroup "Response: NoC to AXI"
 addSubGroup "Depacketize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/s_rsp_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/s_rsp_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/s_rsp_ready_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_depacketize/m_b_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_depacketize/m_b_valid_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_depacketize/m_b_ready_i
@@ -209,16 +216,45 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_depacketize/m
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_depacketize/m_r_valid_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_depacketize/m_r_ready_i
 endSubGroup "Depacketize"
-addSubGroup "RX B FIFO" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/i_rsp_fifo/data_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/i_rsp_fifo/push_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/i_rsp_fifo/full_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/i_rsp_fifo/data_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/i_rsp_fifo/pop_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/i_rsp_fifo/empty_o
-endSubGroup "RX B FIFO"
-addSubGroup "RX control R FIFO" -e FALSE
-endSubGroup "RX control R FIFO"
+addSubGroup "RX credit buffer" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/s_rsp_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/s_rsp_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/s_rsp_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/data_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/push_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/full_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/data_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/pop_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/empty_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_push
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_empty
+endSubGroup "RX credit buffer"
+addSubGroup "RX VC arbiter" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_vc_arbiter/s_dat_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_vc_arbiter/s_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_vc_arbiter/s_dat_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_vc_arbiter/m_dat_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_vc_arbiter/m_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_vc_arbiter/m_dat_ready_i
+endSubGroup "RX VC arbiter"
+addSubGroup "RX channel assign" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_rsp_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_rsp_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_rsp_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_dat_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_dat_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_b_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_b_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_b_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_r_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_r_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_r_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/r_ready
+endSubGroup "RX channel assign"
 addSubGroup "Ordering retirement" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/s_b_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/s_b_valid_i
@@ -243,24 +279,6 @@ addSubGroup "DAT receive credits" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/rx_dat_valid_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/rx_dat_flit_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/rx_dat_crdvalid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/dat_push
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/dat_pop
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_rsp_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_rsp_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_rsp_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_dat_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_dat_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/s_dat_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_b_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_b_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_b_ready_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_r_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_r_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/m_r_ready_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_channel_assign/r_ready
 endSubGroup "DAT receive credits"
 addSubGroup "B storage" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/i_b_storage/alloc_valid_i

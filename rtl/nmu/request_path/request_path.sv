@@ -218,14 +218,14 @@ module nmu_request_path #(
     assign s_b_ready_o = internal_req.b_ready;
     assign s_r_ready_o = internal_req.r_ready;
     nmu_request_fifo #(
-        .AXI_FIFO_DEPTH (AXI_FIFO_DEPTH          ),
-        .AXI_ID_WIDTH   (OUTPUT_ID_WIDTH            ),
+        .AXI_FIFO_DEPTH (AXI_FIFO_DEPTH              ),
+        .AXI_ID_WIDTH   (OUTPUT_ID_WIDTH             ),
         .aw_t           (ni_signals_pkg::noc_axi_aw_t),
         .w_t            (ni_signals_pkg::noc_axi_w_t ),
         .ar_t           (ni_signals_pkg::noc_axi_ar_t),
-        .AW_FIFO_DEPTH  (AW_FIFO_DEPTH           ),
-        .W_FIFO_DEPTH   (W_FIFO_DEPTH            ),
-        .AR_FIFO_DEPTH  (AR_FIFO_DEPTH           )
+        .AW_FIFO_DEPTH  (AW_FIFO_DEPTH               ),
+        .W_FIFO_DEPTH   (W_FIFO_DEPTH                ),
+        .AR_FIFO_DEPTH  (AR_FIFO_DEPTH               )
     ) i_request_fifo (
         .axi_clk_i    (axi_clk_i            ),
         .axi_rst_n_i  (axi_rst_n_i          ),
@@ -336,10 +336,10 @@ module nmu_request_path #(
     wire ni_flit_pkg::dat_flit_t assigned_dat;
     wire assigned_req_valid, assigned_req_ready, assigned_dat_valid;
     wire [NUM_DAT_VC-1:0] dat_fifo_ready;
-    nmu_channel_assign #(
+    tx_channel_assign #(
         .NUM_DAT_VC  (NUM_DAT_VC     ),
         .DAT_VC_MODE (NOC_DAT_VC_MODE)
-    ) i_channel_assign (
+    ) i_tx_channel_assign (
         .clk_i         (noc_clk_i         ),
         .rst_n_i       (noc_rst_n_i       ),
         .s_req_i       (req_flit          ),
@@ -355,13 +355,15 @@ module nmu_request_path #(
         .m_dat_valid_o (assigned_dat_valid),
         .dat_ready_i   (dat_fifo_ready    )
     );
-    nmu_request_buffer #(
+    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
+    wire [NUM_DAT_VC-1:0] tx_dat_valid, tx_dat_ready;
+    tx_credit_buffer #(
         .REQ_FIFO_DEPTH  (REQ_FIFO_DEPTH     ),
         .DAT_FIFO_DEPTH  (DAT_TX_FIFO_DEPTH  ),
         .NUM_DAT_VC      (NUM_DAT_VC         ),
         .DAT_VC_MODE     (NOC_DAT_VC_MODE    ),
         .ROUTER_VC_DEPTH (NOC_ROUTER_VC_DEPTH)
-    ) i_tx_buffer (
+    ) i_tx_credit_buffer (
         .clk_i               (noc_clk_i         ),
         .rst_n_i             (noc_rst_n_i       ),
         .s_req_i             (assigned_req      ),
@@ -373,9 +375,23 @@ module nmu_request_path #(
         .s_dat_i             (assigned_dat      ),
         .s_dat_valid_i       (assigned_dat_valid),
         .dat_ready_o         (dat_fifo_ready    ),
-        .m_dat_o             (tx_dat            ),
-        .m_dat_valid_o       (tx_dat_valid_o    ),
+        .m_dat_o             (tx_dat_head       ),
+        .m_dat_valid_o       (tx_dat_valid      ),
+        .m_dat_ready_i       (tx_dat_ready      ),
         .dat_credit_return_i (tx_dat_crdvalid_i )
+    );
+    tx_vc_arbiter #(
+        .NUM_DAT_VC  (NUM_DAT_VC     ),
+        .DAT_VC_MODE (NOC_DAT_VC_MODE)
+    ) i_tx_vc_arbiter (
+        .clk_i         (noc_clk_i     ),
+        .rst_n_i       (noc_rst_n_i   ),
+        .s_dat_i       (tx_dat_head   ),
+        .s_dat_valid_i (tx_dat_valid  ),
+        .s_dat_ready_o (tx_dat_ready  ),
+        .m_dat_o       (tx_dat        ),
+        .m_dat_valid_o (tx_dat_valid_o),
+        .m_dat_ready_i (1'b1          )
     );
     assign tx_req_flit_o = tx_req_valid_o ? tx_req : '0;
     assign tx_dat_flit_o = tx_dat_valid_o ? tx_dat : '0;

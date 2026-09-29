@@ -475,8 +475,8 @@ module tb_nmu_cosim #(
     int tx_req_beats = 0, tx_dat_beats = 0;
     always @(posedge clk) begin
         if (noc_rst_n) begin
-            if (int'(dut.i_request_path.i_tx_buffer.i_req_fifo.usage_o) > tx_req_peak)
-                tx_req_peak = int'(dut.i_request_path.i_tx_buffer.i_req_fifo.usage_o);
+            if (int'(dut.i_request_path.i_tx_credit_buffer.i_req_fifo.usage_o) > tx_req_peak)
+                tx_req_peak = int'(dut.i_request_path.i_tx_credit_buffer.i_req_fifo.usage_o);
             if (rx_req_valid[NMU_PORT] && rx_req_ready[NMU_PORT]) tx_req_beats++;
             if (rx_dat_valid[NMU_PORT]) tx_dat_beats++;
         end
@@ -484,8 +484,8 @@ module tb_nmu_cosim #(
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_tx_occupancy
         if (NOC_DAT_VC_MODE == 0 || vc < NUM_DAT_VC/2) begin : gen_write
             always @(posedge clk) begin
-                if (noc_rst_n && int'(dut.i_request_path.i_tx_buffer.gen_dat_vc[vc].gen_write.i_fifo.usage_o) > tx_dat_peak[vc])
-                    tx_dat_peak[vc] = int'(dut.i_request_path.i_tx_buffer.gen_dat_vc[vc].gen_write.i_fifo.usage_o);
+                if (noc_rst_n && int'(dut.i_request_path.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_fifo.usage_o) > tx_dat_peak[vc])
+                    tx_dat_peak[vc] = int'(dut.i_request_path.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_fifo.usage_o);
             end
         end
     end
@@ -735,9 +735,9 @@ module tb_nmu_cosim #(
             if (vip.r_valid && !vip.r_ready) r_stall_cnt++;
             if (vip.aw_valid && !vip.aw_ready) aw_stall_cnt++;
             if (vip.ar_valid && !vip.ar_ready) ar_stall_cnt++;
-            if ((dut.i_response_path.i_rx_buffer.rsp_full && dut.i_response_path.i_rx_channel_assign.is_b)) b_full_cnt++;
-            if ((dut.i_response_path.i_rx_buffer.rsp_full && dut.i_response_path.i_rx_channel_assign.is_r)) r_full_cnt++;
-            if (|dut.i_response_path.i_rx_buffer.dat_full) dat_full_cnt++;
+            if ((dut.i_response_path.i_rx_credit_buffer.rsp_full && dut.i_response_path.i_rx_channel_assign.is_b)) b_full_cnt++;
+            if ((dut.i_response_path.i_rx_credit_buffer.rsp_full && dut.i_response_path.i_rx_channel_assign.is_r)) r_full_cnt++;
+            if (|dut.i_response_path.i_rx_credit_buffer.dat_full) dat_full_cnt++;
             if (dut.i_request_path.i_id_remap.wr_exists_full) wr_limit_cnt++;
             if (dut.i_request_path.i_id_remap.rd_exists_full) rd_limit_cnt++;
             if (concurrent_active) begin

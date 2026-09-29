@@ -97,10 +97,10 @@ module nmu_request_inject_tb_dut #(
     wire ni_flit_pkg::dat_flit_t assigned_dat;
     wire assigned_req_valid, assigned_req_ready, assigned_dat_valid;
     wire [NUM_DAT_VC-1:0] dat_fifo_ready;
-    nmu_channel_assign #(
+    tx_channel_assign #(
         .NUM_DAT_VC  (NUM_DAT_VC ),
         .DAT_VC_MODE (DAT_VC_MODE)
-    ) i_channel_assign (
+    ) i_tx_channel_assign (
         .clk_i         (clk_i             ),
         .rst_n_i       (rst_n_i           ),
         .s_req_i       (req_flit          ),
@@ -116,13 +116,15 @@ module nmu_request_inject_tb_dut #(
         .m_dat_valid_o (assigned_dat_valid),
         .dat_ready_i   (dat_fifo_ready    )
     );
-    nmu_request_buffer #(
+    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
+    wire [NUM_DAT_VC-1:0] tx_dat_valid, tx_dat_ready;
+    tx_credit_buffer #(
         .REQ_FIFO_DEPTH  (FIFO_DEPTH     ),
         .DAT_FIFO_DEPTH  (FIFO_DEPTH     ),
         .NUM_DAT_VC      (NUM_DAT_VC     ),
         .DAT_VC_MODE     (DAT_VC_MODE    ),
         .ROUTER_VC_DEPTH (ROUTER_VC_DEPTH)
-    ) i_tx_buffer (
+    ) i_tx_credit_buffer (
         .clk_i               (clk_i              ),
         .rst_n_i             (rst_n_i            ),
         .s_req_i             (assigned_req       ),
@@ -134,9 +136,23 @@ module nmu_request_inject_tb_dut #(
         .s_dat_i             (assigned_dat       ),
         .s_dat_valid_i       (assigned_dat_valid ),
         .dat_ready_o         (dat_fifo_ready     ),
-        .m_dat_o             (m_dat_o            ),
-        .m_dat_valid_o       (m_dat_valid_o      ),
+        .m_dat_o             (tx_dat_head),
+        .m_dat_valid_o       (tx_dat_valid),
+        .m_dat_ready_i       (tx_dat_ready),
         .dat_credit_return_i (dat_credit_return_i)
+    );
+    tx_vc_arbiter #(
+        .NUM_DAT_VC  (NUM_DAT_VC),
+        .DAT_VC_MODE (DAT_VC_MODE)
+    ) i_tx_vc_arbiter (
+        .clk_i         (clk_i),
+        .rst_n_i       (rst_n_i),
+        .s_dat_i       (tx_dat_head),
+        .s_dat_valid_i (tx_dat_valid),
+        .s_dat_ready_o (tx_dat_ready),
+        .m_dat_o       (m_dat_o),
+        .m_dat_valid_o (m_dat_valid_o),
+        .m_dat_ready_i (1'b1)
     );
 endmodule
 `resetall
