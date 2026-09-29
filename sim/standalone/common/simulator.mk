@@ -65,8 +65,8 @@ help:
 	 'make in_order_perf                 In-order read/write performance without ROB allocation' \
 	 'make out_of_order_perf             Reordering with ROB allocation-space checks' \
 	 'make legacy_regress                Retained topology traffic and mixed tests' \
-	 'make run_wave CASE=same_id_cross_dst_reorder' \
-	 'make nWave CASE=same_id_cross_dst_reorder  (load signal groups)' \
+	 'make run_wave CASE=single_id_reorder' \
+	 'make nWave CASE=single_id_reorder  (load signal groups)' \
 	 'make run_wave_view CASE=ctrl_write_single (run then open nWave)' \
 	 'make clean                         Remove all build/wave/log/GUI artifacts; retain signal RC files' \
 	 'make regress SIMULATOR=verilator    Same sources, cases and configuration' \

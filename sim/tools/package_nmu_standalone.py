@@ -104,11 +104,10 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             "ctrl_read_single": "Single control read",
             "ctrl_write_burst": "Control write bursts: SIZE, FIXED/INCR/WRAP, WSTRB, LAST",
             "ctrl_read_burst": "Control read bursts: SIZE, FIXED/INCR/WRAP, lanes, LAST",
-            "same_id_in_order": "Same ID, requests and responses in order",
-            "same_id_outstanding": "Same ID, multiple outstanding transactions",
+            "single_id_outstanding": "Same ID, multiple outstanding transactions",
             "multi_id_outstanding": "Multiple IDs and outstanding transactions",
-            "cross_id_out_of_order": "Out-of-order responses across IDs",
-            "same_id_cross_dst_reorder": "Same ID across destinations, B/R reordering",
+            "multi_id_out_of_order": "Out-of-order responses across IDs",
+            "single_id_reorder": "Same ID across destinations, B/R reordering",
             "outstanding_full_recover": "Capacity pressure and recovery, including ID remap reuse",
             "backpressure": "REQ and AXI response stalls",
             "reset_inflight": "Coordinated reset with transactions in flight",
@@ -126,8 +125,8 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             "NMU standalone control/data/random patterns\n\n"
             "First run (compile + simulate): make run CASE=ctrl_write_burst\n"
             "After compilation (reuse binary): make sim CASE=ctrl_write_burst\n"
-            "Shared scenarios (5-12): MODE=control|data|rand, default control\n"
-            "Random example: make sim CASE=same_id_outstanding MODE=rand SEED=7\n"
+            "Shared scenarios (5-11): MODE=control|data|rand, default control\n"
+            "Random example: make sim CASE=single_id_outstanding MODE=rand SEED=7\n"
             "Fixed ctrl_*/data_* cases select their own mode; request_rand mixes both.\n"
             "Full matrix: make regress\n"
             "Waveform: make run_wave CASE=ctrl_write_burst\n"
@@ -159,9 +158,9 @@ make regress SIMULATOR=verilator "$@"
             "Same suite locally: make regress SIMULATOR=verilator\n"
             "Shared configuration: script/config.mk\n"
             "Run one: make run CASE=ctrl_write_single\n"
-            "FSDB: make run_wave CASE=same_id_cross_dst_reorder\n"
+            "FSDB: make run_wave CASE=single_id_reorder\n"
             "Reuse binary: make sim CASE=ctrl_read_burst\n"
-            "Open waveform and signal groups: make nWave CASE=same_id_cross_dst_reorder\n"
+            "Open waveform and signal groups: make nWave CASE=single_id_reorder\n"
             "Waveform template: script/nWaveLog/signals.rc (@FSDB@ is replaced for the selected CASE).\n"
             "Package logs: make report\n"
             "Clean all build/wave/log/GUI artifacts: make clean (retains signal RC files).\n"

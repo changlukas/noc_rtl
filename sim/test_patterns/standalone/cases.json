@@ -28,11 +28,7 @@
       "mode": "control"
     },
     {
-      "name": "same_id_in_order",
-      "count": 8
-    },
-    {
-      "name": "same_id_outstanding",
+      "name": "single_id_outstanding",
       "count": 16,
       "response_delay": 12,
       "startup_delay": 80,
@@ -48,7 +44,7 @@
       "min_unique": 2
     },
     {
-      "name": "cross_id_out_of_order",
+      "name": "multi_id_out_of_order",
       "count": 16,
       "ids": "multiple",
       "response_order": 2,
@@ -59,7 +55,7 @@
       "require_ooo": 1
     },
     {
-      "name": "same_id_cross_dst_reorder",
+      "name": "single_id_reorder",
       "count": 16,
       "destinations": "alternate",
       "response_order": 1,
