@@ -62,6 +62,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         copy(ROOT / relative, "repo/" + relative)
         source_list.append("repo/" + relative)
     for relative in (
+        "sim/dv/tb_axi_reorder_compare.sv",
         "rtl/nmu/ordering/tb_ordering.sv",
         "rtl/nmu/request_packetize/request_inject_tb_dut.sv",
         "rtl/nmu/request_packetize/tb_request_packetize.sv",
@@ -125,6 +126,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     copy(ROOT / "sim/cosim/nmu/script/Makefile", "Makefile")
     copy(ROOT / "sim/cosim/nmu/script/run.py", "run.py")
     copy(ROOT / "sim/cosim/nmu/script/test_pipeline.py", "test_pipeline.py")
+    copy(ROOT / "sim/cosim/nmu/script/test_ordering_checker.py", "test_ordering_checker.py")
     copy(ROOT / "sim/cosim/nmu/script/build_key.py", "build_key.py")
     names = [path for path in out.rglob("*") if path.is_file() and
              path.name != "SHA256SUMS" and "build" not in path.relative_to(out).parts]

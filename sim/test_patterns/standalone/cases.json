@@ -16,16 +16,34 @@
     {
       "name": "ctrl_write_burst",
       "operation": "write",
-      "count": 12,
-      "burst_sweep": true,
-      "mode": "control"
+      "count": 8,
+      "mode": "control",
+      "burst_lengths": [
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256
+      ]
     },
     {
       "name": "ctrl_read_burst",
       "operation": "read",
-      "count": 12,
-      "burst_sweep": true,
-      "mode": "control"
+      "count": 8,
+      "mode": "control",
+      "burst_lengths": [
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        256
+      ]
     },
     {
       "name": "single_id_outstanding",
@@ -98,8 +116,15 @@
       "name": "data_write_burst",
       "mode": "data",
       "operation": "write",
-      "count": 12,
-      "burst_sweep": true
+      "count": 6,
+      "burst_lengths": [
+        2,
+        4,
+        8,
+        16,
+        32,
+        64
+      ]
     },
     {
       "name": "data_read_single",
@@ -111,8 +136,15 @@
       "name": "data_read_burst",
       "mode": "data",
       "operation": "read",
-      "count": 12,
-      "burst_sweep": true
+      "count": 6,
+      "burst_lengths": [
+        2,
+        4,
+        8,
+        16,
+        32,
+        64
+      ]
     },
     {
       "name": "ctrl_rand",

@@ -257,6 +257,13 @@ module tb_nmu_cosim #(
             .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) delayed_bus();
         `AXI_ASSIGN_TO_REQ(mon_slv_req[n], mem_bus)
         `AXI_ASSIGN_TO_RESP(mon_slv_rsp[n], mem_bus)
+        initial begin : preload_memory
+            string directory;
+            if ($test$plusargs("preload")) begin
+                if (!$value$plusargs("stim_dir=%s", directory)) $fatal(1, "Missing stim_dir");
+                $readmemh({directory, "/preload.mem"}, i_memory.i_sim_mem.mem);
+            end
+        end
         int b_wait_start = -1, r_wait_start = -1;
         int sample_cycle = 0;
         always @(posedge clk) begin
@@ -431,7 +438,19 @@ module tb_nmu_cosim #(
         .IW (AXI_ID_WIDTH),
         .UW (AXI_AWUSER_WIDTH),
         .TT (ACQ_DELAY)
-    ) scoreboard_t;
+    ) scoreboard_base_t;
+    class scoreboard_t extends scoreboard_base_t;
+        function new(virtual AXI_BUS_DV #(
+            .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
+            .AXI_ID_WIDTH(AXI_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) axi);
+            super.new(axi);
+        endfunction
+        task preload(input string filename);
+            logic [7:0] bytes[axi_addr_t];
+            $readmemh(filename, bytes);
+            foreach (bytes[address]) memory_q[address].push_back(bytes[address]);
+        endtask
+    endclass
     import "DPI-C" context function int cmodel_check_error(output string message);
     always @(negedge clk) begin : check_model_error
         string message;
@@ -536,6 +555,7 @@ module tb_nmu_cosim #(
         input longint unsigned ctx, input int depth);
     initial begin : run
         string stim_dir;
+        int first_char;
         cmodel_init();
         router_ctx = cmodel_router_create("router", ROUTER_X, ROUTER_Y,
             MESH_DIM, MESH_DIM, NUM_DAT_VC);
@@ -552,7 +572,23 @@ module tb_nmu_cosim #(
         master = new(vip);
         scoreboard = new(vip);
         if (!$value$plusargs("stim_dir=%s", stim_dir)) $fatal(1, "Missing stim_dir");
-        master.load_files({stim_dir, "/read.txt"}, {stim_dir, "/write.txt"});
+        master.read_fd = $fopen({stim_dir, "/read.txt"}, "r");
+        master.write_fd = $fopen({stim_dir, "/write.txt"}, "r");
+        if (!master.read_fd || !master.write_fd) $fatal(1, "Missing AXI stimulus file");
+        first_char = $fgetc(master.read_fd);
+        if (first_char != -1) begin
+            void'($ungetc(first_char, master.read_fd));
+            master.parse_read();
+        end
+        first_char = $fgetc(master.write_fd);
+        if (first_char != -1) begin
+            void'($ungetc(first_char, master.write_fd));
+            master.parse_write();
+        end
+        $fclose(master.read_fd);
+        $fclose(master.write_fd);
+        master.num_reads = master.ar_queue.size();
+        master.num_writes = master.aw_queue.size();
         corrupt_rsp = $test$plusargs("corrupt_rsp");
         void'($value$plusargs("min_outstanding=%d", min_outstanding));
         void'($value$plusargs("min_unique=%d", min_unique));
@@ -585,7 +621,8 @@ module tb_nmu_cosim #(
             expected_reads += verify_master.num_reads;
             expect_reads(verify_master);
         end
-        if (expected_writes == 0 || expected_reads == 0)
+        if ($test$plusargs("preload")) scoreboard.preload({stim_dir, "/preload.mem"});
+        if (expected_writes == 0 && expected_reads == 0)
             $fatal(1, "Empty memory test");
         repeat (5) @(negedge clk);
         rst_n = 1;
@@ -602,17 +639,21 @@ module tb_nmu_cosim #(
             concurrent_active = 1'b0;
             fork verify_master.run_ar(); verify_master.wait_r(); join
         end else begin
-            fork master.run_aw(); master.run_w(); receive_b(); join
-            fork master.run_ar(); receive_r(); join
+            if (expected_writes != 0) begin
+                fork master.run_aw(); master.run_w(); receive_b(); join
+            end
+            if (expected_reads != 0) begin
+                fork master.run_ar(); receive_r(); join
+            end
         end
         repeat (10) @(posedge clk);
         if (b_count != expected_writes || r_count != expected_reads ||
-            r_beats != expected_beats || checked_bytes == 0)
+            r_beats != expected_beats || (expected_reads != 0 && checked_bytes == 0))
             $fatal(1, "Transaction count mismatch");
         foreach (expected_ar[id])
             if (expected_ar[id].size() != 0) $fatal(1, "Unreturned read ID %0d", id);
-        if (peak_w < min_outstanding || peak_r < min_outstanding ||
-            peak_unique_w < min_unique || peak_unique_r < min_unique)
+        if ((expected_writes != 0 && (peak_w < min_outstanding || peak_unique_w < min_unique)) ||
+            (expected_reads != 0 && (peak_r < min_outstanding || peak_unique_r < min_unique)))
             $fatal(1, "Outstanding/ID coverage not reached");
         $display("TX_BUFFER req_peak=%0d req_beats=%0d dat_beats=%0d", tx_req_peak, tx_req_beats, tx_dat_beats);
         for (int vc = 0; vc < NUM_DAT_VC; vc++) $display("TX_DAT_BUFFER vc=%0d peak=%0d", vc, tx_dat_peak[vc]);

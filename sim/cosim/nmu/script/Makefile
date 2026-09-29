@@ -59,7 +59,7 @@ sim:
 regress: compile
 	@set -e; while read name; do $(MAKE) --no-print-directory sim CASE=$$name; done < patterns/cases.list
 corrupt: compile
-	python3 run.py --binary "$(SIM)/simv" --case data_write_single --report "$(REPORT)" --corrupt
+	python3 run.py --binary "$(SIM)/simv" --case data_read_single --report "$(REPORT)" --corrupt
 run_wave_view: nWave
 
 nWave: run_wave
@@ -73,3 +73,7 @@ print-build-dirs:
 	@echo $(DPI)
 	@echo $(YAML_BUILD)
 	@echo $(SIM)
+
+.PHONY: check_ordering_checker
+check_ordering_checker:
+	python3 test_ordering_checker.py

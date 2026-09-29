@@ -63,13 +63,17 @@ def test_shared_modes_preserve_scenario_and_seed(tmp_path, mode):
 
 
 @pytest.mark.parametrize("name", ["ctrl_write_burst", "data_write_burst"])
-def test_burst_patterns_exercise_lanes_and_wrap(tmp_path, name):
+def test_burst_patterns_cover_full_width_lengths(tmp_path, name):
     generate(tmp_path, REPO / "sim/configs/mesh_2x2.yml")
     txns = _parse_write(tmp_path / name / "write.txt")
-    assert len({t["addr"] % 64 for t in txns}) > 1
-    assert {t["size"] for t in txns} == set(range(7 if name.startswith("data") else 4))
-    assert {t["burst"] for t in txns} == {0, 1, 2}
-    assert any(t["burst"] == 2 and t["addr"] % ((t["len"]+1)*(1 << t["size"])) != 0 for t in txns)
+    data = name.startswith("data")
+    assert [t["len"] + 1 for t in txns] == ([2, 4, 8, 16, 32, 64] if data else
+                                                  [2, 4, 8, 16, 32, 64, 128, 256])
+    assert {t["size"] for t in txns} == {6 if data else 3}
+    assert {t["burst"] for t in txns} == {1}
+    for t in txns:
+        end = t["addr"] + ((t["len"] + 1) << t["size"]) - 1
+        assert t["addr"] >> 12 == end >> 12
 
 
 @pytest.mark.parametrize("width", [1, 3, 8])
@@ -156,6 +160,20 @@ def test_cosim_memory_dependencies(tmp_path, mode):
     for name in names:
         writes = _parse_write(tmp_path / name / "write.txt")
         reads = _parse_read(tmp_path / name / "read.txt")
+        if name.endswith("write_single"):
+            assert len(writes) == 1 and not reads
+            assert writes[0]["len"] == 0
+            continue
+        if name.endswith("read_single"):
+            assert len(reads) == 1 and not writes
+            assert reads[0]["len"] == 0
+            words = (tmp_path / name / "preload.mem").read_text().split()
+            assert int(words[0][1:], 16) == reads[0]["addr"]
+            assert len(words) - 1 == 1 << reads[0]["size"]
+            assert [int(x, 16) for x in words[1:]] == [
+                (reads[0]["addr"] + b) & 255 for b in range(1 << reads[0]["size"])]
+            assert "+preload" in (tmp_path / name / "schedule.txt").read_text()
+            continue
         assert len(writes) == len(reads) > 0
         initialized = set()
         for write, read in zip(writes, reads):

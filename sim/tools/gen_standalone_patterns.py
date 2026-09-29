@@ -61,6 +61,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         target.mkdir(parents=True, exist_ok=True)
         writes, reads = [], []
         init_writes, verify_reads = [], []
+        preload = []
         capacity = case.get("legacy_mixed", False)
         count = 64 if capacity else case["count"]
         classes = [selected] * count
@@ -82,6 +83,9 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                       (1, 3, 7)[txn % 3] if case.get("burst_sweep") else 0)
             burst = ((1, 0, 2)[txn % 3] if capacity else
                      (0, 1, 2)[(txn // 4) % 3] if case.get("burst_sweep") else 1)
+            if "burst_lengths" in case:
+                length = case["burst_lengths"][txn] - 1
+                burst = 1
             if "burst_beats" in case:
                 beats = case["burst_beats"]
                 if not isinstance(beats, int) or not 1 <= beats <= 256:
@@ -122,12 +126,14 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 offset = txn * (512 if is_data else 64)
                 if case.get("capacity_test"):
                     offset = (txn // len(routes[classes[txn]])) * (length + 1) * step
+            if "burst_lengths" in case:
+                offset = txn * 4096 if is_data else sum(case["burst_lengths"][:txn]) * step
             address = route["base"] + offset
             operation = case.get("operation", "both")
             if case.get("random"):
                 # Paired directions keep every class/single/burst category non-vacuous.
                 operation = "both"
-            if profile == "cosim":
+            if profile == "cosim" and not name.endswith("_single"):
                 operation = "both"  # read cases initialize through the real write path
             if operation in ("write", "both"):
                 # Keep the transaction marker in opaque AWUSER[7:0], below collective control.
@@ -169,6 +175,9 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                                     1 << (addr % 64))[(txn + beat) % 4]
                             strobe = hex(int(strobe, 16) & mask)
                     writes.append(f"{data} {strobe} {user}")
+            if profile == "cosim" and operation == "read":
+                preload.append(f"@{address:x}")
+                preload.append(" ".join(f"{(address + b) & 255:02x}" for b in range(step)))
             if operation in ("read", "both"):
                 fields = _ax_fields(axi_id, address, length, size, False)
                 fields[4] = str(burst)
@@ -179,6 +188,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 coverage[classes[txn]+"_read"] += 1
         (target / "write.txt").write_text("\n".join(writes) + ("\n" if writes else ""))
         (target / "read.txt").write_text("\n".join(reads) + ("\n" if reads else ""))
+        if preload:
+            (target / "preload.mem").write_text("\n".join(preload) + "\n")
         if init_writes:
             (target / "init_write.txt").write_text("\n".join(init_writes) + "\n")
         if verify_reads:
@@ -199,6 +210,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     f"+capacity_test={int(bool(case.get('capacity_test')))}",
                     f"+data_case={int(selected == 'data')}",
                     f"+reorder_test={2 if case.get('require_buffered') else int(bool(case.get('require_ooo')))}"]
+        if preload:
+            args.append("+preload")
         (target / "schedule.txt").write_text("\n".join(args) + "\n")
         (target / "manifest.json").write_text(json.dumps(dict(case=name, mode=selected, seed=seed,
                                                               id_width=id_width, coverage=coverage,
