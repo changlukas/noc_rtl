@@ -51,7 +51,7 @@
 #include "wrap/flit_byte_conv.hpp"  // flit_from_bytes, flit_to_bytes
 #include "wrap/nmu_wrap_io.hpp"
 #include "ni/channel_mode.hpp"
-#include "ni_params.h"  // NOC_ROUTER_VC_DEPTH — DAT sender credit seed
+#include "ni_params.h"  // CREDIT_DEPTH — DAT sender credit seed
 #include "flit.hpp"
 #include "nmu/nmu_standalone.hpp"
 #include "nmu/sam_yaml.hpp"
@@ -147,7 +147,7 @@ class NmuWrap {
         // DAT LOCAL port (controller ruling, floo_nw_chimney.sv wide-link
         // merge translate). Seed to that stage's own depth
         // (NMU_ARBITER_FIFO_DEPTH), not the router's LOCAL input depth — the
-        // merge's own downstream credit pool (sized to NOC_ROUTER_VC_DEPTH)
+        // merge's own downstream credit pool (sized to CREDIT_DEPTH)
         // is the one that actually tracks the router's real capacity.
         nmu_->enable_dat_noc_credit(static_cast<std::size_t>(::ni::NMU_ARBITER_FIFO_DEPTH));
         in_ = NmuInputs{};

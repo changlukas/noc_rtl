@@ -18,15 +18,13 @@ module nmu #(
     parameter int unsigned AW_FIFO_DEPTH                             = AXI_FIFO_DEPTH,
     parameter int unsigned W_FIFO_DEPTH                              = AXI_FIFO_DEPTH,
     parameter int unsigned AR_FIFO_DEPTH                             = AXI_FIFO_DEPTH,
-    parameter int unsigned DAT_TX_FIFO_DEPTH                         = 32,
+    parameter int unsigned CREDIT_DEPTH                              = ni_params_pkg::CREDIT_DEPTH,
     parameter int unsigned REQ_AW_REG_TYPE                           = 0,
     parameter int unsigned REQ_W_REG_TYPE                            = 0,
     parameter int unsigned REQ_AR_REG_TYPE                           = 0,
     parameter int unsigned DAT_AW_REG_TYPE                           = 0,
     parameter int unsigned DAT_W_REG_TYPE                            = 0,
-    parameter int unsigned NOC_ROUTER_VC_DEPTH                       = ni_params_pkg::NOC_ROUTER_VC_DEPTH,
-    parameter int unsigned DAT_RX_VC_DEPTH                           = 32,
-    parameter int unsigned RSP_RX_FIFO_DEPTH                         = 32,
+    parameter int unsigned RSP_FIFO_DEPTH                            = 32,
     parameter int unsigned B_FIFO_DEPTH                              = AXI_FIFO_DEPTH,
     parameter int unsigned R_FIFO_DEPTH                              = AXI_FIFO_DEPTH,
     parameter int unsigned B_REG_TYPE                                = 0,
@@ -122,9 +120,9 @@ module nmu #(
         initial $fatal(0, "Error: REQ_FIFO_DEPTH must be a positive power of two (instance %m)");
     end
 
-    if (NOC_ROUTER_VC_DEPTH < 2 ||
-            (NOC_ROUTER_VC_DEPTH & (NOC_ROUTER_VC_DEPTH - 1)) != 0) begin : gen_invalid_router_vc_depth
-        initial $fatal(0, "Error: NOC_ROUTER_VC_DEPTH must be a power of two and at least 2 (instance %m)");
+    if (CREDIT_DEPTH < 2 ||
+            (CREDIT_DEPTH & (CREDIT_DEPTH - 1)) != 0) begin : gen_invalid_router_vc_depth
+        initial $fatal(0, "Error: CREDIT_DEPTH must be a power of two and at least 2 (instance %m)");
     end
 
     if (B_ROB_DEPTH < 1 || B_ROB_DEPTH > 256) begin : gen_invalid_rob_b_depth
@@ -188,7 +186,7 @@ module nmu #(
         .NUM_DAT_VC             (NUM_DAT_VC            ),
         .NOC_DAT_VC_MODE        (NOC_DAT_VC_MODE       ),
         .REQ_FIFO_DEPTH         (REQ_FIFO_DEPTH        ),
-        .NOC_ROUTER_VC_DEPTH    (NOC_ROUTER_VC_DEPTH   ),
+        .CREDIT_DEPTH           (CREDIT_DEPTH          ),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
         .AW_SAM_REG_TYPE        (AW_SAM_REG_TYPE       ),
         .AR_SAM_REG_TYPE        (AR_SAM_REG_TYPE       ),
@@ -203,7 +201,6 @@ module nmu #(
         .AW_FIFO_DEPTH          (AW_FIFO_DEPTH         ),
         .W_FIFO_DEPTH           (W_FIFO_DEPTH          ),
         .AR_FIFO_DEPTH          (AR_FIFO_DEPTH         ),
-        .DAT_TX_FIFO_DEPTH      (DAT_TX_FIFO_DEPTH     ),
         .REQ_AW_REG_TYPE        (REQ_AW_REG_TYPE       ),
         .REQ_W_REG_TYPE         (REQ_W_REG_TYPE        ),
         .REQ_AR_REG_TYPE        (REQ_AR_REG_TYPE       ),
@@ -250,14 +247,14 @@ module nmu #(
     nmu_response_path #(
         .NUM_DAT_VC             (NUM_DAT_VC            ),
         .NOC_DAT_VC_MODE        (NOC_DAT_VC_MODE       ),
-        .DAT_RX_VC_DEPTH        (DAT_RX_VC_DEPTH       ),
+        .CREDIT_DEPTH           (CREDIT_DEPTH          ),
         .AXI_FIFO_DEPTH         (AXI_FIFO_DEPTH        ),
         .B_ROB_DEPTH            (B_ROB_DEPTH           ),
         .R_ROB_DEPTH            (R_ROB_DEPTH           ),
         .R_ROB_EN               (R_ROB_EN              ),
         .NUM_IDS                (NUM_IDS               ),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
-        .RSP_RX_FIFO_DEPTH      (RSP_RX_FIFO_DEPTH     ),
+        .RSP_FIFO_DEPTH         (RSP_FIFO_DEPTH        ),
         .B_FIFO_DEPTH           (B_FIFO_DEPTH          ),
         .R_FIFO_DEPTH           (R_FIFO_DEPTH          ),
         .B_REG_TYPE             (B_REG_TYPE            ),

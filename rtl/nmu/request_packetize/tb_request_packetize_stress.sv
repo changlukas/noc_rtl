@@ -2,12 +2,12 @@
 `default_nettype none
 
 module tb_nmu_request_packetize_stress #(
-    parameter int unsigned FIFO_DEPTH = 2,
-    parameter int unsigned NUM_DAT_VC = 2,
+    parameter int unsigned FIFO_DEPTH  = 2,
+    parameter int unsigned NUM_DAT_VC  = 2,
     parameter int unsigned DAT_VC_MODE = 0,
-    parameter int unsigned REG_TYPE = 0,
+    parameter int unsigned REG_TYPE    = 0,
     parameter int unsigned AW_REG_TYPE = REG_TYPE,
-    parameter int unsigned W_REG_TYPE = REG_TYPE,
+    parameter int unsigned W_REG_TYPE  = REG_TYPE,
     parameter int unsigned AR_REG_TYPE = REG_TYPE
 );
     localparam int unsigned WRITES = 24;
@@ -48,7 +48,7 @@ module tb_nmu_request_packetize_stress #(
         .FIFO_DEPTH      (FIFO_DEPTH  ),
         .NUM_DAT_VC      (NUM_DAT_VC  ),
         .DAT_VC_MODE     (DAT_VC_MODE ),
-        .ROUTER_VC_DEPTH (CREDIT_DEPTH)
+        .CREDIT_DEPTH (CREDIT_DEPTH)
     ) dut (.*);
 
     always #5ns clk_i = !clk_i;

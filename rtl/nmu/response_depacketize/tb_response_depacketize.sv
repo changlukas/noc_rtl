@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 
 module tb_nmu_response_depacketize #(
-    parameter int NUM_DAT_VC = 2,
-    parameter int DAT_VC_MODE = 0,
-    parameter int DAT_RX_VC_DEPTH = 2,
-    parameter int REG_TYPE = 0
+    parameter int NUM_DAT_VC   = 2,
+    parameter int DAT_VC_MODE  = 0,
+    parameter int CREDIT_DEPTH = 2,
+    parameter int REG_TYPE     = 0
 );
     import ni_flit_pkg::*;
     import ni_types_pkg::*;
@@ -41,7 +41,7 @@ module tb_nmu_response_depacketize #(
         .RSP_FIFO_DEPTH  (2              ),
         .NUM_DAT_VC      (NUM_DAT_VC     ),
         .DAT_VC_MODE     (DAT_VC_MODE    ),
-        .DAT_RX_VC_DEPTH (DAT_RX_VC_DEPTH)
+        .CREDIT_DEPTH (CREDIT_DEPTH)
     ) i_buffer (
         .clk_i               (clk          ),
         .rst_n_i             (rst_n_i      ),
@@ -166,7 +166,7 @@ module tb_nmu_response_depacketize #(
                 wr_cnt[n] = 0; rd_cnt[n] = 0;
             end
             for (int n = 0; n < NUM_DAT_VC; n++) begin
-                credit[n] = DAT_RX_VC_DEPTH;
+                credit[n] = CREDIT_DEPTH;
                 fifo_rd_cnt[n] = 0;
             end
             if (credit_return !== '0) $fatal(1, "credit pulse during reset");
@@ -211,7 +211,7 @@ module tb_nmu_response_depacketize #(
             if (rsp_valid && rsp_ready && rsp.header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_NarrowR))
                 wr_cnt[NUM_DAT_VC]++;
             for (int n = FIRST_VC; n < NUM_DAT_VC; n++)
-                if (credit[n] + wr_cnt[n] - fifo_rd_cnt[n] + int'(expected_credit[n]) != DAT_RX_VC_DEPTH)
+                if (credit[n] + wr_cnt[n] - fifo_rd_cnt[n] + int'(expected_credit[n]) != CREDIT_DEPTH)
                     $fatal(1, "per-VC conservation mismatch");
             if (b_valid && b_ready) begin
                 if (b.axi.bid != 3 || b.axi.bresp != 2 || !b.meta.is_data || !b.meta.ordering_req)
@@ -239,13 +239,13 @@ module tb_nmu_response_depacketize #(
             if (fault == 1) dat.header[AXI_CH_LSB +: AXI_CH_WIDTH] = AXI_CH_WIDTH'(AXI_CH_DataW);
             if (fault == 2) dat.header[VC_ID_LSB +: VC_ID_WIDTH] = VC_ID_WIDTH'(NUM_DAT_VC);
             if (fault == 3) dat.header[VC_ID_LSB +: VC_ID_WIDTH] = '0;
-            repeat (DAT_RX_VC_DEPTH+3) @(negedge clk);
+            repeat (CREDIT_DEPTH+3) @(negedge clk);
             $fatal(1, "fault escaped ingress checks");
         end
         // Fill every VC while the selected output is stalled. RLAST stays low
         // on initial beats, so progress to other VCs proves beat arbitration.
         for (int vc = FIRST_VC; vc < NUM_DAT_VC; vc++) begin
-            for (int beat = 0; beat < DAT_RX_VC_DEPTH; beat++) begin
+            for (int beat = 0; beat < CREDIT_DEPTH; beat++) begin
                 set_dat(vc);
                 if (vc == FIRST_VC && beat == 0) set_rsp(0);
                 @(negedge clk); rsp_valid = 0;
@@ -347,7 +347,7 @@ module tb_nmu_response_depacketize #(
             end
             repeat (2) @(negedge clk);
             if (total_r-start_r != 64) $fatal(1, "throughput lost response");
-            $display("PERF depth=%0d beats=64 cycles=%0d", DAT_RX_VC_DEPTH, cycles);
+            $display("PERF depth=%0d beats=64 cycles=%0d", CREDIT_DEPTH, cycles);
             if (cycles > 66) $fatal(1, "avoidable throughput bubble with one-cycle credits");
         end
         // Flush occupied queues and a held arbitration decision, then reseed.
@@ -357,10 +357,10 @@ module tb_nmu_response_depacketize #(
         if (r_valid) $fatal(1, "reset retained response");
         set_dat(FIRST_VC); @(negedge clk); dat_valid = 0;
         repeat (5) @(negedge clk);
-        if (rd_cnt[FIRST_VC] != 1 || credit[FIRST_VC] != DAT_RX_VC_DEPTH)
+        if (rd_cnt[FIRST_VC] != 1 || credit[FIRST_VC] != CREDIT_DEPTH)
             $fatal(1, "reset credit reseed/drain failed");
         $display("PASS depacketize vcs=%0d mode=%0d depth=%0d R=%0d credit_recovery=%0d parallel=%0d",
-            NUM_DAT_VC, DAT_VC_MODE, DAT_RX_VC_DEPTH, total_r, recoveries, parallel_ingress);
+            NUM_DAT_VC, DAT_VC_MODE, CREDIT_DEPTH, total_r, recoveries, parallel_ingress);
         $finish;
     end
 `ifdef DUMP_WAVE

@@ -4,7 +4,7 @@
 module tb_nmu_request_packetize_stall;
 
     localparam int unsigned NUM_DAT_VC = 2;
-    localparam int unsigned ROUTER_VC_DEPTH = 2;
+    localparam int unsigned CREDIT_DEPTH = 2;
 
     logic clk = 1'b0;
     logic rst_n_i = 1'b0;
@@ -25,7 +25,7 @@ module tb_nmu_request_packetize_stall;
     nmu_request_inject_tb_dut #(
         .FIFO_DEPTH      (4              ),
         .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .ROUTER_VC_DEPTH (ROUTER_VC_DEPTH),
+        .CREDIT_DEPTH (CREDIT_DEPTH),
         .SRC_ID          (8'h12          ),
         .SRC_PORT_ID     (2'h2           )
     ) dut (
@@ -97,7 +97,7 @@ module tb_nmu_request_packetize_stall;
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_reset_check
         always @(negedge rst_n_i) begin
             #1ps;
-            if (int'(dut.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_credit.credit_o) !== ROUTER_VC_DEPTH)
+            if (int'(dut.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_credit.credit_o) !== CREDIT_DEPTH)
                 $fatal(1, "DAT credits did not reset asynchronously");
         end
     end

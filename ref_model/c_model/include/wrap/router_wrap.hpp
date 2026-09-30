@@ -32,19 +32,15 @@
 // tb_top reset window precedes all *_create + traffic, so no stale state can
 // leak post-reset.
 //
-// Depth rationale (DAT): vc_depth = NOC_ROUTER_VC_DEPTH (spec default; also
-// the value the NMU/NSU DAT face seeds its own sender credit counter with, so
-// both ends of the link agree on the credit window). LOCAL is the exception:
-// the FIFO behind that output belongs to the attached NI, so local_vc_depth =
-// NOC_NI_DAT_RX_VC_DEPTH (router-spec §2.7 rule 1). Each eject buffer is sized
-// to num_vc * that port's seed (aggregate output-credit window).
+// DAT receiver VC depths and link credit seeds share CREDIT_DEPTH.
+// Each eject buffer holds num_vc times the port's credit budget.
 #pragma once
 #include "wrap/flit_byte_conv.hpp"  // flit_from_bytes, flit_to_bytes
 #include "wrap/router_wrap_io.hpp"
 #include "router/router.hpp"
 #include "router/simple_router.hpp"
 #include "router/router_adapters.hpp"
-#include "ni_params.h"  // NOC_ROUTER_VC_DEPTH, NOC_NI_DAT_RX_VC_DEPTH, NOC_ROUTER_OUTPUT_FIFO_DEPTH
+#include "ni_params.h"  // CREDIT_DEPTH, NOC_ROUTER_OUTPUT_FIFO_DEPTH
 #include <array>
 #include <memory>
 
@@ -75,8 +71,8 @@ class RouterWrap {
         dc.mesh_x_dim = mesh_x_dim;
         dc.mesh_y_dim = mesh_y_dim;
         dc.num_vc = dat_num_vc;
-        dc.vc_depth = static_cast<std::size_t>(::ni::NOC_ROUTER_VC_DEPTH);
-        dc.local_vc_depth = static_cast<std::size_t>(::ni::NOC_NI_DAT_RX_VC_DEPTH);
+        dc.vc_depth = static_cast<std::size_t>(::ni::CREDIT_DEPTH);
+        dc.local_vc_depth = static_cast<std::size_t>(::ni::CREDIT_DEPTH);
         dc.output_fifo_depth = static_cast<std::size_t>(::ni::NOC_ROUTER_OUTPUT_FIFO_DEPTH);
         dat_router_ = std::make_unique<router::Router>(dc);
         for (std::size_t p = 0; p < ROUTER_LINK_PORTS; ++p) {

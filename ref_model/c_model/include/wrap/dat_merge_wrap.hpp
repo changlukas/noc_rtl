@@ -32,13 +32,13 @@
 // lock here once let one worm's tail release another VC's mid-flight worm
 // and admit an NSU DataB/DataR response into its beat stream (2026-08-21). ONE shared credit pool
 // downstream of the arbiter (DatMergeDownstream, term_ below), sized to the
-// DAT router's real LOCAL input depth (NOC_ROUTER_VC_DEPTH) -- replaces NMU's
+// DAT router's real LOCAL input depth (CREDIT_DEPTH) -- replaces NMU's
 // and NSU's previous independent full-depth pools (the inconsistency the
 // blocked report flagged). NMU's/NSU's own per-VC credit toward the arbiter's
 // per-input pending stage is unchanged in shape (still ni/wormhole_arbiter.hpp's
 // own pending capacity, still seeded via nmu_wrap.hpp/nsu_wrap.hpp's
 // enable_dat_noc_credit) -- only the seed value moves from
-// NOC_ROUTER_VC_DEPTH to {NMU,NSU}_ARBITER_FIFO_DEPTH (this stage's own
+// CREDIT_DEPTH to {NMU,NSU}_ARBITER_FIFO_DEPTH (this stage's own
 // per-input pending depth, not the router's).
 //
 // Ingress demux (router -> NMU/NSU): unbuffered, same-cycle pass-through --
@@ -47,7 +47,7 @@
 // is split by destination, because the two sides have different ingress
 // capacity. NMU's DataB/DataR ingress queue is unbounded and always accepts
 // (see nmu_wrap.hpp), so its credit returns immediately at demux. NSU's
-// DataAw/DataW/DataAr ingress is one BOUNDED queue per DAT VC (depth NOC_NI_DAT_RX_VC_DEPTH,
+// DataAw/DataW/DataAr ingress is one BOUNDED queue per DAT VC (depth CREDIT_DEPTH,
 // nsu_standalone.hpp), so its credit is the NSU's own consume pulse
 // (nsu_wrap rx_dat_crdvalid_o, DatMergeInputs::nsu_rx_dat_crdvalid) forwarded
 // on -- returning it at demux instead would leave that queue with no
@@ -62,7 +62,7 @@
 #include "router/req_out.hpp"
 #include "router/router_adapters.hpp"  // router::LinkCreditOut
 #include "ni_flit_constants.h"         // ::ni::AXI_CH_DataB, ::ni::AXI_CH_DataR
-#include "ni_params.h"                 // NOC_ROUTER_VC_DEPTH, {NMU,NSU}_ARBITER_FIFO_DEPTH
+#include "ni_params.h"                 // CREDIT_DEPTH, {NMU,NSU}_ARBITER_FIFO_DEPTH
 #include <algorithm>
 #include <deque>
 #include <memory>
@@ -142,7 +142,7 @@ class DatMergeWrap {
   public:
     void init(uint8_t dat_num_vc) {
         dat_num_vc_ = dat_num_vc;
-        term_.enable_credit(dat_num_vc, static_cast<std::size_t>(::ni::NOC_ROUTER_VC_DEPTH));
+        term_.enable_credit(dat_num_vc, static_cast<std::size_t>(::ni::CREDIT_DEPTH));
         // WormholeArbiter pending is per (input, VC); this depth is the
         // per-(input, VC) queue depth. Sized to the larger of NMU's/NSU's own
         // per-VC arbiter-stage depth so neither side's unchanged per-VC

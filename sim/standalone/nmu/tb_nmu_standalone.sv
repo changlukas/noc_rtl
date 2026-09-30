@@ -114,7 +114,7 @@ module tb_nmu_standalone #(
         tx_credit <= '0;
         if (!noc_rst_n) begin
             for (int vc = 0; vc < ni_params_pkg::NUM_DAT_VC; vc++)
-                rx_available[vc] = dut.DAT_RX_VC_DEPTH;
+                rx_available[vc] = dut.CREDIT_DEPTH;
         end else begin
             if (dat_valid) tx_credit[int'(tx_dat.header[VC_ID_LSB +: VC_ID_WIDTH])] <= 1'b1;
             for (int vc = 0; vc < ni_params_pkg::NUM_DAT_VC; vc++)

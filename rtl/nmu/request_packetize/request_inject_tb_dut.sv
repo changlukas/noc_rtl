@@ -14,7 +14,7 @@ module nmu_request_inject_tb_dut #(
     parameter int unsigned                               FIFO_DEPTH      = ni_params_pkg::NOC_FIFO_DEPTH,
     parameter int unsigned                               NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
     parameter int unsigned                               DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
-    parameter int unsigned                               ROUTER_VC_DEPTH = ni_params_pkg::NOC_ROUTER_VC_DEPTH,
+    parameter int unsigned                               CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
     parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0]      SRC_ID          = '0,
     parameter logic [ni_flit_pkg::SRC_PORT_ID_WIDTH-1:0] SRC_PORT_ID     = '0
 ) (
@@ -119,11 +119,10 @@ module nmu_request_inject_tb_dut #(
     wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
     wire [NUM_DAT_VC-1:0] tx_dat_valid, tx_dat_ready;
     tx_credit_buffer #(
-        .REQ_FIFO_DEPTH  (FIFO_DEPTH     ),
-        .DAT_FIFO_DEPTH  (FIFO_DEPTH     ),
-        .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .DAT_VC_MODE     (DAT_VC_MODE    ),
-        .ROUTER_VC_DEPTH (ROUTER_VC_DEPTH)
+        .REQ_FIFO_DEPTH (FIFO_DEPTH  ),
+        .NUM_DAT_VC     (NUM_DAT_VC  ),
+        .DAT_VC_MODE    (DAT_VC_MODE ),
+        .CREDIT_DEPTH   (CREDIT_DEPTH)
     ) i_tx_credit_buffer (
         .clk_i               (clk_i              ),
         .rst_n_i             (rst_n_i            ),
@@ -136,23 +135,23 @@ module nmu_request_inject_tb_dut #(
         .s_dat_i             (assigned_dat       ),
         .s_dat_valid_i       (assigned_dat_valid ),
         .dat_ready_o         (dat_fifo_ready     ),
-        .m_dat_o             (tx_dat_head),
-        .m_dat_valid_o       (tx_dat_valid),
-        .m_dat_ready_i       (tx_dat_ready),
+        .m_dat_o             (tx_dat_head        ),
+        .m_dat_valid_o       (tx_dat_valid       ),
+        .m_dat_ready_i       (tx_dat_ready       ),
         .dat_credit_return_i (dat_credit_return_i)
     );
     tx_vc_arbiter #(
-        .NUM_DAT_VC  (NUM_DAT_VC),
+        .NUM_DAT_VC  (NUM_DAT_VC ),
         .DAT_VC_MODE (DAT_VC_MODE)
     ) i_tx_vc_arbiter (
-        .clk_i         (clk_i),
-        .rst_n_i       (rst_n_i),
-        .s_dat_i       (tx_dat_head),
-        .s_dat_valid_i (tx_dat_valid),
-        .s_dat_ready_o (tx_dat_ready),
-        .m_dat_o       (m_dat_o),
+        .clk_i         (clk_i        ),
+        .rst_n_i       (rst_n_i      ),
+        .s_dat_i       (tx_dat_head  ),
+        .s_dat_valid_i (tx_dat_valid ),
+        .s_dat_ready_o (tx_dat_ready ),
+        .m_dat_o       (m_dat_o      ),
         .m_dat_valid_o (m_dat_valid_o),
-        .m_dat_ready_i (1'b1)
+        .m_dat_ready_i (1'b1         )
     );
 endmodule
 `resetall

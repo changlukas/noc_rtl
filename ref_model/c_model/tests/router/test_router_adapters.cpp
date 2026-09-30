@@ -3,7 +3,7 @@
 #include "router/two_node_fabric.hpp"
 #include <gtest/gtest.h>
 
-using ni::NOC_ROUTER_VC_DEPTH;
+using ni::CREDIT_DEPTH;
 using ni::cmodel::Flit;
 using ni::cmodel::router::InjectAdapter;
 using ni::cmodel::router::Router;
@@ -139,7 +139,7 @@ TEST(TwoNodeFabric, FullBackpressureWhenConsumerStalls) {
 }
 
 TEST(TwoNodeFabric, EjectBoundaryCreditConservation) {
-    constexpr std::size_t kDepth = NOC_ROUTER_VC_DEPTH;
+    constexpr std::size_t kDepth = CREDIT_DEPTH;
     TwoNodeFabric ch(/*num_vc=*/2, /*vc_depth=*/kDepth);
     const auto LOCAL = static_cast<std::size_t>(RouterPort::LOCAL);
     for (int t = 0; t < 300; ++t) {

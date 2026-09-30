@@ -402,22 +402,22 @@ TEST(NsuDepacketize, TwoChannel64ReqIngressWaitsWhenDataQueueIsFull) {
     depkt.set_channel_mode(::ni::cmodel::ni::ChannelMode::TwoChannel64);
 
     auto aw = make_aw_flit(0x01, 0x1000, 0x10, 0, 0, ::ni::AXI_CH_DataAw);
-    aw.set_payload_field("AW", "awlen", ::ni::NOC_NI_DAT_RX_VC_DEPTH - 1);
+    aw.set_payload_field("AW", "awlen", ::ni::CREDIT_DEPTH - 1);
     ASSERT_TRUE(noc.req_out().push_flit(aw));
-    for (std::size_t beat = 0; beat < ::ni::NOC_NI_DAT_RX_VC_DEPTH; ++beat) {
+    for (std::size_t beat = 0; beat < ::ni::CREDIT_DEPTH; ++beat) {
         ASSERT_TRUE(noc.req_out().push_flit(
             make_w_flit(static_cast<uint32_t>(beat),
-                        beat + 1 == ::ni::NOC_NI_DAT_RX_VC_DEPTH, ::ni::AXI_CH_DataW)));
+                        beat + 1 == ::ni::CREDIT_DEPTH, ::ni::AXI_CH_DataW)));
     }
 
     depkt.tick();
     ASSERT_TRUE(depkt.pop_aw().has_value());
     ASSERT_TRUE(depkt.pop_w().has_value());
     depkt.tick();
-    for (std::size_t beat = 1; beat < ::ni::NOC_NI_DAT_RX_VC_DEPTH; ++beat) {
+    for (std::size_t beat = 1; beat < ::ni::CREDIT_DEPTH; ++beat) {
         auto w = depkt.pop_w();
         ASSERT_TRUE(w.has_value()) << "beat=" << beat;
-        EXPECT_EQ(w->last, beat + 1 == ::ni::NOC_NI_DAT_RX_VC_DEPTH);
+        EXPECT_EQ(w->last, beat + 1 == ::ni::CREDIT_DEPTH);
     }
 }
 

@@ -40,7 +40,7 @@ task_compile() {
             -Werror-WIDTHEXPAND -Werror-WIDTHTRUNC -Werror-LATCH \
             "$task_root/rtl/nmu/top/nmu_lint.vlt" \
             --top-module tb_nmu_response_depacketize \
-            -GNUM_DAT_VC="$task_vcs" -GDAT_VC_MODE="$task_mode" -GDAT_RX_VC_DEPTH="$task_depth" \
+            -GNUM_DAT_VC="$task_vcs" -GDAT_VC_MODE="$task_mode" -GCREDIT_DEPTH="$task_depth" \
             -Ideps/common_cells/include "${task_sources[@]}" \
             "$task_root/rtl/nmu/response_depacketize/tb_response_depacketize.sv" \
             ${task_wave[@]+"${task_wave[@]}"} --Mdir "$task_out/$task_name" > "$task_out/$task_name.compile.log" 2>&1
@@ -63,7 +63,7 @@ task_compile() {
             -top tb_nmu_response_depacketize \
             -pvalue+tb_nmu_response_depacketize.NUM_DAT_VC="$task_vcs" \
             -pvalue+tb_nmu_response_depacketize.DAT_VC_MODE="$task_mode" \
-            -pvalue+tb_nmu_response_depacketize.DAT_RX_VC_DEPTH="$task_depth" \
+            -pvalue+tb_nmu_response_depacketize.CREDIT_DEPTH="$task_depth" \
             ${task_wave[@]+"${task_wave[@]}"} -Mdir="$task_work/csrc" -o "$task_work/simv" \
             -l "$task_out/$task_name.compile.log" > "$task_out/$task_name.console.log" 2>&1
         task_binary="$task_work/simv"
@@ -91,7 +91,7 @@ for task_cfg in '2 0 0 depth' '2 0 1 depth' '2 0 3 depth' '1 1 2 mode'; do
     task_compile
     "$task_binary" > "$task_out/$task_name.guard.log" 2>&1 || true
     if [[ $task_guard == depth ]]; then
-        grep -q 'DAT_RX_VC_DEPTH must be a power of two and at least 2' "$task_out/$task_name.guard.log"
+        grep -q 'CREDIT_DEPTH must be a power of two and at least 2' "$task_out/$task_name.guard.log"
     else
         grep -q 'DAT_VC_MODE split requires a positive even VC count' "$task_out/$task_name.guard.log"
     fi

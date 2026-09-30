@@ -8,7 +8,7 @@ module rx_credit_buffer #(
     parameter int unsigned RSP_FIFO_DEPTH  = 32,
     parameter int unsigned NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
     parameter int unsigned DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
-    parameter int unsigned DAT_RX_VC_DEPTH = 32
+    parameter int unsigned CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH
 ) (
     input  wire logic                                    clk_i,
     input  wire logic                                    rst_n_i,
@@ -35,8 +35,8 @@ module rx_credit_buffer #(
     if (DAT_VC_MODE > 1 || (DAT_VC_MODE == 1 && (NUM_DAT_VC < 2 || NUM_DAT_VC % 2 != 0))) begin : gen_invalid_mode
         initial $fatal(0, "DAT_VC_MODE split requires a positive even VC count");
     end
-    if (DAT_RX_VC_DEPTH < 2 || (DAT_RX_VC_DEPTH & (DAT_RX_VC_DEPTH-1)) != 0) begin : gen_invalid_dat_depth
-        initial $fatal(0, "DAT_RX_VC_DEPTH must be a power of two and at least 2");
+    if (CREDIT_DEPTH < 2 || (CREDIT_DEPTH & (CREDIT_DEPTH-1)) != 0) begin : gen_invalid_dat_depth
+        initial $fatal(0, "CREDIT_DEPTH must be a power of two and at least 2");
     end
     localparam int unsigned VC_IDX_W   = NUM_DAT_VC > 1 ? $clog2(NUM_DAT_VC) : 1;
     localparam int unsigned RD_VC_BASE = DAT_VC_MODE == 1 ? NUM_DAT_VC/2 : 0;
@@ -77,7 +77,7 @@ module rx_credit_buffer #(
             assign dat_pop[vc]       = m_dat_valid_o[vc] && m_dat_ready_i[vc];
             assign m_dat_valid_o[vc] = rst_n_i && !dat_empty[vc];
             cc_fifo #(
-                .Depth       (DAT_RX_VC_DEPTH        ),
+                .Depth       (CREDIT_DEPTH           ),
                 .FallThrough (1'b0                   ),
                 .data_t      (ni_flit_pkg::dat_flit_t)
             ) i_fifo (

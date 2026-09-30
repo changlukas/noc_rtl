@@ -8,7 +8,7 @@
 #include <vector>
 
 using ni::NOC_ROUTER_OUTPUT_FIFO_DEPTH;
-using ni::NOC_ROUTER_VC_DEPTH;
+using ni::CREDIT_DEPTH;
 using ni::cmodel::router::route_compute;
 using ni::cmodel::router::Router;
 using ni::cmodel::router::RouterConfig;
@@ -283,21 +283,21 @@ TEST(RouterDatapath, CreditDecrementAtGrantAndPulseAfterDequeue) {
     r.set_upstream_credit(static_cast<std::size_t>(RouterPort::WEST), west_up);
     const auto E = static_cast<std::size_t>(RouterPort::EAST);
     const auto W = static_cast<std::size_t>(RouterPort::WEST);
-    EXPECT_EQ(r.credit(E, 0), NOC_ROUTER_VC_DEPTH);  // seeded
+    EXPECT_EQ(r.credit(E, 0), CREDIT_DEPTH);  // seeded
     r.input(W).push_flit(make_flit(make_dst(3, 1), 0, 1));
     r.tick();  // stage 1 BW
-    EXPECT_EQ(r.credit(E, 0), NOC_ROUTER_VC_DEPTH);
+    EXPECT_EQ(r.credit(E, 0), CREDIT_DEPTH);
     r.tick();  // stage 2 VA: the VC is held, its credit is NOT reserved
     ASSERT_EQ(r.va_out_vc(W, 0), std::optional<uint8_t>(0));
-    EXPECT_EQ(r.credit(E, 0), NOC_ROUTER_VC_DEPTH);
+    EXPECT_EQ(r.credit(E, 0), CREDIT_DEPTH);
     r.tick();  // stage 3 SA: grant
-    EXPECT_EQ(r.credit(E, 0), NOC_ROUTER_VC_DEPTH - 1);
+    EXPECT_EQ(r.credit(E, 0), CREDIT_DEPTH - 1);
     EXPECT_TRUE(west_up.pulses.empty());  // registered
     r.tick();                             // stage 4 LT + pulse delivered
     ASSERT_EQ(west_up.pulses.size(), 1u);
     EXPECT_EQ(west_up.pulses[0], 0);
     r.receive_credit(E, 0);  // downstream returns
-    EXPECT_EQ(r.credit(E, 0), NOC_ROUTER_VC_DEPTH);
+    EXPECT_EQ(r.credit(E, 0), CREDIT_DEPTH);
 }
 
 // --- Wormhole locking helpers --------------------------------------------
@@ -540,7 +540,7 @@ TEST(RouterWormhole, CreditStarvedVcDoesNotIdleTheOutput) {
     const auto W = static_cast<std::size_t>(RouterPort::WEST);
     const auto S = static_cast<std::size_t>(RouterPort::SOUTH);
     // vc0: an open worm fed one body flit per tick; its credit is never returned,
-    // so after NOC_ROUTER_VC_DEPTH grants vc0 is starved while still locked.
+    // so after CREDIT_DEPTH grants vc0 is starved while still locked.
     int next_b = 0;
     for (int t = 0; t < 40; ++t) {
         if (r.input_fifo_size(W, 0) == 0) r.input(W).push_flit(make_pinned_flit(dst, 0, 0, 0x10));
@@ -557,7 +557,7 @@ TEST(RouterWormhole, CreditStarvedVcDoesNotIdleTheOutput) {
     }
     int vc0 = 0, vc1 = 0;
     for (const auto& f : east.received) (f.get_header_field("vc_id") == 0 ? vc0 : vc1)++;
-    EXPECT_EQ(vc0, static_cast<int>(NOC_ROUTER_VC_DEPTH));
+    EXPECT_EQ(vc0, static_cast<int>(CREDIT_DEPTH));
     EXPECT_EQ(vc1, 3);
     EXPECT_EQ(r.wormhole_locked_input(E, 0), std::optional<std::size_t>(W));
 }
@@ -576,9 +576,9 @@ TEST(RouterWormhole, CreditBlockedTailDoesNotOverflowToAnotherVc) {
     // output VC is 0 (floo_vc_assignment.sv:91) and vc1 is the FVADA overflow.
     const uint8_t dst = make_dst(2, 3);
     const auto W = static_cast<std::size_t>(RouterPort::WEST);
-    // fixed_vc=0 worm: head + NOC_ROUTER_VC_DEPTH-1 bodies use up vc0's credit,
+    // fixed_vc=0 worm: head + CREDIT_DEPTH-1 bodies use up vc0's credit,
     // then the tail arrives with credit_[E][0] == 0 and credit left on vc1.
-    const int bodies = static_cast<int>(NOC_ROUTER_VC_DEPTH) - 1;
+    const int bodies = static_cast<int>(CREDIT_DEPTH) - 1;
     int fed = 0;
     for (int t = 0; t < 40; ++t) {
         if (r.input_fifo_size(W, 0) == 0 && fed <= bodies + 1) {
@@ -588,7 +588,7 @@ TEST(RouterWormhole, CreditBlockedTailDoesNotOverflowToAnotherVc) {
         }
         r.tick();  // no credit ever returned on vc0
     }
-    EXPECT_EQ(east.received.size(), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH));  // tail stuck
+    EXPECT_EQ(east.received.size(), static_cast<std::size_t>(CREDIT_DEPTH));  // tail stuck
     EXPECT_TRUE(r.wormhole_locked_input(E, 0).has_value());
     EXPECT_FALSE(r.wormhole_locked_input(E, 1).has_value());
     for (const auto& f : east.received) EXPECT_EQ(f.get_header_field("vc_id"), 0u);
@@ -972,7 +972,7 @@ TEST(RouterCredit, ConservationAcrossChainedRouters) {
 
     // Drive: model the NI-side credit mirror — only push a new packet into A's WEST
     // when A still has EAST/vc0 credit (the sender never overruns the receiver).
-    for (int t = 0; t < 200 && (injected < kPackets || a.credit(E, 0) < NOC_ROUTER_VC_DEPTH); ++t) {
+    for (int t = 0; t < 200 && (injected < kPackets || a.credit(E, 0) < CREDIT_DEPTH); ++t) {
         if (injected < kPackets && a.credit(E, 0) > 0 && a.input_fifo_size(W, 0) == 0) {
             a.input(W).push_flit(make_flit(dst_b_local, /*vc=*/0, /*flit_tail=*/1));
             ++injected;
@@ -982,7 +982,7 @@ TEST(RouterCredit, ConservationAcrossChainedRouters) {
         if (a_to_b.in_flight > 0) --a_to_b.in_flight;  // input register consumed by B stage 1
 
         // No credit created: the observable occupancy never exceeds DEPTH.
-        EXPECT_LE(occupancy_lower(), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH))
+        EXPECT_LE(occupancy_lower(), static_cast<std::size_t>(CREDIT_DEPTH))
             << "credit created at tick " << t;
         EXPECT_LE(a_to_b.in_flight, 1u) << "more than one flit on the wire at tick " << t;
     }
@@ -990,7 +990,7 @@ TEST(RouterCredit, ConservationAcrossChainedRouters) {
     EXPECT_EQ(injected, kPackets) << "did not inject all packets (credit deadlock?)";
     // At quiescence: every credit restored (none destroyed) and every flit ejected
     // (none lost or duplicated).
-    EXPECT_EQ(a.credit(E, 0), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH))
+    EXPECT_EQ(a.credit(E, 0), static_cast<std::size_t>(CREDIT_DEPTH))
         << "credit not fully restored at drain";
     EXPECT_EQ(a_to_b.in_flight, 0u);
     EXPECT_EQ(b.input_fifo_size(W, 0), 0u);
@@ -1047,7 +1047,7 @@ TEST(RouterFairness, AllToOneNoStarvation) {
     for (int t = 0; t < 400 && east.received.size() < kCollect; ++t) {
         for (int i = 0; i < kInputs; ++i) {
             if (pkt[i].next >= kMaxPacketFlits) pkt[i] = Packet{in_ports[i], labels[i]};  // refill
-            if (r.input_fifo_size(in_ports[i], 0) < NOC_ROUTER_VC_DEPTH)
+            if (r.input_fifo_size(in_ports[i], 0) < CREDIT_DEPTH)
                 feed_packet(r, pkt[i], dst, 0);
         }
         tick_and_return_credit(r, east, E);
@@ -1325,7 +1325,7 @@ TEST(RouterVaWorm, PinnedWormRidesNonPreferredVcNoAssert) {
     ASSERT_EQ(east.received.size(), 3u);
     for (const auto& f : east.received)
         EXPECT_EQ(static_cast<uint8_t>(f.get_header_field("vc_id")), 0u) << "pin not honored";
-    EXPECT_EQ(r.credit(E, 1), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH))
+    EXPECT_EQ(r.credit(E, 1), static_cast<std::size_t>(CREDIT_DEPTH))
         << "pinned worm consumed the preferred VC's credit";
 }
 
@@ -1369,13 +1369,13 @@ TEST(RouterVa, ZeroCreditVcIsNeverHeld) {
     const auto W = static_cast<std::size_t>(RouterPort::WEST);
     r.set_downstream(E, east);
     const uint8_t dst = make_dst(3, 1);
-    for (std::size_t i = 0; i < NOC_ROUTER_VC_DEPTH; ++i) {
+    for (std::size_t i = 0; i < CREDIT_DEPTH; ++i) {
         r.input(W).push_flit(make_flit(dst, 0, 1));
         r.tick();
     }
     for (int t = 0; t < 8; ++t) r.tick();  // credit_[E][0] is now 0, no returns
     ASSERT_EQ(r.credit(E, 0), 0u);
-    ASSERT_EQ(east.received.size(), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH));
+    ASSERT_EQ(east.received.size(), static_cast<std::size_t>(CREDIT_DEPTH));
 
     r.input(W).push_flit(make_flit(dst, 0, 1));
     for (int t = 0; t < 4; ++t) r.tick();
@@ -1385,7 +1385,7 @@ TEST(RouterVa, ZeroCreditVcIsNeverHeld) {
     EXPECT_FALSE(r.allocation_waits().front().occupied);
     r.receive_credit(E, 0);
     for (int t = 0; t < 4; ++t) r.tick();
-    EXPECT_EQ(east.received.size(), NOC_ROUTER_VC_DEPTH + 1);
+    EXPECT_EQ(east.received.size(), CREDIT_DEPTH + 1);
     EXPECT_TRUE(r.allocation_waits().empty());
 }
 
@@ -1538,7 +1538,7 @@ TEST(RouterVaWorkConserving, HeadVaFailAlternateCandidateGrantedSameTick) {
 
     r.tick();  // stage 3 SA: B granted
     EXPECT_EQ(r.input_fifo_size(NORTH, 0), 1u) << "candidate A must not be granted";
-    EXPECT_EQ(r.credit(E, 0), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH) - 1)
+    EXPECT_EQ(r.credit(E, 0), static_cast<std::size_t>(CREDIT_DEPTH) - 1)
         << "B's preferred VC credit not consumed";
     r.tick();                             // stage 4 LT: B reaches the sink
     ASSERT_EQ(east.received.size(), 2u);  // the holder's head + B
@@ -1614,9 +1614,9 @@ TEST(RouterVaCredit, ConsumeStampedVcReturnInputVc) {
     r.tick();  // stage 2 VA: output vc1 assigned
     ASSERT_EQ(r.va_out_vc(WEST, 0), std::optional<uint8_t>(1));
     r.tick();  // stage 3 SA: grant
-    EXPECT_EQ(r.credit(E, 1), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH) - 1)
+    EXPECT_EQ(r.credit(E, 1), static_cast<std::size_t>(CREDIT_DEPTH) - 1)
         << "credit not consumed on the assigned VC";
-    EXPECT_EQ(r.credit(E, 0), static_cast<std::size_t>(NOC_ROUTER_VC_DEPTH))
+    EXPECT_EQ(r.credit(E, 0), static_cast<std::size_t>(CREDIT_DEPTH))
         << "credit consumed on the input VC";
     r.tick();  // stage 4 LT + registered pulse
     ASSERT_EQ(east.received.size(), 1u);

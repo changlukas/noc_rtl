@@ -199,8 +199,8 @@ module tb_nmu_cosim #(
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
         .AXI_FIFO_DEPTH (IO_FIFO_DEPTH),
         .REQ_FIFO_DEPTH (IO_FIFO_DEPTH),
-        .DAT_TX_FIFO_DEPTH (IO_FIFO_DEPTH),
-        .RSP_RX_FIFO_DEPTH (IO_FIFO_DEPTH),
+        .CREDIT_DEPTH (ni_params_pkg::CREDIT_DEPTH),
+        .RSP_FIFO_DEPTH (IO_FIFO_DEPTH),
         .SRC_ID (ni_flit_pkg::SRC_ID_WIDTH'(NMU_ID))
     ) dut (
         .ACLK              (clk),
@@ -563,12 +563,12 @@ module tb_nmu_cosim #(
             nsu_ctx[n] = cmodel_nsu_create($sformatf("nsu_%0d", n + 1), nsu_id(n + 1),
                 NUM_DAT_VC, NSU_META_BUFFER_MAX_UNIQUE_IDS,
                 NSU_META_BUFFER_MAX_OUTSTANDING, 0, "");
-            cmodel_nsu_set_dat_credit_depth(nsu_ctx[n], NOC_ROUTER_VC_DEPTH);
+            cmodel_nsu_set_dat_credit_depth(nsu_ctx[n], CREDIT_DEPTH);
         end
         void'($value$plusargs("reorder_test=%d", reorder_test));
         $display("RESPONSE_DELAY enabled=%0d west_setting=%0d", reorder_test != 0, RSP_DELAY_CYCLES);
         $display("DAT_CREDIT_DEPTH router=%0d nmu_rx=%0d nsu_rx=%0d",
-            NOC_ROUTER_VC_DEPTH, NOC_ROUTER_VC_DEPTH, NOC_NI_DAT_RX_VC_DEPTH);
+            CREDIT_DEPTH, CREDIT_DEPTH, CREDIT_DEPTH);
         master = new(vip);
         scoreboard = new(vip);
         if (!$value$plusargs("stim_dir=%s", stim_dir)) $fatal(1, "Missing stim_dir");

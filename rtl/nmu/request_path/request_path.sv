@@ -20,13 +20,12 @@ module nmu_request_path #(
     parameter int unsigned AW_FIFO_DEPTH                             = AXI_FIFO_DEPTH,
     parameter int unsigned W_FIFO_DEPTH                              = AXI_FIFO_DEPTH,
     parameter int unsigned AR_FIFO_DEPTH                             = AXI_FIFO_DEPTH,
-    parameter int unsigned DAT_TX_FIFO_DEPTH                         = 32,
+    parameter int unsigned CREDIT_DEPTH                              = ni_params_pkg::CREDIT_DEPTH,
     parameter int unsigned REQ_AW_REG_TYPE                           = 0,
     parameter int unsigned REQ_W_REG_TYPE                            = 0,
     parameter int unsigned REQ_AR_REG_TYPE                           = 0,
     parameter int unsigned DAT_AW_REG_TYPE                           = 0,
     parameter int unsigned DAT_W_REG_TYPE                            = 0,
-    parameter int unsigned NOC_ROUTER_VC_DEPTH                       = ni_params_pkg::NOC_ROUTER_VC_DEPTH,
     parameter int unsigned MAX_OUTSTANDING_PER_ID                    = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
     parameter int unsigned AW_SAM_REG_TYPE                           = 0,
     parameter int unsigned AR_SAM_REG_TYPE                           = 0,
@@ -358,11 +357,10 @@ module nmu_request_path #(
     wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
     wire [NUM_DAT_VC-1:0] tx_dat_valid, tx_dat_ready;
     tx_credit_buffer #(
-        .REQ_FIFO_DEPTH  (REQ_FIFO_DEPTH     ),
-        .DAT_FIFO_DEPTH  (DAT_TX_FIFO_DEPTH  ),
-        .NUM_DAT_VC      (NUM_DAT_VC         ),
-        .DAT_VC_MODE     (NOC_DAT_VC_MODE    ),
-        .ROUTER_VC_DEPTH (NOC_ROUTER_VC_DEPTH)
+        .REQ_FIFO_DEPTH (REQ_FIFO_DEPTH ),
+        .NUM_DAT_VC     (NUM_DAT_VC     ),
+        .DAT_VC_MODE    (NOC_DAT_VC_MODE),
+        .CREDIT_DEPTH   (CREDIT_DEPTH   )
     ) i_tx_credit_buffer (
         .clk_i               (noc_clk_i         ),
         .rst_n_i             (noc_rst_n_i       ),

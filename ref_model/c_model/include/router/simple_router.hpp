@@ -100,7 +100,7 @@ struct SimpleRouterConfig {
     // has no VC arbiter translated — see file header. Must be 1.
     uint8_t num_vc = 1;
     // InFifoDepth, floo_router.sv:129-144.
-    std::size_t input_fifo_depth = NOC_ROUTER_VC_DEPTH;
+    std::size_t input_fifo_depth = NOC_FIFO_DEPTH;
     // OutFifoDepth, floo_router.sv:448-470. 0 is legal (gen_no_out_fifo):
     // stage 2 drives the downstream link directly, no stage 3.
     std::size_t output_fifo_depth = 0;

@@ -9,9 +9,9 @@ module nmu_response_path #(
     parameter int unsigned NUM_IDS                = 1 << ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned NUM_DAT_VC             = ni_params_pkg::NUM_DAT_VC,
     parameter int unsigned NOC_DAT_VC_MODE        = ni_params_pkg::NOC_DAT_VC_MODE,
-    parameter int unsigned DAT_RX_VC_DEPTH        = 32,
+    parameter int unsigned CREDIT_DEPTH           = ni_params_pkg::CREDIT_DEPTH,
     parameter int unsigned AXI_FIFO_DEPTH         = 32,
-    parameter int unsigned RSP_RX_FIFO_DEPTH      = 32,
+    parameter int unsigned RSP_FIFO_DEPTH         = 32,
     parameter int unsigned B_FIFO_DEPTH           = AXI_FIFO_DEPTH,
     parameter int unsigned R_FIFO_DEPTH           = AXI_FIFO_DEPTH,
     parameter int unsigned B_REG_TYPE             = 0,
@@ -111,10 +111,10 @@ module nmu_response_path #(
     wire rx_rsp_valid, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] rx_dat_valid, rx_dat_ready;
     rx_credit_buffer #(
-        .RSP_FIFO_DEPTH  (RSP_RX_FIFO_DEPTH),
-        .NUM_DAT_VC      (NUM_DAT_VC       ),
-        .DAT_VC_MODE     (NOC_DAT_VC_MODE  ),
-        .DAT_RX_VC_DEPTH (DAT_RX_VC_DEPTH  )
+        .RSP_FIFO_DEPTH (RSP_FIFO_DEPTH ),
+        .NUM_DAT_VC     (NUM_DAT_VC     ),
+        .DAT_VC_MODE    (NOC_DAT_VC_MODE),
+        .CREDIT_DEPTH   (CREDIT_DEPTH   )
     ) i_rx_credit_buffer (
         .clk_i               (noc_clk_i                              ),
         .rst_n_i             (noc_rst_n_i                            ),

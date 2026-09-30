@@ -5,10 +5,9 @@
 
 module tx_credit_buffer #(
     parameter int unsigned REQ_FIFO_DEPTH  = 32,
-    parameter int unsigned DAT_FIFO_DEPTH  = 32,
     parameter int unsigned NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
     parameter int unsigned DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
-    parameter int unsigned ROUTER_VC_DEPTH = ni_params_pkg::NOC_ROUTER_VC_DEPTH
+    parameter int unsigned CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH
 ) (
     input  wire logic                                    clk_i,
     input  wire logic                                    rst_n_i,
@@ -30,15 +29,15 @@ module tx_credit_buffer #(
     localparam int unsigned NUM_WR_VC = NUM_DAT_VC < 2 ? 1 :
         DAT_VC_MODE == 1 ? NUM_DAT_VC/2 : NUM_DAT_VC;
     localparam int unsigned VC_IDX_W = NUM_WR_VC > 1 ? $clog2(NUM_WR_VC) : 1;
-    if (REQ_FIFO_DEPTH < 1 || DAT_FIFO_DEPTH < 1) begin : gen_invalid_depth
+    if (REQ_FIFO_DEPTH < 1) begin : gen_invalid_depth
         initial $fatal(0, "Error: TX FIFO depths must be positive (instance %m)");
     end
     if (NUM_DAT_VC < 1 || NUM_DAT_VC > (1 << VC_ID_WIDTH) || DAT_VC_MODE > 1 ||
             (DAT_VC_MODE == 1 && (NUM_DAT_VC < 2 || NUM_DAT_VC % 2 != 0))) begin : gen_invalid_vc
         initial $fatal(0, "Error: invalid DAT VC configuration (instance %m)");
     end
-    if (ROUTER_VC_DEPTH < 2 || (ROUTER_VC_DEPTH & (ROUTER_VC_DEPTH-1)) != 0) begin : gen_invalid_credit_depth
-        initial $fatal(0, "Error: ROUTER_VC_DEPTH must be a power of two >= 2 (instance %m)");
+    if (CREDIT_DEPTH < 2 || (CREDIT_DEPTH & (CREDIT_DEPTH-1)) != 0) begin : gen_invalid_credit_depth
+        initial $fatal(0, "Error: CREDIT_DEPTH must be a power of two >= 2 (instance %m)");
     end
     wire req_full, req_empty;
     wire req_flit_t req_head;
@@ -74,24 +73,24 @@ module tx_credit_buffer #(
             assign dat_req[vc] = rst_n_i && !dat_empty[vc] &&
                 (credit_left[vc] || dat_credit_return_i[vc]);
             cc_fifo #(
-                .Depth       (DAT_FIFO_DEPTH),
-                .FallThrough (1'b0          ),
-                .data_t      (dat_flit_t    )
+                .Depth       (CREDIT_DEPTH),
+                .FallThrough (1'b0        ),
+                .data_t      (dat_flit_t  )
             ) i_fifo (
-                .clk_i   (clk_i        ),
-                .rst_ni  (rst_n_i      ),
-                .clr_i   (1'b0         ),
-                .flush_i (1'b0         ),
-                .full_o  (dat_full[vc] ),
-                .empty_o (dat_empty[vc]),
-                .usage_o (             ),
-                .data_i  (s_dat_i      ),
+                .clk_i   (clk_i                                                        ),
+                .rst_ni  (rst_n_i                                                      ),
+                .clr_i   (1'b0                                                         ),
+                .flush_i (1'b0                                                         ),
+                .full_o  (dat_full[vc]                                                 ),
+                .empty_o (dat_empty[vc]                                                ),
+                .usage_o (                                                             ),
+                .data_i  (s_dat_i                                                      ),
                 .push_i  (s_dat_valid_i && dat_ready_o[vc] && wr_vc == VC_ID_WIDTH'(vc)),
-                .data_o (dat_head[vc]),
-                .pop_i  (dat_pop[vc] )
+                .data_o  (dat_head[vc]                                                 ),
+                .pop_i   (dat_pop[vc]                                                  )
             );
             cc_credit_counter #(
-                .NumCredits (ROUTER_VC_DEPTH)
+                .NumCredits (CREDIT_DEPTH)
             ) i_credit (
                 .clk_i         (clk_i                             ),
                 .rst_ni        (rst_n_i                           ),

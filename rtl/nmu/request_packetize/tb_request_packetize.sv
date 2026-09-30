@@ -4,7 +4,7 @@
 module tb_nmu_request_packetize;
 
     localparam int unsigned NUM_DAT_VC = 2;
-    localparam int unsigned ROUTER_VC_DEPTH = 2;
+    localparam int unsigned CREDIT_DEPTH = 2;
 
     logic clk = 1'b0;
     logic rst_n_i = 1'b0;
@@ -25,7 +25,7 @@ module tb_nmu_request_packetize;
     nmu_request_inject_tb_dut #(
         .FIFO_DEPTH      (4              ),
         .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .ROUTER_VC_DEPTH (ROUTER_VC_DEPTH),
+        .CREDIT_DEPTH (CREDIT_DEPTH),
         .SRC_ID          (8'h12          ),
         .SRC_PORT_ID     (2'h2           )
     ) dut (

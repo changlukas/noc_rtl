@@ -112,11 +112,10 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     # One profile drives both generated languages and every DAT receiver.
     sys.path.insert(0, str(ROOT / "specgen"))
     constants = yaml.safe_load((ROOT / "specgen/source/constants.yaml").read_text())
-    depth = profile["dat_credit_depth"]
+    depth = profile["credit_depth"]
     if not isinstance(depth, int) or depth < 2 or depth & (depth - 1):
         raise ValueError("DAT credit depth must be a power of two and at least 2")
-    for key in ("ROUTER_VC_DEPTH", "NI_DAT_RX_VC_DEPTH"):
-        constants["noc"][key]["default"] = profile["dat_credit_depth"]
+    constants["noc"]["CREDIT_DEPTH"]["default"] = depth
     constants["axi"]["AXI_ID_WIDTH"]["default"] = noc_id_width
     constants["nsu"]["AXI_ID_WIDTH"]["default"] = noc_id_width
     constants["nsu"]["MAX_ACTIVE_IDS"]["default"] = 1 << noc_id_width

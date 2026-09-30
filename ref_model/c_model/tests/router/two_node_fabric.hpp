@@ -32,7 +32,7 @@ class TwoNodeFabric {
     static constexpr std::size_t WEST = static_cast<std::size_t>(RouterPort::WEST);
 
     explicit TwoNodeFabric(uint8_t num_vc = NOC_DAT_NUM_VC,
-                           std::size_t vc_depth = NOC_ROUTER_VC_DEPTH,
+                           std::size_t vc_depth = CREDIT_DEPTH,
                            std::size_t out_fifo_depth = NOC_ROUTER_OUTPUT_FIFO_DEPTH)
         : num_vc_(num_vc), vc_depth_(vc_depth) {
         for (std::size_t n = 0; n < kNodes; ++n) {
