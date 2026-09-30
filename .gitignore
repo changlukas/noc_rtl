@@ -7,3 +7,5 @@
 *.fsdb
 *.vcd
 *.log
+
+/docker/noc-dev/
