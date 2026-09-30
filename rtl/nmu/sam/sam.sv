@@ -35,8 +35,6 @@ module nmu_sam #(
 
     localparam int unsigned AXI_ADDR_W        = ni_params_pkg::AXI_ADDR_WIDTH;
     localparam int unsigned COLLECTIVE_MASK_W = ni_flit_pkg::COLLECTIVE_MASK_WIDTH;
-    // Generated SAM ranges are 4 KiB aligned and sized.
-    localparam int unsigned SAM_ALIGN_BITS = 12;
 
     if (AW_SAM_REG_TYPE > 2) begin : gen_invalid_aw_reg_type
         initial $fatal(0, "Error: AW_SAM_REG_TYPE must be 0, 1, or 2 (instance %m)");
@@ -83,41 +81,6 @@ module nmu_sam #(
             ni_flit_pkg::Y_WIDTH'((address_mask & selector_mask(sam_idx.mask_y)) >>
                 sam_idx.mask_y.offset);
         return collective_mask;
-    endfunction
-
-    function automatic logic [AXI_ADDR_W:0] burst_last_byte(
-        input logic [AXI_ADDR_W-1:0]                    addr,
-        input logic [ni_flit_pkg::AXI_LEN_WIDTH-1:0]   len,
-        input logic [ni_flit_pkg::AXI_SIZE_WIDTH-1:0]  size,
-        input logic [ni_flit_pkg::AXI_BURST_WIDTH-1:0] burst
-    );
-        logic [AXI_ADDR_W:0] extended_addr;
-        logic [AXI_ADDR_W:0] total_bytes;
-
-        extended_addr                               = {1'b0, addr};
-        total_bytes                                 = '0;
-        total_bytes[ni_flit_pkg::AXI_LEN_WIDTH-1:0] = len;
-        total_bytes                                 = (total_bytes + 1'b1) << size;
-
-        if (burst == 2'd2) begin
-            burst_last_byte = (extended_addr & ~(total_bytes - 1'b1)) + total_bytes - 1'b1;
-        end else begin
-            burst_last_byte = extended_addr + total_bytes - 1'b1;
-        end
-    endfunction
-
-    function automatic logic burst_footprint_error(
-        input logic [AXI_ADDR_W-1:0]                    addr,
-        input logic [ni_flit_pkg::AXI_LEN_WIDTH-1:0]   len,
-        input logic [ni_flit_pkg::AXI_SIZE_WIDTH-1:0]  size,
-        input logic [ni_flit_pkg::AXI_BURST_WIDTH-1:0] burst
-    );
-        logic [AXI_ADDR_W:0] last_byte;
-
-        last_byte = burst_last_byte(addr, len, size, burst);
-        return last_byte[AXI_ADDR_W] ||
-            last_byte[AXI_ADDR_W-1:SAM_ALIGN_BITS] !=
-                addr[AXI_ADDR_W-1:SAM_ALIGN_BITS];
     endfunction
 
     function automatic logic collective_error(
@@ -228,31 +191,38 @@ module nmu_sam #(
         .m_data_o  (m_ar_o                                        )
     );
 
+    // synthesis translate_off
+`ifdef NMU_SAM_CHECKS
+
+    nmu_sam_burst_checker #(
+        .SAM_NUM_RULES (SAM_NUM_RULES),
+        .sam_rule_t    (sam_rule_t   )
+    ) i_burst_checker (
+        .sam_i      (SAM         ),
+        .clk_i      (noc_clk_i   ),
+        .rst_n_i    (noc_rst_n_i ),
+        .aw_valid_i (s_aw_valid_i),
+        .aw_i       (s_aw_i      ),
+        .ar_valid_i (s_ar_valid_i),
+        .ar_i       (s_ar_i      )
+    );
+
+`endif
+
     always @(posedge noc_clk_i) begin
         if (noc_rst_n_i) begin
             if (s_aw_valid_i && aw_lookup_error) begin
                 $fatal(0, "Error: invalid AW SAM mapping (instance %m)");
-            end else if (s_aw_valid_i && burst_footprint_error(
-                    s_aw_i.awaddr, s_aw_i.awlen,
-                    s_aw_i.awsize, s_aw_i.awburst)) begin
-                $fatal(0, "Error: AW burst footprint crosses a SAM region boundary: addr=%h last=%h (instance %m)",
-                    s_aw_i.awaddr, burst_last_byte(
-                        s_aw_i.awaddr, s_aw_i.awlen,
-                        s_aw_i.awsize, s_aw_i.awburst));
             end else if (s_aw_valid_i && collective_error(
                     s_aw_i.awuser, s_aw_i.awlock, aw_sam_idx)) begin
                 $fatal(0, "Error: invalid AW collective mapping (instance %m)");
             end
             if (s_ar_valid_i && ar_lookup_error) begin
                 $fatal(0, "Error: invalid AR SAM mapping (instance %m)");
-            end else if (s_ar_valid_i && burst_footprint_error(
-                    s_ar_i.araddr, s_ar_i.arlen, s_ar_i.arsize, s_ar_i.arburst)) begin
-                $fatal(0, "Error: AR burst footprint crosses a SAM region boundary: addr=%h last=%h (instance %m)",
-                    s_ar_i.araddr, burst_last_byte(
-                        s_ar_i.araddr, s_ar_i.arlen, s_ar_i.arsize, s_ar_i.arburst));
             end
         end
     end
+    // synthesis translate_on
 
 endmodule
 

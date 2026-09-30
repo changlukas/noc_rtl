@@ -84,17 +84,10 @@ module nmu #(
         initial $fatal(0, "Error: OUTPUT_ID_WIDTH must match the generated fixed width (instance %m)");
     end
 
-    if (AXI_ADDR_WIDTH < 1 || AXI_ADDR_WIDTH > 64) begin : gen_invalid_axi_addr_width
-        initial $fatal(0, "Error: AXI_ADDR_WIDTH must be in [1, 64] (instance %m)");
-    end
-
-    if (AXI_DATA_WIDTH != 32 && AXI_DATA_WIDTH != 64 && AXI_DATA_WIDTH != 128 &&
-            AXI_DATA_WIDTH != 256 && AXI_DATA_WIDTH != 512 && AXI_DATA_WIDTH != 1024) begin : gen_invalid_axi_data_width
-        initial $fatal(0, "Error: AXI_DATA_WIDTH must be 32, 64, 128, 256, 512, or 1024 (instance %m)");
-    end
-
-    if (AXI_AWUSER_WIDTH < 10 || AXI_AWUSER_WIDTH > 64) begin : gen_invalid_axi_awuser_width
-        initial $fatal(0, "Error: AXI_AWUSER_WIDTH must be in [10, 64] (instance %m)");
+    if (AXI_ADDR_WIDTH != ni_params_pkg::AXI_ADDR_WIDTH ||
+            AXI_DATA_WIDTH != ni_params_pkg::AXI_DATA_WIDTH ||
+            AXI_AWUSER_WIDTH != ni_params_pkg::AXI_AWUSER_WIDTH) begin : gen_invalid_axi_widths
+        initial $fatal(0, "Error: AXI address/data/user widths must match the generated package (instance %m)");
     end
 
     if (NUM_DAT_VC < 1 || NUM_DAT_VC > 8) begin : gen_invalid_dat_num_vc

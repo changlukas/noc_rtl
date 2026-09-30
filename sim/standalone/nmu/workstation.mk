@@ -15,3 +15,7 @@ list:
 else
 $(error TESTBENCH must be standalone or cosim)
 endif
+
+.PHONY: sam_check
+sam_check:
+	python3 script/test_sam.py

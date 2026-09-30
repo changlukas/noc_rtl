@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module tb_nmu_elaborate;
+module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
 
     logic ACLK;
     logic ARESETn;
@@ -31,7 +31,10 @@ module tb_nmu_elaborate;
     logic         [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_crdvalid_o;
 
     nmu #(
-        .INPUT_ID_WIDTH (8)
+        .INPUT_ID_WIDTH (8),
+        .AXI_ADDR_WIDTH (INVALID_WIDTH == 1 ? 64 : ni_params_pkg::AXI_ADDR_WIDTH),
+        .AXI_DATA_WIDTH (INVALID_WIDTH == 2 ? 1024 : ni_params_pkg::AXI_DATA_WIDTH),
+        .AXI_AWUSER_WIDTH (INVALID_WIDTH == 3 ? 64 : ni_params_pkg::AXI_AWUSER_WIDTH)
     ) dut (
         .ACLK              (ACLK             ),
         .ARESETn           (ARESETn          ),
@@ -70,6 +73,8 @@ module tb_nmu_elaborate;
             else $fatal(1, "DAT flit width mismatch");
         assert ($bits(tx_dat_crdvalid_i) == ni_params_pkg::NUM_DAT_VC)
             else $fatal(1, "DAT credit width mismatch");
+        #1ns;
+        if (INVALID_WIDTH != 0) $fatal(1, "Invalid width was not detected");
         $finish;
     end
 

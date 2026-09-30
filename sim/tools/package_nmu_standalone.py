@@ -61,6 +61,8 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
         for line in (run_dir / "files.f").read_text().splitlines():
             if line.startswith("+incdir+"):
                 lines.append("+incdir+" + copy_path(line[len("+incdir+"):]))
+            elif line.startswith("+define+"):
+                lines.append(line)
             elif line.strip():
                 relative = copy_path(line)
                 # Resolve only interfaces actually used by this top from the library.
@@ -89,11 +91,14 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
         _, entries = pack_config(yaml.safe_load((repo / "sim/configs/mesh_2x2.yml").read_text()))
         (root / "cases/topology.json").write_text(json.dumps(entries))
 
+        for name in ("tb_sam.sv", "tb_sam_boundary.sv", "tb_sam_guards.sv"):
+            copy_path(repo / "rtl/nmu/sam" / name)
         copy_path(repo / "rtl/nmu/top/nmu_lint.vlt")
         copy_path(repo / "rtl/nmu/response_path/tb_response_path.sv")
         copy_path(repo / "rtl/nmu/response_depacketize/tb_response_depacketize.sv")
         copy_path(repo / "rtl/nmu/response_depacketize/test_response_depacketize.sh")
         (root / "script").mkdir()
+        shutil.copy2(repo / "sim/standalone/nmu/test_sam.py", root / "script/test_sam.py")
         shutil.copy2(repo / "sim/standalone/common/simulator.mk", root / "script/Makefile")
         shutil.copy2(repo / "sim/standalone/common/clean.sh", root / "script/clean.sh")
         shutil.copy2(repo / "sim/standalone/nmu/perf.sh", root / "script/perf.sh")

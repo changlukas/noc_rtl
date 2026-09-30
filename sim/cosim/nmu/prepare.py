@@ -32,6 +32,9 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         if not target.exists() or target.read_bytes() != source.read_bytes():
             shutil.copyfile(source, target)
     for line in (rtl_stage / "files.f").read_text().splitlines():
+        if line.startswith("+define+"):
+            source_list.append(line)
+            continue
         if line.startswith("+incdir+"):
             relative = line[len("+incdir+"):]
             source = ROOT / relative[5:] if relative.startswith("repo/") else rtl_stage / relative

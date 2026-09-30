@@ -40,11 +40,13 @@ task_sources=(
     "$task_root/rtl/common/ni_sam.sv"
     "$task_root/rtl/common/stream_register.sv"
     "$task_root/rtl/nmu/sam/sam.sv"
+    "$task_root/deps/axi-0.39.7/src/axi_pkg.sv"
+    "$task_root/sim/dv/nmu_sam_burst_checker.sv"
     "$task_root/rtl/nmu/sam/tb_sam.sv"
 )
 
 task_verilator=(
-    verilator --timing --assert -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-TIMESCALEMOD
+    verilator +define+NMU_SAM_CHECKS --timing --assert -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-TIMESCALEMOD
     -Wno-UNUSEDPARAM -Wno-UNUSEDSIGNAL -Wno-SYNCASYNCNET -I"$task_common_cells/include"
     --top-module tb_nmu_sam
 )
@@ -59,6 +61,11 @@ case "${1:-test}" in
         task_obj_dir="$task_tmp/obj_dir"
         "${task_verilator[@]}" --binary --Mdir "$task_obj_dir" -o nmu_sam_tb "${task_sources[@]}"
         "$task_obj_dir/nmu_sam_tb"
+
+        "${task_verilator[@]}" --top-module tb_nmu_sam_boundary --binary \
+            --Mdir "$task_tmp/obj_boundary" -o sam_boundary_tb "${task_sources[@]}" \
+            "$task_root/rtl/nmu/sam/tb_sam_boundary.sv"
+        "$task_tmp/obj_boundary/sam_boundary_tb"
 
         for task_topology in mesh_2x2 mesh_2x2_periph mesh_4x4 mesh_4x4_periph4; do
             task_generated="$task_tmp/generated/$task_topology/topology_pkg.sv"
@@ -80,8 +87,8 @@ case "${1:-test}" in
         task_guard_messages=(
             "AW_SAM_REG_TYPE must be 0, 1, or 2"
             "AR_SAM_REG_TYPE must be 0, 1, or 2"
-            "AW burst footprint crosses a SAM region boundary"
-            "AR burst footprint crosses a SAM region boundary"
+            "AW burst crosses 4 KB boundary"
+            "AR burst crosses 4 KB boundary"
             "invalid AW collective mapping"
             "invalid AW SAM mapping"
             "invalid AR SAM mapping"

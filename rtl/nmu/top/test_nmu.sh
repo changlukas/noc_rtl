@@ -61,10 +61,11 @@ task_sources=(
     "$task_root/rtl/nmu/request_path/id_remap.sv"
     "$task_root/rtl/nmu/request_path/request_path.sv"
     "$task_root/rtl/nmu/top/nmu.sv"
+    "$task_root/sim/dv/nmu_sam_burst_checker.sv"
     "${NMU_PATH_TB:-$task_root/rtl/nmu/top/tb_nmu_elaborate.sv}"
 )
 
-task_verilator=(verilator --timing --assert -Wall -Wno-fatal
+task_verilator=(verilator +define+NMU_SAM_CHECKS --timing --assert -Wall -Wno-fatal
     -Werror-WIDTHEXPAND -Werror-WIDTHTRUNC -Werror-LATCH
     "$task_root/rtl/nmu/top/nmu_lint.vlt" -Wno-DECLFILENAME
     -Wno-TIMESCALEMOD -Wno-UNUSEDPARAM -Wno-UNUSEDSIGNAL -Wno-SYNCASYNCNET
@@ -84,7 +85,7 @@ if [[ "${1:-test}" == standalone || "${1:-test}" == prepare ]]; then
     mkdir -p "$task_output"
     cp "$task_generated" "$task_output/topology_pkg.sv"
     task_sources[3]="$task_output/topology_pkg.sv"
-    printf '%s\n' "+incdir+$task_common_cells/include" \
+    printf '%s\n' '+define+NMU_SAM_CHECKS' "+incdir+$task_common_cells/include" \
         "+incdir+$task_root/deps/axi-0.39.7/include" \
         "+incdir+$task_root/deps/common_cells-1.37.0/include" \
         "${task_sources[@]}" > "$task_output/files.f"
