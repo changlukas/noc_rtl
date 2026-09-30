@@ -29,11 +29,12 @@ module tb_ni_type_contract;
     ni_types_pkg::nmu_b_rob_entry_t     nmu_b_entry;
     ni_types_pkg::nmu_r_rob_entry_t     nmu_r_entry;
     ni_types_pkg::nmu_read_context_t    nmu_read_context;
-    ni_types_pkg::response_entry_t      response_entry;
+    ni_types_pkg::nsu_context_t      nsu_context;
     ni_types_pkg::nsu_aw_request_t      nsu_aw_request;
     ni_types_pkg::nsu_ar_request_t      nsu_ar_request;
     ni_types_pkg::nsu_b_response_t      nsu_b_response;
     ni_types_pkg::nsu_r_response_t      nsu_r_response;
+    ni_types_pkg::nsu_w_context_t       nsu_w_context;
 
     // One independent valid/ready bit per stream in the rtl/README.md table:
     // nmu_sam 2 inputs + 2 outputs, nmu_rob 5 + 5,
@@ -75,11 +76,14 @@ module tb_ni_type_contract;
         if ($bits(nmu_b_entry) != 7) $fatal(1, "nmu_b_rob_entry_t width");
         if ($bits(nmu_r_entry) != 523) $fatal(1, "nmu_r_rob_entry_t width");
         if ($bits(nmu_read_context) != 69) $fatal(1, "nmu_read_context_t width");
-        if ($bits(response_entry) != 94) $fatal(1, "response_entry_t width");
-        if ($bits(nsu_aw_request) != 232) $fatal(1, "nsu_aw_request_t width");
+        if ($bits(nsu_context) != 94) $fatal(1, "nsu_context_t width");
+        if ($bits(nsu_aw_request) != 232 + ni_flit_pkg::VC_ID_WIDTH) $fatal(1, "nsu_aw_request_t width");
         if ($bits(nsu_ar_request) != 174) $fatal(1, "nsu_ar_request_t width");
         if ($bits(nsu_b_response) != 99) $fatal(1, "nsu_b_response_t width");
-        if ($bits(nsu_r_response) != 612) $fatal(1, "nsu_r_response_t width");
+        if ($bits(nsu_r_response) != 612 + ni_flit_pkg::AXI_LEN_WIDTH) $fatal(1, "nsu_r_response_t width");
+
+        if ($bits(nsu_w_context) != 94 + ni_flit_pkg::VC_ID_WIDTH)
+            $fatal(1, "nsu_w_context_t width");
 
         // The four leaf-boundary payloads elaborate independently of their
         // valid/ready wires; handshake is never embedded in a packed record.

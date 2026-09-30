@@ -56,24 +56,6 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/bus/arvalid
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/bus/arready
 endSubGroup "AXI AR"
 addSubGroup "ID remap request" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.aw
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_resp_o.aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.aw
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_resp_i.aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.w
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_resp_o.w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.w
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_resp_i.w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.ar
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_resp_o.ar_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.ar
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_resp_i.ar_ready
 endSubGroup "ID remap request"
 addSubGroup "AW CDC FIFO" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_request_fifo/i_aw_fifo/src_clk_i
@@ -180,20 +162,20 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_channe
 endSubGroup "TX channel assign"
 addSubGroup "TX credit buffer" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/dat_credit_return_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_req_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_req_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_req_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_req_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_req_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_req_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_ctrl_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_ctrl_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_ctrl_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_ctrl_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_ctrl_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_ctrl_ready_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_dat_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/s_dat_valid_i
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/dat_ready_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_dat_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_dat_valid_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/m_dat_ready_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/req_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/req_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/ctrl_empty
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/dat_full
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/dat_empty
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_tx_credit_buffer/dat_req
@@ -218,15 +200,15 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_depacket
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_depacketize/m_r_ready_i
 endSubGroup "Depacketize"
 addSubGroup "RX credit buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/s_rsp_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/s_rsp_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/s_rsp_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/data_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/push_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/full_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/data_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/pop_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_rsp_fifo/empty_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/s_ctrl_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/s_ctrl_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/s_ctrl_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_ctrl_fifo/data_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_ctrl_fifo/push_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_ctrl_fifo/full_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_ctrl_fifo/data_o
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_ctrl_fifo/pop_i
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/i_ctrl_fifo/empty_o
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/dat_push
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/dat_pop
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_rx_credit_buffer/dat_full
@@ -350,18 +332,6 @@ addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_response
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
 endSubGroup "R CDC FIFO"
 addSubGroup "ID restore" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_resp_i.b
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_resp_i.b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_resp_o.b
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_resp_o.b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_resp_i.r
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_resp_i.r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/mst_req_o.r_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_resp_o.r
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_resp_o.r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/dut/i_request_path/i_id_remap/slv_req_i.r_ready
 endSubGroup "ID restore"
 addSubGroup "AXI B" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_standalone/bus/bid

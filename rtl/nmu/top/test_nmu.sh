@@ -41,7 +41,6 @@ task_sources=(
     "$task_root/deps/common_cells-1.37.0/src/lzc.sv"
     "$task_root/deps/common_cells-1.37.0/src/rr_arb_tree.sv"
     "$task_root/deps/axi-0.39.7/src/axi_pkg.sv"
-    "$task_root/deps/axi-0.39.7/src/axi_id_remap.sv"
     "$task_common_cells/src/cc_credit_counter.sv"
     "$task_common_cells/src/cc_fifo.sv"
     "$task_root/rtl/common/axi_if.sv"
@@ -49,16 +48,15 @@ task_sources=(
     "$task_root/rtl/nmu/ordering/ordering.sv"
     "$task_root/rtl/nmu/channel_assign/tx_channel_assign.sv"
     "$task_root/rtl/nmu/request_path/write_context.sv"
-    "$task_root/rtl/nmu/channel_assign/tx_credit_buffer.sv"
-    "$task_root/rtl/nmu/channel_assign/tx_vc_arbiter.sv"
+    "$task_root/rtl/common/tx_credit_buffer.sv"
+    "$task_root/rtl/common/tx_vc_arbiter.sv"
     "$task_root/rtl/nmu/request_packetize/request_packetize.sv"
-    "$task_root/rtl/nmu/channel_assign/rx_credit_buffer.sv"
+    "$task_root/rtl/common/rx_credit_buffer.sv"
     "$task_root/rtl/nmu/channel_assign/rx_channel_assign.sv"
     "$task_root/rtl/nmu/channel_assign/rx_vc_arbiter.sv"
     "$task_root/rtl/nmu/response_depacketize/response_depacketize.sv"
     "$task_root/rtl/nmu/response_fifo/response_fifo.sv"
     "$task_root/rtl/nmu/response_path/response_path.sv"
-    "$task_root/rtl/nmu/request_path/id_remap.sv"
     "$task_root/rtl/nmu/request_path/request_path.sv"
     "$task_root/rtl/nmu/top/nmu.sv"
     "$task_root/sim/dv/nmu_sam_burst_checker.sv"
@@ -90,6 +88,20 @@ if [[ "${1:-test}" == standalone || "${1:-test}" == prepare ]]; then
         "+incdir+$task_root/deps/common_cells-1.37.0/include" \
         "${task_sources[@]}" > "$task_output/files.f"
     if [[ ${1:-test} != prepare ]]; then
+    python3 - "$task_root" "$task_output/profile" "${NMU_ID_WIDTH:-8}" <<'PY'
+import sys
+from pathlib import Path
+import yaml
+root, out, width = Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])
+sys.path.insert(0, str(root / "specgen"))
+from tools.elaborate.profile import emit
+constants = yaml.safe_load((root / "specgen/source/constants.yaml").read_text())
+constants["axi"]["AXI_ID_WIDTH"]["default"] = width
+emit(root, out, constants, max(width, constants["axi"]["NOC_ID_WIDTH"]["default"]))
+PY
+    for task_idx in 0 1 2; do
+        task_sources[$task_idx]="$task_output/profile/repo/specgen/generated/sv/$(basename "${task_sources[$task_idx]}")"
+    done
     "${task_verilator[@]}" --top-module tb_nmu_standalone --binary -j 1 \
         -GID_WIDTH="${NMU_ID_WIDTH:-8}" -GNOC_HALF_PERIOD="${NMU_NOC_HALF_PERIOD:-5}" \
         -GBUFFER_DEPTH="${NMU_BUFFER_DEPTH:-128}" -GR_ROB_EN="${NMU_READ_ROB:-1}" \
@@ -111,7 +123,7 @@ if [[ "${1:-test}" == standalone || "${1:-test}" == prepare ]]; then
         --id-width "${NMU_ID_WIDTH:-8}"
     if [[ ${1:-test} == prepare ]]; then
         python3 "$task_root/sim/tools/package_nmu_standalone.py" --run-dir "$task_output" \
-            --block-patterns "$task_block_patterns" --output-dir "$task_output/stage"
+            --block-patterns "$task_block_patterns" --id-width "${NMU_ID_WIDTH:-8}" --output-dir "$task_output/stage"
         exit
     fi
     task_directed_args=(+require_reorder)

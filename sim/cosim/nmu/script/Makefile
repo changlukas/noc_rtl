@@ -8,6 +8,9 @@ MODE ?= auto
 RSP_DELAY ?= 2
 REG_TYPE ?= 0
 IO_FIFO_DEPTH ?= 32
+RTL_NSU ?= 0
+DEVICE_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NSU_AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
+CONTEXT_DEPTH ?= 32
 -include profile.mk
 INPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 OUTPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NOC_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
@@ -29,7 +32,7 @@ YAML_HEADERS := $(shell find deps/yaml-cpp/include deps/yaml-cpp/src -name '*.h'
 ifeq ($(WAVE),1)
 WAVE_FLAGS := +define+DUMP_WAVE -P $(PLI_DIR)/novas.tab $(PLI_DIR)/pli.a
 endif
-VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_nmu_cosim -pvalue+tb_nmu_cosim.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_nmu_cosim.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_nmu_cosim.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_nmu_cosim.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_nmu_cosim.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_nmu_cosim.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID)
+VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_nmu_cosim -pvalue+tb_nmu_cosim.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_nmu_cosim.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_nmu_cosim.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_nmu_cosim.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_nmu_cosim.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_nmu_cosim.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_nmu_cosim.RTL_NSU=$(RTL_NSU) -pvalue+tb_nmu_cosim.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_nmu_cosim.CONTEXT_DEPTH=$(CONTEXT_DEPTH)
 DPI := $(BUILD)/dpi_$(shell python3 build_key.py cpp "$(CPPFLAGS) $(CXX)")
 YAML_BUILD := $(BUILD)/yaml_$(shell python3 build_key.py yaml "$(CPPFLAGS) $(CXX)")
 SIM := $(BUILD)/vcs_wave$(WAVE)_$(shell python3 build_key.py sv "$(VCS_FLAGS) $(WAVE_FLAGS) $(DPI)")
@@ -63,7 +66,7 @@ corrupt: compile
 run_wave_view: nWave
 
 nWave: run_wave
-	@sed 's|@FSDB@|$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).fsdb|g' "$(WAVE_RC)" > "$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).rc"
+	@cat "$(WAVE_RC)" $(if $(filter 1,$(RTL_NSU)),"$(ROOT)/signals_nsu.rc",) | sed 's|@FSDB@|$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).fsdb|g' > "$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).rc"
 	$(VERDI_HOME)/bin/nWave -ssf "$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).fsdb" -sswr "$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).rc"
 run_wave:
 	$(MAKE) run WAVE=1 CASE=$(CASE)

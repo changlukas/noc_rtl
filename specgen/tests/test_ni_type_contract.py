@@ -72,15 +72,16 @@ def test_ni_record_field_sets():
         "nmu_b_rob_entry_t": ["occupied", "complete", "beat"],
         "nmu_r_rob_entry_t": ["occupied", "complete", "narrow_lane", "beat"],
         "nmu_read_context_t": ["local_addr", "len", "size", "burst", "beat_index"],
-        "response_entry_t": [
+        "nsu_context_t": [
             "src_id", "src_port_id", "noc_id", "ordering_req", "ordering_tag",
             "is_data", "local_addr", "len", "size", "burst", "collective_op",
             "collective_mask",
         ],
-        "nsu_aw_request_t": ["axi", "response"],
+        "nsu_aw_request_t": ["axi", "response", "vc_id"],
         "nsu_ar_request_t": ["axi", "response"],
         "nsu_b_response_t": ["axi", "response"],
-        "nsu_r_response_t": ["axi", "response"],
+        "nsu_r_response_t": ["axi", "response", "beat_index"],
+        "nsu_w_context_t": ["response", "vc_id"],
     }
     for type_name, fields in expected.items():
         assert _typedef_fields(text, type_name) == fields

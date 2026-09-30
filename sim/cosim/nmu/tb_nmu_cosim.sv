@@ -7,10 +7,13 @@ module tb_nmu_cosim #(
     parameter int unsigned MAX_OUTSTANDING_PER_ID = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
     parameter int unsigned RSP_DELAY_CYCLES = 0,
     parameter int unsigned OUTPUT_REG_TYPE = 0,
-    parameter int unsigned IO_FIFO_DEPTH = 32
+    parameter int unsigned IO_FIFO_DEPTH = 32,
+    parameter bit RTL_NSU = 0,
+    parameter int unsigned DEVICE_ID_WIDTH = ni_params_pkg::NSU_AXI_ID_WIDTH,
+    parameter int unsigned CONTEXT_DEPTH = ni_params_pkg::NSU_MAX_OUTSTANDING
 );
     import ni_params_pkg::*;
-    localparam int unsigned NUM_IDS = 1 << (INPUT_ID_WIDTH < OUTPUT_ID_WIDTH ? INPUT_ID_WIDTH : OUTPUT_ID_WIDTH);
+    localparam int unsigned NUM_IDS = 1 << INPUT_ID_WIDTH;
     localparam time CLK_PERIOD = 1ns;
     localparam time APPL_DELAY = CLK_PERIOD / 10;
     localparam time ACQ_DELAY  = CLK_PERIOD / 5;
@@ -35,6 +38,10 @@ module tb_nmu_cosim #(
             NOC_FIFO_DEPTH*(3*$bits(ni_types_pkg::nmu_aw_request_t)+$bits(ni_types_pkg::nmu_ar_request_t)+
                 2*($bits(ni_signals_pkg::axi_w_t)+$bits(ni_types_pkg::nmu_aw_request_t)+ni_flit_pkg::AXI_LEN_WIDTH)));
     end
+    wire wr_order_full = dut.path_aw_valid &&
+        dut.i_response_path.i_ordering.wr_outstanding_cnt_reg[dut.path_aw.axi.awid] >= MAX_OUTSTANDING_PER_ID;
+    wire rd_order_full = dut.path_ar_valid &&
+        dut.i_response_path.i_ordering.rd_outstanding_cnt_reg[dut.path_ar.axi.arid] >= MAX_OUTSTANDING_PER_ID;
     int reorder_test = 0;
     int dst_wr_cnt[NUM_NSUS] = '{default:0};
     int dst_rd_cnt[NUM_NSUS] = '{default:0};
@@ -74,7 +81,8 @@ module tb_nmu_cosim #(
         .ID_W     (INPUT_ID_WIDTH),
         .AWUSER_W (AXI_AWUSER_WIDTH)) bus();
     typedef logic [AXI_ADDR_WIDTH-1:0] mon_addr_t;
-    typedef logic [INPUT_ID_WIDTH-1:0] mon_id_t;
+    localparam int MON_ID_WIDTH = INPUT_ID_WIDTH > DEVICE_ID_WIDTH ? INPUT_ID_WIDTH : DEVICE_ID_WIDTH;
+    typedef logic [MON_ID_WIDTH-1:0] mon_id_t;
     typedef logic [AXI_DATA_WIDTH-1:0] mon_data_t;
     typedef logic [AXI_DATA_WIDTH/8-1:0] mon_strb_t;
     typedef logic [AXI_AWUSER_WIDTH-1:0] mon_user_t;
@@ -102,17 +110,18 @@ module tb_nmu_cosim #(
     mon_resp_t [NUM_NSUS-1:0] mon_slv_rsp;
     wire ordering_done;
     `AXI_ASSIGN_TO_REQ(mon_mst_raw, vip)
-    // AWUSER is NI-local metadata; WUSER/ARUSER are tied off at the DUT input.
+    // RTL preserves opaque AWUSER; upper collective fields terminate in the NI.
+    // The reference-model port omits AWUSER. WUSER/ARUSER are tied off.
     always_comb begin
         mon_mst_req         = mon_mst_raw;
-        mon_mst_req.aw.user = '0;
+        mon_mst_req.aw.user = RTL_NSU ? mon_user_t'(mon_mst_raw.aw.user[ni_flit_pkg::AXI_USER_WIDTH-1:0]) : '0;
         mon_mst_req.w.user  = '0;
         mon_mst_req.ar.user = '0;
     end
     `AXI_ASSIGN_TO_RESP(mon_mst_rsp, vip)
     axi_reorder_compare #(
         .NumSlaves      (NUM_NSUS),
-        .AxiIdWidth     (INPUT_ID_WIDTH),
+        .AxiIdWidth     (MON_ID_WIDTH),
         .NumAddrRegions (topology_pkg::SAM_NUM_RULES),
         .addr_t         (mon_addr_t),
         .rule_t         (mon_rule_t),
@@ -248,12 +257,12 @@ module tb_nmu_cosim #(
     for (genvar n = 0; n < NUM_NSUS; n++) begin : gen_nsu
         localparam int PORT = n + 1;
         AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH   (NSU_AXI_ID_WIDTH),
+            .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
             .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) mem_bus();
         ni_signals_pkg::axi_req_t mem_req;
         ni_signals_pkg::axi_rsp_t mem_rsp;
         AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH   (NSU_AXI_ID_WIDTH),
+            .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
             .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) delayed_bus();
         `AXI_ASSIGN_TO_REQ(mon_slv_req[n], mem_bus)
         `AXI_ASSIGN_TO_RESP(mon_slv_rsp[n], mem_bus)
@@ -285,6 +294,89 @@ module tb_nmu_cosim #(
                 end
             end
         end
+        if (RTL_NSU) begin : gen_rtl_nsu
+            axi_if #(.ADDR_W(AXI_ADDR_WIDTH), .DATA_W(AXI_DATA_WIDTH),
+                .ID_W(DEVICE_ID_WIDTH), .AWUSER_W(AXI_AWUSER_WIDTH)) device_bus();
+            nsu #(
+                .OUTPUT_ID_WIDTH(DEVICE_ID_WIDTH),
+                .AXI_AWUSER_WIDTH(AXI_AWUSER_WIDTH),
+                .AXI_FIFO_DEPTH(IO_FIFO_DEPTH),
+                .AW_CONTEXT_DEPTH(CONTEXT_DEPTH), .AR_CONTEXT_DEPTH(CONTEXT_DEPTH),
+                .AW_REG_TYPE(OUTPUT_REG_TYPE), .W_REG_TYPE(OUTPUT_REG_TYPE),
+                .AR_REG_TYPE(OUTPUT_REG_TYPE), .B_REG_TYPE(OUTPUT_REG_TYPE),
+                .R_REG_TYPE(OUTPUT_REG_TYPE),
+                .SRC_ID(ni_flit_pkg::SRC_ID_WIDTH'(nsu_id(PORT)))
+            ) i_nsu (
+                .ACLK(clk), .ARESETn(axi_rst_n), .noc_clk(clk), .noc_rst_n(noc_rst_n),
+                .axi_wr_o(device_bus), .axi_rd_o(device_bus),
+                .rx_req_valid_i(tx_req_valid[PORT]), .rx_req_flit_i(tx_req_flit[PORT]),
+                .rx_req_ready_o(tx_req_ready[PORT]),
+                .tx_rsp_valid_o(rx_rsp_valid[PORT]), .tx_rsp_flit_o(rx_rsp_flit[PORT]),
+                .tx_rsp_ready_i(rx_rsp_ready[PORT]),
+                .tx_dat_valid_o(rx_dat_valid[PORT]), .tx_dat_flit_o(rx_dat_flit[PORT]),
+                .tx_dat_crdvalid_i(rx_dat_credit[PORT]),
+                .rx_dat_valid_i(tx_dat_valid[PORT]), .rx_dat_flit_i(tx_dat_flit[PORT]),
+                .rx_dat_crdvalid_o(tx_dat_credit[PORT])
+            );
+            initial begin
+                repeat (99990) @(posedge clk);
+                $display("NSU_TIMEOUT node=%0d aw_vr=%b%b w_vr=%b%b ar_vr=%b%b b_vr=%b%b r_vr=%b%b", n,
+                    device_bus.awvalid, device_bus.awready, device_bus.wvalid, device_bus.wready,
+                    device_bus.arvalid, device_bus.arready, device_bus.bvalid, device_bus.bready,
+                    device_bus.rvalid, device_bus.rready);
+                $display("NSU_CONTEXT node=%0d aw_vr=%b%b ar_vr=%b%b w_valid=%b w_context=%h w_beat=%0d", n,
+                    i_nsu.aw_context_valid, i_nsu.aw_context_ready, i_nsu.ar_context_valid, i_nsu.ar_context_ready,
+                    i_nsu.w_context_valid, i_nsu.w_context, i_nsu.w_beat);
+                $display("NSU_HEAD node=%0d req_vr=%b%b req=%h dat_valid=%b dat_ready=%b dat=%h", n,
+                    i_nsu.i_request_path.rx_req_valid, i_nsu.i_request_path.rx_req_ready, i_nsu.i_request_path.rx_req_head,
+                    i_nsu.i_request_path.rx_dat_valid, i_nsu.i_request_path.rx_dat_ready, i_nsu.i_request_path.rx_dat_head);
+            end
+            assign mem_bus.aw_id = device_bus.awid;
+            assign mem_bus.aw_addr = device_bus.awaddr;
+            assign mem_bus.aw_len = device_bus.awlen;
+            assign mem_bus.aw_size = device_bus.awsize;
+            assign mem_bus.aw_burst = device_bus.awburst;
+            assign mem_bus.aw_lock = device_bus.awlock;
+            assign mem_bus.aw_cache = device_bus.awcache;
+            assign mem_bus.aw_prot = device_bus.awprot;
+            assign mem_bus.aw_qos = device_bus.awqos;
+            assign mem_bus.aw_region = device_bus.awregion;
+            assign mem_bus.aw_user = device_bus.awuser;
+            assign mem_bus.aw_valid = device_bus.awvalid;
+            assign mem_bus.w_data = device_bus.wdata;
+            assign mem_bus.w_strb = device_bus.wstrb;
+            assign mem_bus.w_last = device_bus.wlast;
+            assign mem_bus.w_valid = device_bus.wvalid;
+            assign mem_bus.w_user = device_bus.wuser;
+            assign mem_bus.ar_id = device_bus.arid;
+            assign mem_bus.ar_addr = device_bus.araddr;
+            assign mem_bus.ar_len = device_bus.arlen;
+            assign mem_bus.ar_size = device_bus.arsize;
+            assign mem_bus.ar_burst = device_bus.arburst;
+            assign mem_bus.ar_lock = device_bus.arlock;
+            assign mem_bus.ar_cache = device_bus.arcache;
+            assign mem_bus.ar_prot = device_bus.arprot;
+            assign mem_bus.ar_qos = device_bus.arqos;
+            assign mem_bus.ar_region = device_bus.arregion;
+            assign mem_bus.ar_valid = device_bus.arvalid;
+            assign mem_bus.ar_user = device_bus.aruser;
+            assign mem_bus.b_ready = device_bus.bready;
+            assign mem_bus.r_ready = device_bus.rready;
+            assign mem_bus.aw_atop = '0;
+            assign device_bus.awready = mem_bus.aw_ready;
+            assign device_bus.wready = mem_bus.w_ready;
+            assign device_bus.arready = mem_bus.ar_ready;
+            assign device_bus.bid = mem_bus.b_id;
+            assign device_bus.bresp = mem_bus.b_resp;
+            assign device_bus.bvalid = mem_bus.b_valid;
+            assign device_bus.buser = mem_bus.b_user;
+            assign device_bus.rid = mem_bus.r_id;
+            assign device_bus.rdata = mem_bus.r_data;
+            assign device_bus.rresp = mem_bus.r_resp;
+            assign device_bus.rlast = mem_bus.r_last;
+            assign device_bus.rvalid = mem_bus.r_valid;
+            assign device_bus.ruser = mem_bus.r_user;
+        end else begin : gen_cmodel_nsu
         nsu_wrap i_nsu (
             .clk_i             (clk),
             .rst_n_i           (noc_rst_n),
@@ -304,38 +396,6 @@ module tb_nmu_cosim #(
             .axi_req_o         (mem_req),
             .axi_rsp_i         (mem_rsp)
         );
-        wire delay_en = reorder_test != 0 && PORT == 4;
-        if (RSP_DELAY_CYCLES == 0) begin : gen_no_delay
-            `AXI_ASSIGN(delayed_bus, mem_bus)
-        end else begin : gen_rsp_delay
-            AXI_BUS #(
-                .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
-                .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
-                .AXI_ID_WIDTH   (NSU_AXI_ID_WIDTH),
-                .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)
-            ) delay_bus[RSP_DELAY_CYCLES+1]();
-            `AXI_ASSIGN(delay_bus[0], mem_bus)
-            `AXI_ASSIGN(delayed_bus, delay_bus[RSP_DELAY_CYCLES])
-            // One-cycle upstream cells make the sweep include every integer delay.
-            for (genvar stage = 0; stage < RSP_DELAY_CYCLES; stage++) begin : gen_stage
-                axi_delayer_intf #(
-                    .AXI_ID_WIDTH        (NSU_AXI_ID_WIDTH),
-                    .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
-                    .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
-                    .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
-                    .STALL_RANDOM_INPUT  (1'b0),
-                    .STALL_RANDOM_OUTPUT (1'b0),
-                    .FIXED_DELAY_INPUT   (0),
-                    .FIXED_DELAY_OUTPUT  (1)
-                ) i_rsp_delay (
-                    .clk_i    (clk),
-                    .rst_ni   (axi_rst_n),
-                    .bypass_i (!delay_en),
-                    .slv      (delay_bus[stage]),
-                    .mst      (delay_bus[stage+1])
-                );
-            end
-        end
         assign mem_bus.aw_id = mem_req.awid;
         assign mem_bus.aw_addr = mem_req.awaddr;
         assign mem_bus.aw_len = mem_req.awlen;
@@ -379,10 +439,43 @@ module tb_nmu_cosim #(
         assign mem_rsp.rresp = mem_bus.r_resp;
         assign mem_rsp.rlast = mem_bus.r_last;
         assign mem_rsp.rvalid = mem_bus.r_valid;
+        end
+        wire delay_en = reorder_test != 0 && PORT == 4;
+        if (RSP_DELAY_CYCLES == 0) begin : gen_no_delay
+            `AXI_ASSIGN(delayed_bus, mem_bus)
+        end else begin : gen_rsp_delay
+            AXI_BUS #(
+                .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
+                .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
+                .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
+                .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)
+            ) delay_bus[RSP_DELAY_CYCLES+1]();
+            `AXI_ASSIGN(delay_bus[0], mem_bus)
+            `AXI_ASSIGN(delayed_bus, delay_bus[RSP_DELAY_CYCLES])
+            // One-cycle upstream cells make the sweep include every integer delay.
+            for (genvar stage = 0; stage < RSP_DELAY_CYCLES; stage++) begin : gen_stage
+                axi_delayer_intf #(
+                    .AXI_ID_WIDTH        (DEVICE_ID_WIDTH),
+                    .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
+                    .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
+                    .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
+                    .STALL_RANDOM_INPUT  (1'b0),
+                    .STALL_RANDOM_OUTPUT (1'b0),
+                    .FIXED_DELAY_INPUT   (0),
+                    .FIXED_DELAY_OUTPUT  (1)
+                ) i_rsp_delay (
+                    .clk_i    (clk),
+                    .rst_ni   (axi_rst_n),
+                    .bypass_i (!delay_en),
+                    .slv      (delay_bus[stage]),
+                    .mst      (delay_bus[stage+1])
+                );
+            end
+        end
         axi_sim_mem_intf #(
             .AXI_ADDR_WIDTH     (AXI_ADDR_WIDTH),
             .AXI_DATA_WIDTH     (AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH       (NSU_AXI_ID_WIDTH),
+            .AXI_ID_WIDTH       (DEVICE_ID_WIDTH),
             .AXI_USER_WIDTH     (AXI_AWUSER_WIDTH),
             .WARN_UNINITIALIZED (1'b1),
             .UNINITIALIZED_DATA ("undefined"),
@@ -475,8 +568,8 @@ module tb_nmu_cosim #(
     int tx_req_beats = 0, tx_dat_beats = 0;
     always @(posedge clk) begin
         if (noc_rst_n) begin
-            if (int'(dut.i_request_path.i_tx_credit_buffer.i_req_fifo.usage_o) > tx_req_peak)
-                tx_req_peak = int'(dut.i_request_path.i_tx_credit_buffer.i_req_fifo.usage_o);
+            if (int'(dut.i_request_path.i_tx_credit_buffer.i_ctrl_fifo.usage_o) > tx_req_peak)
+                tx_req_peak = int'(dut.i_request_path.i_tx_credit_buffer.i_ctrl_fifo.usage_o);
             if (rx_req_valid[NMU_PORT] && rx_req_ready[NMU_PORT]) tx_req_beats++;
             if (rx_dat_valid[NMU_PORT]) tx_dat_beats++;
         end
@@ -484,8 +577,8 @@ module tb_nmu_cosim #(
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_tx_occupancy
         if (NOC_DAT_VC_MODE == 0 || vc < NUM_DAT_VC/2) begin : gen_write
             always @(posedge clk) begin
-                if (noc_rst_n && int'(dut.i_request_path.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_fifo.usage_o) > tx_dat_peak[vc])
-                    tx_dat_peak[vc] = int'(dut.i_request_path.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_fifo.usage_o);
+                if (noc_rst_n && int'(dut.i_request_path.i_tx_credit_buffer.gen_dat_vc[vc].gen_active.i_fifo.usage_o) > tx_dat_peak[vc])
+                    tx_dat_peak[vc] = int'(dut.i_request_path.i_tx_credit_buffer.gen_dat_vc[vc].gen_active.i_fifo.usage_o);
             end
         end
     end
@@ -560,10 +653,12 @@ module tb_nmu_cosim #(
         router_ctx = cmodel_router_create("router", ROUTER_X, ROUTER_Y,
             MESH_DIM, MESH_DIM, NUM_DAT_VC);
         for (int n = 0; n < NUM_NSUS; n++) begin
+            if (!RTL_NSU) begin
             nsu_ctx[n] = cmodel_nsu_create($sformatf("nsu_%0d", n + 1), nsu_id(n + 1),
                 NUM_DAT_VC, NSU_META_BUFFER_MAX_UNIQUE_IDS,
                 NSU_META_BUFFER_MAX_OUTSTANDING, 0, "");
             cmodel_nsu_set_dat_credit_depth(nsu_ctx[n], CREDIT_DEPTH);
+            end
         end
         void'($value$plusargs("reorder_test=%d", reorder_test));
         $display("RESPONSE_DELAY enabled=%0d west_setting=%0d", reorder_test != 0, RSP_DELAY_CYCLES);
@@ -683,7 +778,7 @@ module tb_nmu_cosim #(
     end
     initial begin
         repeat (100000) @(posedge clk);
-        $fatal(1, "NMU co-simulation timeout");
+        $fatal(1, "NMU co-simulation timeout B=%0d R=%0d", b_count, r_count);
     end
     always @(posedge clk) begin : check_responses
         master_t::ax_beat_t request;
@@ -735,11 +830,11 @@ module tb_nmu_cosim #(
             if (vip.r_valid && !vip.r_ready) r_stall_cnt++;
             if (vip.aw_valid && !vip.aw_ready) aw_stall_cnt++;
             if (vip.ar_valid && !vip.ar_ready) ar_stall_cnt++;
-            if ((dut.i_response_path.i_rx_credit_buffer.rsp_full && !dut.i_response_path.i_rx_vc_arbiter.is_r)) b_full_cnt++;
-            if ((dut.i_response_path.i_rx_credit_buffer.rsp_full && dut.i_response_path.i_rx_vc_arbiter.is_r)) r_full_cnt++;
+            if ((dut.i_response_path.i_rx_credit_buffer.ctrl_full && !dut.i_response_path.i_rx_vc_arbiter.is_r)) b_full_cnt++;
+            if ((dut.i_response_path.i_rx_credit_buffer.ctrl_full && dut.i_response_path.i_rx_vc_arbiter.is_r)) r_full_cnt++;
             if (|dut.i_response_path.i_rx_credit_buffer.dat_full) dat_full_cnt++;
-            if (dut.i_request_path.i_id_remap.wr_exists_full) wr_limit_cnt++;
-            if (dut.i_request_path.i_id_remap.rd_exists_full) rd_limit_cnt++;
+            if (wr_order_full) wr_limit_cnt++;
+            if (rd_order_full) rd_limit_cnt++;
             if (concurrent_active) begin
                 if (total_w != 0 && total_r != 0) overlap_cnt++;
                 if (total_r != 0 && vip.w_valid && vip.w_ready) w_during_read_cnt++;
@@ -760,7 +855,7 @@ module tb_nmu_cosim #(
     end
 `endif
     int perf_cycle = 0, perf_start = -1, perf_end = -1;
-    int wr_id_stall = 0, rd_id_stall = 0, wr_txn_stall = 0, rd_txn_stall = 0;
+    int wr_txn_stall = 0, rd_txn_stall = 0;
     always @(posedge clk) begin
         if (axi_rst_n) begin
             perf_cycle++;
@@ -768,19 +863,13 @@ module tb_nmu_cosim #(
                 perf_start = perf_cycle;
             if ((vip.b_valid && vip.b_ready) || (vip.r_valid && vip.r_ready && vip.r_last))
                 perf_end = perf_cycle;
-            if (vip.aw_valid && !vip.aw_ready && !dut.i_request_path.i_id_remap.aw_hold_reg) begin
-                if (!dut.i_request_path.i_id_remap.wr_exists && dut.i_request_path.i_id_remap.wr_full) wr_id_stall++;
-                if (dut.i_request_path.i_id_remap.wr_exists_full) wr_txn_stall++;
-            end
-            if (vip.ar_valid && !vip.ar_ready && !dut.i_request_path.i_id_remap.ar_hold_reg) begin
-                if (!dut.i_request_path.i_id_remap.rd_exists && dut.i_request_path.i_id_remap.rd_full) rd_id_stall++;
-                if (dut.i_request_path.i_id_remap.rd_exists_full) rd_txn_stall++;
-            end
+            if (wr_order_full && !dut.path_aw_ready) wr_txn_stall++;
+            if (rd_order_full && !dut.path_ar_ready) rd_txn_stall++;
         end
     end
     final begin
-        $display("CAPACITY_PERF active_ids=%0d per_id=%0d cycles=%0d wr_id_stall=%0d rd_id_stall=%0d wr_txn_stall=%0d rd_txn_stall=%0d",
+        $display("CAPACITY_PERF num_ids=%0d per_id=%0d cycles=%0d wr_txn_stall=%0d rd_txn_stall=%0d",
             NUM_IDS, MAX_OUTSTANDING_PER_ID, perf_end-perf_start+1,
-            wr_id_stall, rd_id_stall, wr_txn_stall, rd_txn_stall);
+            wr_txn_stall, rd_txn_stall);
     end
 endmodule

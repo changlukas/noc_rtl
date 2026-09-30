@@ -12,7 +12,7 @@ common_sources=(
     "$root_dir/deps/common_cells-1.37.0/src/lzc.sv"
     "$root_dir/deps/axi-0.39.7/src/axi_pkg.sv"
     "$root_dir/deps/axi-0.39.7/src/axi_id_remap.sv"
-    "$root_dir/rtl/nmu/request_path/id_remap.sv"
+    "$root_dir/rtl/common/tests/nmu_id_remap_fixture.sv"
 )
 include_args=(
     -I"$root_dir/deps/common_cells-1.37.0/include"

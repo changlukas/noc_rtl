@@ -38,22 +38,22 @@ module tb_nmu_response_depacketize #(
     wire rx_rsp_valid, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] rx_dat_valid, rx_dat_ready;
     rx_credit_buffer #(
-        .RSP_FIFO_DEPTH  (2              ),
+        .CTRL_FIFO_DEPTH  (2              ),
         .NUM_DAT_VC      (NUM_DAT_VC     ),
         .DAT_VC_MODE     (DAT_VC_MODE    ),
         .CREDIT_DEPTH (CREDIT_DEPTH)
     ) i_buffer (
         .clk_i               (clk          ),
         .rst_n_i             (rst_n_i      ),
-        .s_rsp_i             (rsp          ),
-        .s_rsp_valid_i       (rsp_valid    ),
-        .s_rsp_ready_o       (rsp_ready    ),
+        .s_ctrl_i             (rsp          ),
+        .s_ctrl_valid_i       (rsp_valid    ),
+        .s_ctrl_ready_o       (rsp_ready    ),
         .s_dat_i             (dat          ),
         .s_dat_valid_i       (dat_valid    ),
         .dat_credit_return_o (credit_return),
-        .m_rsp_o             (rx_rsp_head  ),
-        .m_rsp_valid_o       (rx_rsp_valid ),
-        .m_rsp_ready_i       (rx_rsp_ready ),
+        .m_ctrl_o             (rx_rsp_head  ),
+        .m_ctrl_valid_o       (rx_rsp_valid ),
+        .m_ctrl_ready_i       (rx_rsp_ready ),
         .m_dat_o             (rx_dat_head  ),
         .m_dat_valid_o       (rx_dat_valid ),
         .m_dat_ready_i       (rx_dat_ready )

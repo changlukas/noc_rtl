@@ -112,8 +112,7 @@ package ni_types_pkg;
         logic    [ni_flit_pkg::AXI_LEN_WIDTH-1:0] beat_index;
     } nmu_read_context_t;
 
-    // NSU Response Queue transaction record.  Write entries zero the read
-    // context; read entries zero the collective fields.
+    // Response routing and original transaction identity.
     typedef struct packed {
         logic          [ni_flit_pkg::SRC_ID_WIDTH-1:0] src_id;
         logic     [ni_flit_pkg::SRC_PORT_ID_WIDTH-1:0] src_port_id;
@@ -127,27 +126,34 @@ package ni_types_pkg;
         logic       [ni_flit_pkg::AXI_BURST_WIDTH-1:0] burst;
         logic   [ni_flit_pkg::COLLECTIVE_OP_WIDTH-1:0] collective_op;
         logic [ni_flit_pkg::COLLECTIVE_MASK_WIDTH-1:0] collective_mask;
-    } response_entry_t;
+    } nsu_context_t;
 
     typedef struct packed {
         ni_signals_pkg::noc_axi_aw_t axi;
-        response_entry_t         response;
+        nsu_context_t         response;
+        logic [ni_flit_pkg::VC_ID_WIDTH-1:0] vc_id;
     } nsu_aw_request_t;
 
     typedef struct packed {
         ni_signals_pkg::noc_axi_ar_t axi;
-        response_entry_t         response;
+        nsu_context_t         response;
     } nsu_ar_request_t;
 
     typedef struct packed {
         ni_signals_pkg::noc_axi_b_t axi;
-        response_entry_t        response;
+        nsu_context_t        response;
     } nsu_b_response_t;
 
     typedef struct packed {
         ni_signals_pkg::noc_axi_r_t axi;
-        response_entry_t        response;
+        nsu_context_t        response;
+        logic [ni_flit_pkg::AXI_LEN_WIDTH-1:0] beat_index;
     } nsu_r_response_t;
+
+    typedef struct packed {
+        nsu_context_t response;
+        logic [ni_flit_pkg::VC_ID_WIDTH-1:0] vc_id;
+    } nsu_w_context_t;
 
 endpackage
 

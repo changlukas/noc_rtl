@@ -70,7 +70,7 @@ module nmu #(
 );
 
     localparam int unsigned NUM_IDS =
-        1 << (INPUT_ID_WIDTH < OUTPUT_ID_WIDTH ? INPUT_ID_WIDTH : OUTPUT_ID_WIDTH);
+        1 << INPUT_ID_WIDTH;
 
     localparam int unsigned REQ_FLIT_W = $bits(ni_flit_pkg::req_flit_t);
     localparam int unsigned RSP_FLIT_W = $bits(ni_flit_pkg::rsp_flit_t);
@@ -80,7 +80,7 @@ module nmu #(
         initial $fatal(0, "Error: INPUT_ID_WIDTH must be in [1, 8] (instance %m)");
     end
 
-    if (OUTPUT_ID_WIDTH != ni_params_pkg::NOC_ID_WIDTH) begin : gen_invalid_noc_id_width
+    if (OUTPUT_ID_WIDTH != ni_params_pkg::NOC_ID_WIDTH || OUTPUT_ID_WIDTH < INPUT_ID_WIDTH) begin : gen_invalid_noc_id_width
         initial $fatal(0, "Error: OUTPUT_ID_WIDTH must match the generated fixed width (instance %m)");
     end
 
@@ -180,7 +180,6 @@ module nmu #(
         .NOC_DAT_VC_MODE        (NOC_DAT_VC_MODE       ),
         .REQ_FIFO_DEPTH         (REQ_FIFO_DEPTH        ),
         .CREDIT_DEPTH           (CREDIT_DEPTH          ),
-        .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
         .AW_SAM_REG_TYPE        (AW_SAM_REG_TYPE       ),
         .AR_SAM_REG_TYPE        (AR_SAM_REG_TYPE       ),
         .SAM_NUM_RULES          (SAM_NUM_RULES         ),

@@ -25,6 +25,11 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         raise ValueError("output_id_width must be in [1, 8]")
     if type(pattern_id_width) is not int or not 1 <= pattern_id_width <= 8:
         raise ValueError("input_id_width must be in [1, 8]")
+    device_id_width = profile.get("device_id_width", noc_id_width)
+    if type(device_id_width) is not int or not 1 <= device_id_width <= 8:
+        raise ValueError("device_id_width must be in [1, 8]")
+    if pattern_id_width > noc_id_width:
+        raise ValueError("NoC output_id_width must preserve input_id_width")
     source_list = []
     def copy(source, relative):
         target = out / relative
@@ -53,6 +58,14 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         source = ROOT / relative[5:] if relative.startswith("repo/") else rtl_stage / relative
         copy(source, relative)
         source_list.append(flag + relative)
+    nsu_sources = [ROOT / "deps/common_cells-v2.0.0-beta.3/src" / name
+                   for name in ("cc_onehot_to_bin.sv", "cc_lzc.sv", "cc_id_queue.sv")]
+    nsu_sources += sorted(path for path in (ROOT / "rtl/nsu").rglob("*.sv")
+                          if not path.name.startswith("tb_"))
+    for source in nsu_sources:
+        relative = str(source.relative_to(ROOT))
+        copy(source, "repo/" + relative)
+        source_list.append("repo/" + relative)
     for relative in (f"specgen/generated/sv/noc_types_pkg_vc{num_vc()}.sv",
                      "ref_model/top/router_wrap.sv", "ref_model/top/nsu_wrap.sv",
                      "deps/common_cells-1.37.0/src/delta_counter.sv",
@@ -65,8 +78,12 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         copy(ROOT / relative, "repo/" + relative)
         source_list.append("repo/" + relative)
     for relative in (
+        "rtl/nsu/context_buffer/tb_nsu_context_buffer.sv",
+        "rtl/nsu/top/tb_nsu_elaborate.sv",
         "sim/dv/tb_axi_reorder_compare.sv",
         "rtl/common/tests/tb_axi_id_remap.sv",
+        "rtl/common/tests/nmu_id_remap_fixture.sv",
+        "deps/axi-0.39.7/src/axi_id_remap.sv",
         "rtl/nmu/ordering/tb_ordering.sv",
         "rtl/nmu/request_packetize/request_inject_tb_dut.sv",
         "rtl/nmu/request_packetize/tb_request_packetize.sv",
@@ -123,8 +140,8 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
         raise ValueError("DAT credit depth must be a power of two and at least 2")
     constants["noc"]["CREDIT_DEPTH"]["default"] = depth
     constants["axi"]["AXI_ID_WIDTH"]["default"] = noc_id_width
-    constants["nsu"]["AXI_ID_WIDTH"]["default"] = noc_id_width
-    constants["nsu"]["MAX_ACTIVE_IDS"]["default"] = 1 << noc_id_width
+    constants["nsu"]["AXI_ID_WIDTH"]["default"] = device_id_width
+    constants["nsu"]["MAX_ACTIVE_IDS"]["default"] = 1 << constants["nsu"]["AXI_ID_WIDTH"]["default"]
     from tools.elaborate.profile import emit as emit_profile
     emit_profile(ROOT, out, constants, noc_id_width)
     (out / "profile.yml").write_text(yaml.safe_dump(profile, sort_keys=False))
@@ -133,7 +150,11 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     copy(ROOT / "sim/cosim/nmu/script/run.py", "run.py")
     copy(ROOT / "sim/cosim/nmu/script/test_pipeline.py", "test_pipeline.py")
     copy(ROOT / "sim/cosim/nmu/script/test_ordering_checker.py", "test_ordering_checker.py")
+    copy(ROOT / "sim/cosim/nmu/script/test_nsu_context.py", "test_nsu_context.py")
     copy(ROOT / "sim/cosim/nmu/script/build_key.py", "build_key.py")
+    retired = out / "repo/rtl/nmu/request_path/id_remap.sv"
+    if retired.exists():
+        retired.unlink()
     names = [path for path in out.rglob("*") if path.is_file() and
              path.name != "SHA256SUMS" and "build" not in path.relative_to(out).parts]
     (out / "SHA256SUMS").write_text("".join(

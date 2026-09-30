@@ -176,6 +176,13 @@ make regress SIMULATOR=verilator "$@"
             "Default: external ID width 8, AXI clock 10ns, NoC clock 10ns, B/R depth 128.\n"
             "No NSU, memory model or C++ DPI. REQ/RSP and DAT use the same standalone checker.\n"
             "See the retrieved VCS reports for the verified case/mode/seed matrix.\n")
+        # Transport carries the complete original master ID; conversion is at NSU.
+        import sys
+        sys.path.insert(0, str(repo / "specgen"))
+        from tools.elaborate.profile import emit as emit_profile
+        constants = yaml.safe_load((repo / "specgen/source/constants.yaml").read_text())
+        constants["axi"]["AXI_ID_WIDTH"]["default"] = id_width
+        emit_profile(repo, root, constants, max(id_width, constants["axi"]["NOC_ID_WIDTH"]["default"]))
         checksums = []
         for file in sorted(root.rglob("*")):
             if file.is_file():

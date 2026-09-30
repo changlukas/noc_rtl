@@ -111,22 +111,22 @@ module nmu_response_path #(
     wire rx_rsp_valid, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] rx_dat_valid, rx_dat_ready;
     rx_credit_buffer #(
-        .RSP_FIFO_DEPTH (RSP_FIFO_DEPTH ),
-        .NUM_DAT_VC     (NUM_DAT_VC     ),
-        .DAT_VC_MODE    (NOC_DAT_VC_MODE),
-        .CREDIT_DEPTH   (CREDIT_DEPTH   )
+        .CTRL_FIFO_DEPTH (RSP_FIFO_DEPTH ),
+        .NUM_DAT_VC      (NUM_DAT_VC     ),
+        .DAT_VC_MODE     (NOC_DAT_VC_MODE),
+        .CREDIT_DEPTH    (CREDIT_DEPTH   )
     ) i_rx_credit_buffer (
         .clk_i               (noc_clk_i                              ),
         .rst_n_i             (noc_rst_n_i                            ),
         .s_dat_i             (ni_flit_pkg::dat_flit_t'(rx_dat_flit_i)),
         .s_dat_valid_i       (rx_dat_valid_i                         ),
         .dat_credit_return_o (rx_dat_crdvalid_o                      ),
-        .s_rsp_i             (ni_flit_pkg::rsp_flit_t'(rx_rsp_flit_i)),
-        .s_rsp_valid_i       (rx_rsp_valid_i                         ),
-        .s_rsp_ready_o       (rx_rsp_ready_o                         ),
-        .m_rsp_o             (rx_rsp_head                            ),
-        .m_rsp_valid_o       (rx_rsp_valid                           ),
-        .m_rsp_ready_i       (rx_rsp_ready                           ),
+        .s_ctrl_i            (ni_flit_pkg::rsp_flit_t'(rx_rsp_flit_i)),
+        .s_ctrl_valid_i      (rx_rsp_valid_i                         ),
+        .s_ctrl_ready_o      (rx_rsp_ready_o                         ),
+        .m_ctrl_o            (rx_rsp_head                            ),
+        .m_ctrl_valid_o      (rx_rsp_valid                           ),
+        .m_ctrl_ready_i      (rx_rsp_ready                           ),
         .m_dat_o             (rx_dat_head                            ),
         .m_dat_valid_o       (rx_dat_valid                           ),
         .m_dat_ready_i       (rx_dat_ready                           )

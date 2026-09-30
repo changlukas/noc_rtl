@@ -10,7 +10,7 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
     axi_if #(
         .DATA_W    (ni_params_pkg::AXI_DATA_WIDTH  ),
         .ADDR_W    (ni_params_pkg::AXI_ADDR_WIDTH  ),
-        .ID_W      (8                              ),
+        .ID_W      (ni_params_pkg::AXI_ID_WIDTH     ),
         .AWUSER_EN (1'b1                           ),
         .AWUSER_W  (ni_params_pkg::AXI_AWUSER_WIDTH)
     ) axi_if();
@@ -31,7 +31,7 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
     logic         [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_crdvalid_o;
 
     nmu #(
-        .INPUT_ID_WIDTH (8),
+        .INPUT_ID_WIDTH (ni_params_pkg::AXI_ID_WIDTH),
         .AXI_ADDR_WIDTH (INVALID_WIDTH == 1 ? 64 : ni_params_pkg::AXI_ADDR_WIDTH),
         .AXI_DATA_WIDTH (INVALID_WIDTH == 2 ? 1024 : ni_params_pkg::AXI_DATA_WIDTH),
         .AXI_AWUSER_WIDTH (INVALID_WIDTH == 3 ? 64 : ni_params_pkg::AXI_AWUSER_WIDTH)

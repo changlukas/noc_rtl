@@ -16,27 +16,36 @@ sources:
   - ../deps/common_cells-1.37.0/src/lzc.sv
   - ../deps/common_cells-1.37.0/src/rr_arb_tree.sv
   - ../deps/axi-0.39.7/src/axi_pkg.sv
-  - ../deps/axi-0.39.7/src/axi_id_remap.sv
   - common/axi_if.sv
   - common/ni_types_pkg.sv
   - common/ni_sam.sv
   - common/stream_register.sv
   - common/axi_async_fifo.sv
   - nmu/sam/sam.sv
-  - nmu/request_path/id_remap.sv
   - nmu/request_path/request_path.sv
   - nmu/response_fifo/response_fifo.sv
   - nmu/ordering/reorder_storage.sv
   - nmu/ordering/ordering.sv
   - nmu/channel_assign/tx_channel_assign.sv
   - nmu/request_path/write_context.sv
-  - nmu/channel_assign/tx_credit_buffer.sv
-  - nmu/channel_assign/tx_vc_arbiter.sv
+  - common/tx_credit_buffer.sv
+  - common/tx_vc_arbiter.sv
   - nmu/request_packetize/request_packetize.sv
-  - nmu/channel_assign/rx_credit_buffer.sv
+  - common/rx_credit_buffer.sv
   - nmu/channel_assign/rx_channel_assign.sv
   - nmu/channel_assign/rx_vc_arbiter.sv
   - nmu/response_depacketize/response_depacketize.sv
   - nmu/response_path/response_path.sv
   - nmu/top/nmu.sv
   - nmu/request_fifo/request_fifo.sv
+
+  - nsu/channel_assign/rx_channel_assign.sv
+  - nsu/channel_assign/tx_channel_assign.sv
+  - nsu/context_buffer/context_buffer.sv
+  - nsu/request_depacketize/request_depacketize.sv
+  - nsu/request_fifo/request_fifo.sv
+  - nsu/request_path/request_path.sv
+  - nsu/response_fifo/response_fifo.sv
+  - nsu/response_packetize/response_packetize.sv
+  - nsu/response_path/response_path.sv
+  - nsu/top/nsu.sv

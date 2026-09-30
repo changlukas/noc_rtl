@@ -97,7 +97,7 @@ module tb_nmu_request_packetize_stall;
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_reset_check
         always @(negedge rst_n_i) begin
             #1ps;
-            if (int'(dut.i_tx_credit_buffer.gen_dat_vc[vc].gen_write.i_credit.credit_o) !== CREDIT_DEPTH)
+            if (int'(dut.i_tx_credit_buffer.gen_dat_vc[vc].gen_active.i_credit.credit_o) !== CREDIT_DEPTH)
                 $fatal(1, "DAT credits did not reset asynchronously");
         end
     end

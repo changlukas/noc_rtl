@@ -119,19 +119,19 @@ module nmu_request_inject_tb_dut #(
     wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
     wire [NUM_DAT_VC-1:0] tx_dat_valid, tx_dat_ready;
     tx_credit_buffer #(
-        .REQ_FIFO_DEPTH (FIFO_DEPTH  ),
+        .CTRL_FIFO_DEPTH (FIFO_DEPTH  ),
         .NUM_DAT_VC     (NUM_DAT_VC  ),
         .DAT_VC_MODE    (DAT_VC_MODE ),
         .CREDIT_DEPTH   (CREDIT_DEPTH)
     ) i_tx_credit_buffer (
         .clk_i               (clk_i              ),
         .rst_n_i             (rst_n_i            ),
-        .s_req_i             (assigned_req       ),
-        .s_req_valid_i       (assigned_req_valid ),
-        .s_req_ready_o       (assigned_req_ready ),
-        .m_req_o             (m_req_o            ),
-        .m_req_valid_o       (m_req_valid_o      ),
-        .m_req_ready_i       (m_req_ready_i      ),
+        .s_ctrl_i             (assigned_req       ),
+        .s_ctrl_valid_i       (assigned_req_valid ),
+        .s_ctrl_ready_o       (assigned_req_ready ),
+        .m_ctrl_o             (m_req_o            ),
+        .m_ctrl_valid_o       (m_req_valid_o      ),
+        .m_ctrl_ready_i       (m_req_ready_i      ),
         .s_dat_i             (assigned_dat       ),
         .s_dat_valid_i       (assigned_dat_valid ),
         .dat_ready_o         (dat_fifo_ready     ),

@@ -5,28 +5,35 @@
 
 // Raw NoC ingress storage. Channel assignment consumes the FIFO heads.
 module rx_credit_buffer #(
-    parameter int unsigned RSP_FIFO_DEPTH  = 32,
-    parameter int unsigned NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
-    parameter int unsigned CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH
+    parameter int unsigned                                 CTRL_FIFO_DEPTH = 32,
+    parameter int unsigned                                 NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
+    parameter int unsigned                                 DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
+    parameter int unsigned                                 CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
+    parameter type                                         ctrl_t          = ni_flit_pkg::rsp_flit_t,
+    parameter logic [NUM_DAT_VC-1:0]                       DAT_VC_MASK     = (DAT_VC_MODE == 1 ? ({NUM_DAT_VC{1'b1}} << (NUM_DAT_VC/2)) : '1),
+    parameter logic [(1 << ni_flit_pkg::AXI_CH_WIDTH)-1:0] CTRL_CH_MASK    =
+        (1 << ni_flit_pkg::AXI_CH_NarrowB) | (1 << ni_flit_pkg::AXI_CH_DataB) |
+        (1 << ni_flit_pkg::AXI_CH_NarrowR),
+    parameter logic [(1 << ni_flit_pkg::AXI_CH_WIDTH)-1:0] DAT_CH_MASK     =
+        (1 << ni_flit_pkg::AXI_CH_DataR)
 ) (
     input  wire logic                                    clk_i,
     input  wire logic                                    rst_n_i,
-    input  wire ni_flit_pkg::rsp_flit_t                  s_rsp_i,
-    input  wire logic                                    s_rsp_valid_i,
-    output wire logic                                    s_rsp_ready_o,
+    input  wire ctrl_t                                   s_ctrl_i,
+    input  wire logic                                    s_ctrl_valid_i,
+    output wire logic                                    s_ctrl_ready_o,
     input  wire ni_flit_pkg::dat_flit_t                  s_dat_i,
     input  wire logic                                    s_dat_valid_i,
     output wire logic                   [NUM_DAT_VC-1:0] dat_credit_return_o,
-    output wire ni_flit_pkg::rsp_flit_t                  m_rsp_o,
-    output wire logic                                    m_rsp_valid_o,
-    input  wire logic                                    m_rsp_ready_i,
+    output wire ctrl_t                                   m_ctrl_o,
+    output wire logic                                    m_ctrl_valid_o,
+    input  wire logic                                    m_ctrl_ready_i,
     output wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
     output wire logic                   [NUM_DAT_VC-1:0] m_dat_valid_o,
     input  wire logic                   [NUM_DAT_VC-1:0] m_dat_ready_i
 );
     import ni_flit_pkg::*;
-    if (RSP_FIFO_DEPTH < 1 || RSP_FIFO_DEPTH > 1024) begin : gen_invalid_depth
+    if (CTRL_FIFO_DEPTH < 1 || CTRL_FIFO_DEPTH > 1024) begin : gen_invalid_depth
         initial $fatal(0, "Error: response FIFO depths must be in [1, 1024] (instance %m)");
     end
     if (NUM_DAT_VC < 1 || NUM_DAT_VC > (1 << VC_ID_WIDTH)) begin : gen_invalid_vcs
@@ -39,40 +46,36 @@ module rx_credit_buffer #(
         initial $fatal(0, "CREDIT_DEPTH must be a power of two and at least 2");
     end
     localparam int unsigned VC_IDX_W   = NUM_DAT_VC > 1 ? $clog2(NUM_DAT_VC) : 1;
-    localparam int unsigned RD_VC_BASE = DAT_VC_MODE == 1 ? NUM_DAT_VC/2 : 0;
     wire [VC_ID_WIDTH-1:0] dat_vc = s_dat_i.header[VC_ID_LSB +: VC_ID_WIDTH];
     wire [AXI_CH_WIDTH-1:0] dat_channel = s_dat_i.header[AXI_CH_LSB +: AXI_CH_WIDTH];
     wire [NUM_DAT_VC-1:0] dat_full, dat_empty, dat_push, dat_pop;
     wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] dat_head;
-    wire [AXI_CH_WIDTH-1:0] channel = s_rsp_i.header[AXI_CH_LSB +: AXI_CH_WIDTH];
-    wire is_b = channel == AXI_CH_WIDTH'(AXI_CH_NarrowB) ||
-                channel == AXI_CH_WIDTH'(AXI_CH_DataB);
-    wire is_r = channel == AXI_CH_WIDTH'(AXI_CH_NarrowR);
-    wire rsp_full, rsp_empty;
-    wire ni_flit_pkg::rsp_flit_t rsp_head;
-    assign s_rsp_ready_o = rst_n_i && !rsp_full;
-    assign m_rsp_valid_o = rst_n_i && !rsp_empty;
-    assign m_rsp_o       = m_rsp_valid_o ? rsp_head : '0;
+    wire [AXI_CH_WIDTH-1:0] channel = s_ctrl_i.header[AXI_CH_LSB +: AXI_CH_WIDTH];
+    wire ctrl_full, ctrl_empty;
+    wire ctrl_t ctrl_head;
+    assign s_ctrl_ready_o = rst_n_i && !ctrl_full;
+    assign m_ctrl_valid_o = rst_n_i && !ctrl_empty;
+    assign m_ctrl_o       = m_ctrl_valid_o ? ctrl_head : '0;
     cc_fifo #(
-        .Depth       (RSP_FIFO_DEPTH         ),
-        .FallThrough (1'b0                   ),
-        .data_t      (ni_flit_pkg::rsp_flit_t)
-    ) i_rsp_fifo (
-        .clk_i   (clk_i                         ),
-        .rst_ni  (rst_n_i                       ),
-        .flush_i (1'b0                          ),
-        .clr_i   (1'b0                          ),
-        .full_o  (rsp_full                      ),
-        .empty_o (rsp_empty                     ),
-        .usage_o (                              ),
-        .data_i  (s_rsp_i                       ),
-        .push_i  (s_rsp_valid_i && s_rsp_ready_o),
-        .data_o  (rsp_head                      ),
-        .pop_i   (m_rsp_valid_o && m_rsp_ready_i)
+        .Depth       (CTRL_FIFO_DEPTH),
+        .FallThrough (1'b0           ),
+        .data_t      (ctrl_t         )
+    ) i_ctrl_fifo (
+        .clk_i   (clk_i                           ),
+        .rst_ni  (rst_n_i                         ),
+        .flush_i (1'b0                            ),
+        .clr_i   (1'b0                            ),
+        .full_o  (ctrl_full                       ),
+        .empty_o (ctrl_empty                      ),
+        .usage_o (                                ),
+        .data_i  (s_ctrl_i                        ),
+        .push_i  (s_ctrl_valid_i && s_ctrl_ready_o),
+        .data_o  (ctrl_head                       ),
+        .pop_i   (m_ctrl_valid_o && m_ctrl_ready_i)
     );
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_dat_vc
         assign m_dat_o[vc] = m_dat_valid_o[vc] ? dat_head[vc] : '0;
-        if (vc >= RD_VC_BASE) begin : gen_read
+        if (DAT_VC_MASK[vc]) begin : gen_active
             assign dat_push[vc]      = rst_n_i && s_dat_valid_i && dat_vc == VC_ID_WIDTH'(vc);
             assign dat_pop[vc]       = m_dat_valid_o[vc] && m_dat_ready_i[vc];
             assign m_dat_valid_o[vc] = rst_n_i && !dat_empty[vc];
@@ -116,14 +119,14 @@ module rx_credit_buffer #(
     // synthesis translate_off
     always @(posedge clk_i) begin
         if (rst_n_i && s_dat_valid_i) begin
-            if ($isunknown({dat_channel, dat_vc}) || dat_channel != AXI_CH_WIDTH'(AXI_CH_DataR) ||
-                    int'(dat_vc) < RD_VC_BASE || int'(dat_vc) >= NUM_DAT_VC)
-                $fatal(1, "invalid channel or VC on NMU DAT ingress");
+            if ($isunknown({dat_channel, dat_vc}) || !DAT_CH_MASK[dat_channel] ||
+                    int'(dat_vc) >= NUM_DAT_VC || !DAT_VC_MASK[VC_IDX_W'(dat_vc)])
+                $fatal(1, "invalid channel or VC on DAT ingress");
             if (dat_full[VC_IDX_W'(dat_vc)])
-                $fatal(1, "NMU DAT receive credit overflow");
+                $fatal(1, "DAT receive credit overflow");
         end
-        if (rst_n_i && s_rsp_valid_i && !is_b && !is_r)
-            $fatal(1, "invalid channel on NMU RSP ingress");
+        if (rst_n_i && s_ctrl_valid_i && !CTRL_CH_MASK[channel])
+            $fatal(1, "invalid channel on control ingress");
     end
     // synthesis translate_on
 endmodule
