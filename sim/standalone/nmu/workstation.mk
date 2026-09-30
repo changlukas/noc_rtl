@@ -7,8 +7,8 @@ help compile run sim regress run_wave run_wave_view nWave corrupt:
 list:
 	@cat cosim/pattern.txt
 else ifeq ($(TESTBENCH),standalone)
-.PHONY: help compile run sim regress block_regress legacy_regress run_wave run_wave_view nWave view fault report clean dat_regress in_order_perf out_of_order_perf mixed_perf list
-help compile run sim regress block_regress legacy_regress run_wave run_wave_view nWave view fault report clean dat_regress in_order_perf out_of_order_perf mixed_perf:
+.PHONY: help compile run sim regress block_regress legacy_regress run_wave run_wave_view nWave view fault report clean dat_regress in_order_perf out_of_order_perf mixed_perf verification list
+help compile run sim regress block_regress legacy_regress run_wave run_wave_view nWave view fault report clean dat_regress in_order_perf out_of_order_perf mixed_perf verification:
 	$(MAKE) --no-print-directory -C script $@
 list:
 	@cat pattern_list.txt

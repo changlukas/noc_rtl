@@ -101,7 +101,7 @@
       "require_stall": 1
     },
     {
-      "name": "reset_inflight",
+      "name": "reset_recovery",
       "count": 8,
       "destinations": "alternate",
       "reset_warmup": 1

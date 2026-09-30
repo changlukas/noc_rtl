@@ -49,3 +49,7 @@ out_of_order_perf: prepare
 .PHONY: mixed_perf
 mixed_perf: prepare
 	$(MAKE) -C "$(stage)/script" mixed_perf SIMULATOR=$(SIMULATOR)
+
+.PHONY: verification
+verification: prepare
+	$(MAKE) -C "$(stage)/script" verification

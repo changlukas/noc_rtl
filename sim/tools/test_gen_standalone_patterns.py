@@ -281,7 +281,7 @@ def test_cosim_reorder_destinations_and_delay_selection(tmp_path, mode):
             assert "+reorder_test=" + ("1" if name == "multi_id_out_of_order" else "2") in schedule
         else:
             assert "+reorder_test=0" in schedule
-    assert "reset_inflight" not in names
+    assert "reset_recovery" not in names
 
 
 def test_capacity_profile_inputs(tmp_path):

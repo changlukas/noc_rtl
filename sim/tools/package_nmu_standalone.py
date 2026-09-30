@@ -81,6 +81,7 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
         copy_path(repo / "sim/test_patterns/standalone/in_order_perf.json")
         copy_path(repo / "sim/test_patterns/standalone/out_of_order_perf.json")
         copy_path(repo / "sim/test_patterns/standalone/mixed_perf.json")
+        copy_path(repo / "sim/test_patterns/standalone/verification.json")
         for name in ("gen_standalone_patterns.py", "axi_file_format.py"):
             copy_path(repo / "sim/tools" / name)
         import yaml
@@ -89,12 +90,14 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
         (root / "cases/topology.json").write_text(json.dumps(entries))
 
         copy_path(repo / "rtl/nmu/top/nmu_lint.vlt")
+        copy_path(repo / "rtl/nmu/response_path/tb_response_path.sv")
         copy_path(repo / "rtl/nmu/response_depacketize/tb_response_depacketize.sv")
         copy_path(repo / "rtl/nmu/response_depacketize/test_response_depacketize.sh")
         (root / "script").mkdir()
         shutil.copy2(repo / "sim/standalone/common/simulator.mk", root / "script/Makefile")
         shutil.copy2(repo / "sim/standalone/common/clean.sh", root / "script/clean.sh")
         shutil.copy2(repo / "sim/standalone/nmu/perf.sh", root / "script/perf.sh")
+        shutil.copy2(repo / "sim/standalone/nmu/test_verification.py", root / "script/test_verification.py")
         shutil.copy2(repo / "sim/standalone/nmu/config.mk", root / "script/config.mk")
         (root / "script/nWaveLog").mkdir()
         shutil.copy2(repo / "sim/standalone/nmu/signals.rc", root / "script/nWaveLog/signals.rc")
@@ -110,7 +113,7 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             "single_id_reorder": "Same ID across destinations, B/R reordering",
             "outstanding_full_recover": "Capacity pressure and recovery, including ID remap reuse",
             "backpressure": "REQ and AXI response stalls",
-            "reset_inflight": "Coordinated reset with transactions in flight",
+            "reset_recovery": "Randomized reset recovery",
             "data_write_single": "Single data write",
             "data_read_single": "Single data read",
             "data_write_burst": "Data write: 6 INCR bursts, 2/4/8/16/32/64 beats, 512-bit",

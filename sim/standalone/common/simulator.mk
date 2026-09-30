@@ -193,3 +193,7 @@ out_of_order_perf: compile
 .PHONY: mixed_perf
 mixed_perf: compile
 	bash "$(script_dir)/perf.sh" "$(package_dir)" "$(run_dir)" "$(PYTHON)" "$(wave_ext)" "$(ID_WIDTH)" mixed
+
+.PHONY: verification
+verification:
+	cd "$(package_dir)" && $(PYTHON) script/test_verification.py

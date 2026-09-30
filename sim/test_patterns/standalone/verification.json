@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "cases": [
+    {
+      "name": "read_interleave",
+      "count": 16,
+      "ids": "multiple",
+      "burst_beats": 4,
+      "response_delay": 1,
+      "startup_delay": 80,
+      "min_outstanding": 2,
+      "min_unique": 2
+    }
+  ]
+}
