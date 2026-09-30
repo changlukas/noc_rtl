@@ -98,7 +98,6 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
         copy_path(repo / "rtl/nmu/response_depacketize/tb_response_depacketize.sv")
         copy_path(repo / "rtl/nmu/response_depacketize/test_response_depacketize.sh")
         (root / "script").mkdir()
-        shutil.copy2(repo / "sim/standalone/nmu/test_sam.py", root / "script/test_sam.py")
         shutil.copy2(repo / "sim/standalone/common/simulator.mk", root / "script/Makefile")
         shutil.copy2(repo / "sim/standalone/common/clean.sh", root / "script/clean.sh")
         shutil.copy2(repo / "sim/standalone/nmu/perf.sh", root / "script/perf.sh")
@@ -128,12 +127,14 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             "request_rand": "Seeded mixed control/data requests",
 
         }
-        names = (root / "cases/standalone/cases.list").read_text().splitlines()
+        names = [name for name in (root / "cases/standalone/cases.list").read_text().splitlines()
+                 if name not in ("outstanding_full_recover", "backpressure", "reset_recovery")]
+        (root / "cases.list").write_text("\n".join(names) + "\n")
         (root / "pattern_list.txt").write_text(
             "NMU standalone control/data/random patterns\n\n"
             "First run (compile + simulate): make run CASE=ctrl_write_burst\n"
             "After compilation (reuse binary): make sim CASE=ctrl_write_burst\n"
-            "Shared scenarios (5-11): MODE=control|data|rand, default control\n"
+            "Ordering/outstanding scenarios: MODE=control|data|rand, default control\n"
             "Random example: make sim CASE=single_id_outstanding MODE=rand SEED=7\n"
             "Fixed ctrl_*/data_* cases select their own mode; request_rand mixes both.\n"
             "Full matrix: make regress\n"
@@ -144,8 +145,7 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             "AW/W/AR use the original axi_file_master.run(); no TB outstanding cap.\n"
             "Changing CASE reuses the binary. Changing DUT settings or WAVE may need compilation.\n"
             "Pattern ID width must match the compiled DUT.\n"
-            "Legacy traffic patterns: neighbor, uniform_random, hotspot, directed.\n"
-            "Run legacy suite: make legacy_regress\n")
+)
         (root / "run_vcs.sh").write_text(r'''#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"

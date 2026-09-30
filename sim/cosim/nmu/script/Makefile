@@ -57,7 +57,7 @@ run: compile sim
 sim:
 	python3 run.py --binary "$(SIM)/simv" --case "$(CASE)" --mode "$(MODE)" --report "$(REPORT)" $(if $(filter 1,$(WAVE)),--wave,)
 regress: compile
-	@set -e; while read name; do $(MAKE) --no-print-directory sim CASE=$$name; done < patterns/cases.list
+	@set -e; while read name; do $(MAKE) --no-print-directory sim CASE=$$name; done < pattern.txt
 corrupt: compile
 	python3 run.py --binary "$(SIM)/simv" --case data_read_single --report "$(REPORT)" --corrupt
 run_wave_view: nWave

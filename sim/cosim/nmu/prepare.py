@@ -88,7 +88,10 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     if extra_catalog:
         cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim", catalog=extra_catalog)
     (patterns / "cases.list").write_text("\n".join(cases) + "\n")
-    (out / "pattern.txt").write_text("\n".join(cases) + "\n")
+    common_cases = [case["name"] for case in json.loads(
+        (ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]
+        if not (case.get("reset_warmup") or case.get("legacy_mixed") or case.get("require_stall"))]
+    (out / "pattern.txt").write_text("\n".join(common_cases) + "\n")
     for mode in ("control", "data", "rand"):
         mode_cases = generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode)
         mode_cases += generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
