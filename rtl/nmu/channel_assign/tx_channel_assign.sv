@@ -66,11 +66,11 @@ module tx_channel_assign #(
             req_sel_aw = s_req_valid_i[NMU_REQ_AW_IDX] && (!s_req_valid_i[NMU_REQ_AR_IDX] || !req_rr_reg);
         req_sel = req_write_lock_reg ? REQ_SEL_W'(NMU_REQ_W_IDX) : req_sel_aw ? REQ_SEL_W'(NMU_REQ_AW_IDX) : REQ_SEL_W'(NMU_REQ_AR_IDX);
     end
-    assign m_req_valid_o                 = rst_n_i && s_req_valid_i[req_sel];
+    assign m_req_valid_o                 = s_req_valid_i[req_sel];
     assign m_req_o                       = m_req_valid_o ? s_req_i[req_sel] : '0;
-    assign s_req_ready_o[NMU_REQ_AW_IDX] = rst_n_i && !req_write_lock_reg && req_sel_aw && m_req_ready_i;
-    assign s_req_ready_o[NMU_REQ_W_IDX]  = rst_n_i && req_write_lock_reg && m_req_ready_i;
-    assign s_req_ready_o[NMU_REQ_AR_IDX] = rst_n_i && !req_write_lock_reg && !req_sel_aw && m_req_ready_i;
+    assign s_req_ready_o[NMU_REQ_AW_IDX] = !req_write_lock_reg && req_sel_aw && m_req_ready_i;
+    assign s_req_ready_o[NMU_REQ_W_IDX]  = req_write_lock_reg && m_req_ready_i;
+    assign s_req_ready_o[NMU_REQ_AR_IDX] = !req_write_lock_reg && !req_sel_aw && m_req_ready_i;
 
     always_comb begin
         int vc_idx;
@@ -90,11 +90,11 @@ module tx_channel_assign #(
             end
         end
     end
-    assign m_dat_valid_o = rst_n_i && (dat_write_lock_reg ?
+    assign m_dat_valid_o = (dat_write_lock_reg ?
         (s_dat_valid_i[NMU_DAT_W_IDX] && (dat_fifo_ready[dat_active_vc_reg])) :
         (s_dat_valid_i[NMU_DAT_AW_IDX] && dat_vc_available));
-    assign s_dat_ready_o[NMU_DAT_AW_IDX] = rst_n_i && !dat_write_lock_reg && dat_vc_available;
-    assign s_dat_ready_o[NMU_DAT_W_IDX]  = rst_n_i && dat_write_lock_reg && dat_fifo_ready[dat_active_vc_reg];
+    assign s_dat_ready_o[NMU_DAT_AW_IDX] = !dat_write_lock_reg && dat_vc_available;
+    assign s_dat_ready_o[NMU_DAT_W_IDX]  = dat_write_lock_reg && dat_fifo_ready[dat_active_vc_reg];
     always_comb begin
         dat_flit = s_dat_i[dat_write_lock_reg ? NMU_DAT_W_IDX : NMU_DAT_AW_IDX];
         dat_flit.header[VC_ID_LSB +: VC_ID_WIDTH] = VC_ID_WIDTH'(dat_vc);

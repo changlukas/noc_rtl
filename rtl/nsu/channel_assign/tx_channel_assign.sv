@@ -42,12 +42,12 @@ module nsu_tx_channel_assign #(
     dat_flit_t dat;
     assign rsp_data[0]   = s_b_i;
     assign rsp_data[1]   = '{header: s_r_i.header, payload: (ni_params_pkg::NOC_RSP_FLIT_WIDTH-HEADER_WIDTH)'(s_r_i.payload)};
-    assign rsp_valid     = {s_r_valid_i && !r_is_data, s_b_valid_i} & {NUM_RSP_CH{rst_n_i}};
-    assign s_b_ready_o   = rst_n_i && rsp_ready[0];
-    assign s_r_ready_o   = rst_n_i && (r_is_data ? dat_ready_i[r_vc] : rsp_ready[1]);
-    assign m_rsp_valid_o = rst_n_i && selected_rsp_valid;
+    assign rsp_valid     = {s_r_valid_i && !r_is_data, s_b_valid_i};
+    assign s_b_ready_o   = rsp_ready[0];
+    assign s_r_ready_o   = (r_is_data ? dat_ready_i[r_vc] : rsp_ready[1]);
+    assign m_rsp_valid_o = selected_rsp_valid;
     assign m_rsp_o       = m_rsp_valid_o ? selected_rsp : '0;
-    assign m_dat_valid_o = rst_n_i && s_r_valid_i && r_is_data && dat_ready_i[r_vc];
+    assign m_dat_valid_o = s_r_valid_i && r_is_data && dat_ready_i[r_vc];
     assign m_dat_o       = m_dat_valid_o ? dat : '0;
     always_comb begin
         dat = s_r_i;
@@ -61,17 +61,17 @@ module nsu_tx_channel_assign #(
         .LockIn    (1'b1      ),
         .FairArb   (1'b1      )
     ) i_rsp_arb (
-        .clk_i   (clk_i                   ),
-        .rst_ni  (rst_n_i                 ),
-        .flush_i (1'b0                    ),
-        .rr_i    ('0                      ),
-        .req_i   (rsp_valid               ),
-        .gnt_o   (rsp_ready               ),
-        .data_i  (rsp_data                ),
-        .req_o   (selected_rsp_valid      ),
-        .gnt_i   (rst_n_i && m_rsp_ready_i),
-        .data_o  (selected_rsp            ),
-        .idx_o   (                        )
+        .clk_i   (clk_i             ),
+        .rst_ni  (rst_n_i           ),
+        .flush_i (1'b0              ),
+        .rr_i    ('0                ),
+        .req_i   (rsp_valid         ),
+        .gnt_o   (rsp_ready         ),
+        .data_i  (rsp_data          ),
+        .req_o   (selected_rsp_valid),
+        .gnt_i   (m_rsp_ready_i     ),
+        .data_o  (selected_rsp      ),
+        .idx_o   (                  )
     );
 endmodule
 

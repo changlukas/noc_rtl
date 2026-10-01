@@ -62,27 +62,27 @@ module nmu_response_depacketize #(
         .REG_TYPE (B_REG_TYPE                    ),
         .data_t   (ni_types_pkg::nmu_b_response_t)
     ) i_b_reg (
-        .clk_i     (clk_i                 ),
-        .rst_n_i   (rst_n_i               ),
-        .s_data_i  (b                     ),
-        .s_valid_i (rst_n_i && s_b_valid_i),
-        .s_ready_o (s_b_ready_o           ),
-        .m_data_o  (b_output              ),
-        .m_valid_o (m_b_valid_o           ),
-        .m_ready_i (m_b_ready_i           )
+        .clk_i     (clk_i      ),
+        .rst_n_i   (rst_n_i    ),
+        .s_data_i  (b          ),
+        .s_valid_i (s_b_valid_i),
+        .s_ready_o (s_b_ready_o),
+        .m_data_o  (b_output   ),
+        .m_valid_o (m_b_valid_o),
+        .m_ready_i (m_b_ready_i)
     );
     stream_register #(
         .REG_TYPE (R_REG_TYPE                    ),
         .data_t   (ni_types_pkg::nmu_r_response_t)
     ) i_r_reg (
-        .clk_i     (clk_i                 ),
-        .rst_n_i   (rst_n_i               ),
-        .s_data_i  (r                     ),
-        .s_valid_i (rst_n_i && s_r_valid_i),
-        .s_ready_o (s_r_ready_o           ),
-        .m_data_o  (r_output              ),
-        .m_valid_o (m_r_valid_o           ),
-        .m_ready_i (m_r_ready_i           )
+        .clk_i     (clk_i      ),
+        .rst_n_i   (rst_n_i    ),
+        .s_data_i  (r          ),
+        .s_valid_i (s_r_valid_i),
+        .s_ready_o (s_r_ready_o),
+        .m_data_o  (r_output   ),
+        .m_valid_o (m_r_valid_o),
+        .m_ready_i (m_r_ready_i)
     );
 endmodule
 `resetall

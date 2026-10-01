@@ -189,17 +189,17 @@ module nmu_ordering #(
     assign m_aw_o.user              = s_aw_i.route.user;
     assign m_aw_o.collective_op     = s_aw_i.route.collective_op;
     assign m_aw_o.collective_mask   = s_aw_i.route.collective_mask;
-    assign m_aw_valid_o             = rst_n_i && s_aw_valid_i && aw_can_accept;
-    assign s_aw_ready_o             = rst_n_i && m_aw_ready_i && aw_can_accept;
+    assign m_aw_valid_o             = s_aw_valid_i && aw_can_accept;
+    assign s_aw_ready_o             = m_aw_ready_i && aw_can_accept;
     assign m_w_o                    = s_w_i;
-    assign m_w_valid_o              = rst_n_i && s_w_valid_i;
-    assign s_w_ready_o              = rst_n_i && m_w_ready_i;
+    assign m_w_valid_o              = s_w_valid_i;
+    assign s_w_ready_o              = m_w_ready_i;
     assign m_ar_o.axi               = s_ar_i.axi;
     assign m_ar_o.meta.route        = s_ar_i.route;
     assign m_ar_o.meta.ordering_req = ar_reorder;
     assign m_ar_o.meta.ordering_tag = ar_tag;
-    assign m_ar_valid_o             = rst_n_i && s_ar_valid_i && ar_can_accept;
-    assign s_ar_ready_o             = rst_n_i && m_ar_ready_i && ar_can_accept;
+    assign m_ar_valid_o             = s_ar_valid_i && ar_can_accept;
+    assign s_ar_ready_o             = m_ar_ready_i && ar_can_accept;
 
     always_comb begin
         b_sel_valid = 1'b0;
@@ -222,11 +222,11 @@ module nmu_ordering #(
         end
     end
 
-    assign m_b_valid_o         = rst_n_i && (b_sel_valid || b_direct);
-    assign b_storage_rd_addr   = rst_n_i && b_sel_valid ? wr_order_head[ID_IDX_W'(b_sel_id)].base : '0;
+    assign m_b_valid_o         = (b_sel_valid || b_direct);
+    assign b_storage_rd_addr   = b_sel_valid ? wr_order_head[ID_IDX_W'(b_sel_id)].base : '0;
     assign b_storage_free_addr = wr_order_head[ID_IDX_W'(b_retire_id)].base;
     assign m_b_o               = b_sel_valid ? b_storage_rd_data : s_b_i.axi;
-    assign s_b_ready_o         = rst_n_i && (b_direct ? m_b_ready_i :
+    assign s_b_ready_o         = (b_direct ? m_b_ready_i :
         (s_b_i.meta.ordering_req && b_storage_wr_ready));
     assign b_retire_id = b_sel_valid ? b_sel_id : s_b_i.axi.bid;
 
@@ -250,8 +250,8 @@ module nmu_ordering #(
         end
     end
 
-    assign m_r_valid_o       = rst_n_i && (r_sel_valid || r_direct);
-    assign r_storage_rd_addr = rst_n_i && r_sel_valid ?
+    assign m_r_valid_o       = (r_sel_valid || r_direct);
+    assign r_storage_rd_addr = r_sel_valid ?
         TAG_W'(int'(rd_order_head[ID_IDX_W'(r_sel_id)].base) + int'(r_retire_offset_reg[ID_IDX_W'(r_sel_id)])) : '0;
     assign r_storage_free_addr = TAG_W'(int'(rd_order_head[ID_IDX_W'(r_retire_id)].base) + int'(r_retire_offset_reg[ID_IDX_W'(r_retire_id)]));
     // NarrowR payload contains one 64-bit lane; position it using the issuing AR.
@@ -274,7 +274,7 @@ module nmu_ordering #(
         if (!retire_context.is_data)
             retire_response.rdata = ni_params_pkg::AXI_DATA_WIDTH'(retire_r.rdata[63:0]) << (retire_lane*64);
     end
-    assign s_r_ready_o = rst_n_i && (r_direct ? m_r_ready_i :
+    assign s_r_ready_o = (r_direct ? m_r_ready_i :
         (R_ROB_EN && s_r_i.meta.ordering_req && r_storage_wr_ready));
     assign r_retire_id = r_sel_valid ? r_sel_id : s_r_i.axi.rid;
 
@@ -484,58 +484,58 @@ module nmu_ordering #(
     end
 
     nmu_reorder_storage #(
-        .DEPTH  (B_ROB_DEPTH            ),
+        .DEPTH  (B_ROB_DEPTH                ),
         .data_t (ni_signals_pkg::noc_axi_b_t)
     ) i_b_storage (
-        .clk_i         (clk_i                                                                          ),
-        .rst_n_i       (rst_n_i                                                                        ),
-        .alloc_valid_i (aw_accept && aw_reorder                                                        ),
-        .alloc_base_i  (aw_tag                                                                         ),
-        .alloc_cnt_i   ((TAG_W+1)'(1)                                                                  ),
-        .next_base_o   (b_next_base                                                                    ),
-        .free_cnt_o    (b_free_cnt                                                                     ),
-        .wr_valid_i    (rst_n_i && s_b_valid_i && s_b_i.meta.ordering_req && (!b_direct || m_b_ready_i)),
-        .wr_bypass_i   (b_direct                                                                       ),
-        .wr_ready_o    (b_storage_wr_ready                                                             ),
-        .wr_base_i     (rst_n_i && s_b_valid_i && s_b_i.meta.ordering_req ?
+        .clk_i         (clk_i                                                               ),
+        .rst_n_i       (rst_n_i                                                             ),
+        .alloc_valid_i (aw_accept && aw_reorder                                             ),
+        .alloc_base_i  (aw_tag                                                              ),
+        .alloc_cnt_i   ((TAG_W+1)'(1)                                                       ),
+        .next_base_o   (b_next_base                                                         ),
+        .free_cnt_o    (b_free_cnt                                                          ),
+        .wr_valid_i    (s_b_valid_i && s_b_i.meta.ordering_req && (!b_direct || m_b_ready_i)),
+        .wr_bypass_i   (b_direct                                                            ),
+        .wr_ready_o    (b_storage_wr_ready                                                  ),
+        .wr_base_i     (s_b_valid_i && s_b_i.meta.ordering_req ?
             s_b_i.meta.ordering_tag : '0),
-        .wr_last_i           (1'b1                                               ),
-        .wr_data_i           (s_b_i.axi                                          ),
-        .rd_en_i             (b_sel_valid                                        ),
-        .rd_addr_i           (b_storage_rd_addr                                  ),
-        .rd_entry_complete_o (                                                   ),
-        .rd_data_o           (b_storage_rd_data                                  ),
+        .wr_last_i           (1'b1                                                          ),
+        .wr_data_i           (s_b_i.axi                                                     ),
+        .rd_en_i             (b_sel_valid                                                   ),
+        .rd_addr_i           (b_storage_rd_addr                                             ),
+        .rd_entry_complete_o (                                                              ),
+        .rd_data_o           (b_storage_rd_data                                             ),
         .free_valid_i        (b_retire && wr_order_head[ID_IDX_W'(b_retire_id)].ordering_req),
-        .free_addr_i         (b_storage_free_addr                                ),
-        .complete_o          (b_complete                                         )
+        .free_addr_i         (b_storage_free_addr                                           ),
+        .complete_o          (b_complete                                                    )
     );
 
     if (R_ROB_EN) begin : gen_read_reorder_storage
         nmu_reorder_storage #(
-            .DEPTH  (R_ROB_DEPTH            ),
+            .DEPTH  (R_ROB_DEPTH                ),
             .data_t (ni_signals_pkg::noc_axi_r_t)
         ) i_r_storage (
-            .clk_i         (clk_i                                                                          ),
-            .rst_n_i       (rst_n_i                                                                        ),
-            .alloc_valid_i (ar_accept && ar_reorder                                                        ),
-            .alloc_base_i  (ar_tag                                                                         ),
-            .alloc_cnt_i   ((TAG_W+1)'(ar_beat_cnt)                                                        ),
-            .next_base_o   (r_next_base                                                                    ),
-            .free_cnt_o    (r_free_cnt                                                                     ),
-            .wr_valid_i    (rst_n_i && s_r_valid_i && s_r_i.meta.ordering_req && (!r_direct || m_r_ready_i)),
-            .wr_bypass_i   (r_direct                                                                       ),
-            .wr_ready_o    (r_storage_wr_ready                                                             ),
-            .wr_base_i     (rst_n_i && s_r_valid_i && s_r_i.meta.ordering_req ?
+            .clk_i         (clk_i                                                               ),
+            .rst_n_i       (rst_n_i                                                             ),
+            .alloc_valid_i (ar_accept && ar_reorder                                             ),
+            .alloc_base_i  (ar_tag                                                              ),
+            .alloc_cnt_i   ((TAG_W+1)'(ar_beat_cnt)                                             ),
+            .next_base_o   (r_next_base                                                         ),
+            .free_cnt_o    (r_free_cnt                                                          ),
+            .wr_valid_i    (s_r_valid_i && s_r_i.meta.ordering_req && (!r_direct || m_r_ready_i)),
+            .wr_bypass_i   (r_direct                                                            ),
+            .wr_ready_o    (r_storage_wr_ready                                                  ),
+            .wr_base_i     (s_r_valid_i && s_r_i.meta.ordering_req ?
                 s_r_i.meta.ordering_tag : '0),
-            .wr_last_i           (rst_n_i && s_r_valid_i && s_r_i.meta.ordering_req && s_r_i.axi.rlast),
-            .wr_data_i           (s_r_i.axi                                                           ),
-            .rd_en_i             (r_sel_valid                                                         ),
-            .rd_addr_i           (r_storage_rd_addr                                                   ),
-            .rd_entry_complete_o (                                                                    ),
-            .rd_data_o           (r_storage_rd_data                                                   ),
-            .free_valid_i        (r_retire && rd_order_head[ID_IDX_W'(r_retire_id)].ordering_req                 ),
-            .free_addr_i         (r_storage_free_addr                                                 ),
-            .complete_o          (r_complete                                                          )
+            .wr_last_i           (s_r_valid_i && s_r_i.meta.ordering_req && s_r_i.axi.rlast     ),
+            .wr_data_i           (s_r_i.axi                                                     ),
+            .rd_en_i             (r_sel_valid                                                   ),
+            .rd_addr_i           (r_storage_rd_addr                                             ),
+            .rd_entry_complete_o (                                                              ),
+            .rd_data_o           (r_storage_rd_data                                             ),
+            .free_valid_i        (r_retire && rd_order_head[ID_IDX_W'(r_retire_id)].ordering_req),
+            .free_addr_i         (r_storage_free_addr                                           ),
+            .complete_o          (r_complete                                                    )
         );
     end else begin : gen_no_read_reorder_storage
         assign r_next_base        = '0;

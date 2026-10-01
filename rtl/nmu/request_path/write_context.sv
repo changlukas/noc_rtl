@@ -29,11 +29,11 @@ module nmu_write_context (
     wire aw_space = !active_reg || (w_accept && s_w_i.wlast);
     wire aw_accept = m_aw_valid_o && m_aw_ready_i;
     assign m_aw_o       = m_aw_valid_o ? s_aw_i : '0;
-    assign m_aw_valid_o = rst_n_i && aw_space && s_aw_valid_i;
-    assign s_aw_ready_o = rst_n_i && aw_space && m_aw_ready_i;
+    assign m_aw_valid_o = aw_space && s_aw_valid_i;
+    assign s_aw_ready_o = aw_space && m_aw_ready_i;
     assign m_w_o        = m_w_valid_o ? s_w_i : '0;
-    assign m_w_valid_o  = rst_n_i && active_reg && s_w_valid_i;
-    assign s_w_ready_o  = rst_n_i && active_reg && m_w_ready_i;
+    assign m_w_valid_o  = active_reg && s_w_valid_i;
+    assign s_w_ready_o  = active_reg && m_w_ready_i;
     assign m_w_aw_o     = active_reg ? aw_reg : '0;
     assign m_w_beat_o   = active_reg ? beat_reg : '0;
     always_comb begin

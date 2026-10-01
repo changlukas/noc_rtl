@@ -22,12 +22,12 @@ module rx_channel_assign (
     wire [AXI_CH_WIDTH-1:0] channel = s_rsp_i.header[AXI_CH_LSB +: AXI_CH_WIDTH];
     wire is_b = channel == AXI_CH_WIDTH'(AXI_CH_NarrowB) ||
                 channel == AXI_CH_WIDTH'(AXI_CH_DataB);
-    assign m_b_valid_o   = rst_n_i && s_rsp_valid_i && is_b;
+    assign m_b_valid_o   = s_rsp_valid_i && is_b;
     assign m_b_o         = m_b_valid_o ? s_rsp_i : '0;
-    assign s_rsp_ready_o = rst_n_i && is_b && m_b_ready_i;
-    assign m_r_valid_o   = rst_n_i && s_dat_valid_i;
+    assign s_rsp_ready_o = is_b && m_b_ready_i;
+    assign m_r_valid_o   = s_dat_valid_i;
     assign m_r_o         = m_r_valid_o ? s_dat_i : '0;
-    assign s_dat_ready_o = rst_n_i && m_r_ready_i;
+    assign s_dat_ready_o = m_r_ready_i;
 
 endmodule
 `resetall

@@ -34,19 +34,19 @@ module tx_vc_arbiter #(
         .LockIn    (1'b0                   ),
         .FairArb   (1'b1                   )
     ) i_arb (
-        .clk_i   (clk_i                                              ),
-        .rst_ni  (rst_n_i                                            ),
-        .flush_i (1'b0                                               ),
-        .rr_i    ('0                                                 ),
-        .req_i   (s_dat_valid_i & DAT_VC_MASK & {NUM_ARB_VC{rst_n_i}}),
-        .gnt_o   (s_dat_ready_o[NUM_ARB_VC-1:0]                      ),
-        .data_i  (s_dat_i[NUM_ARB_VC-1:0]                            ),
-        .req_o   (selected_valid                                     ),
-        .gnt_i   (rst_n_i && m_dat_ready_i                           ),
-        .data_o  (selected_dat                                       ),
-        .idx_o   (                                                   )
+        .clk_i   (clk_i                        ),
+        .rst_ni  (rst_n_i                      ),
+        .flush_i (1'b0                         ),
+        .rr_i    ('0                           ),
+        .req_i   (s_dat_valid_i & DAT_VC_MASK  ),
+        .gnt_o   (s_dat_ready_o[NUM_ARB_VC-1:0]),
+        .data_i  (s_dat_i[NUM_ARB_VC-1:0]      ),
+        .req_o   (selected_valid               ),
+        .gnt_i   (m_dat_ready_i                ),
+        .data_o  (selected_dat                 ),
+        .idx_o   (                             )
     );
-    assign m_dat_valid_o = rst_n_i && selected_valid;
+    assign m_dat_valid_o = selected_valid;
     assign m_dat_o       = m_dat_valid_o ? selected_dat : '0;
     for (genvar vc = NUM_ARB_VC; vc < NUM_DAT_VC; vc++) begin : gen_unused
         assign s_dat_ready_o[vc] = 1'b0;

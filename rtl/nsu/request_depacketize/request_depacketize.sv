@@ -86,11 +86,11 @@ module nsu_request_depacketize #(
         .sam_rule_t     (sam_rule_t    ),
         .SAM            (SAM           )
     ) i_aw_sam (
-        .addr_i         (aw_addr                                       ),
-        .lookup_en_i    (rst_n_i && s_aw_valid_i && collective_op != '0),
-        .sam_idx_o      (aw_sam                                        ),
-        .lookup_valid_o (aw_lookup_valid                               ),
-        .lookup_error_o (aw_lookup_error                               )
+        .addr_i         (aw_addr                            ),
+        .lookup_en_i    (s_aw_valid_i && collective_op != '0),
+        .sam_idx_o      (aw_sam                             ),
+        .lookup_valid_o (aw_lookup_valid                    ),
+        .lookup_error_o (aw_lookup_error                    )
     );
 
     always_comb begin
@@ -154,46 +154,46 @@ module nsu_request_depacketize #(
             end
         end
     end
-    assign w_accept_o = rst_n_i && s_w_valid_i && s_w_ready_o;
+    assign w_accept_o = s_w_valid_i && s_w_ready_o;
     assign w_last_o   = w.wlast;
     stream_register #(
         .REG_TYPE (AW_REG_TYPE     ),
         .data_t   (nsu_aw_request_t)
     ) i_aw_reg (
-        .clk_i     (clk_i                  ),
-        .rst_n_i   (rst_n_i                ),
-        .s_data_i  (aw                     ),
-        .s_valid_i (rst_n_i && s_aw_valid_i),
-        .s_ready_o (s_aw_ready_o           ),
-        .m_data_o  (m_aw_o                 ),
-        .m_valid_o (m_aw_valid_o           ),
-        .m_ready_i (m_aw_ready_i           )
+        .clk_i     (clk_i       ),
+        .rst_n_i   (rst_n_i     ),
+        .s_data_i  (aw          ),
+        .s_valid_i (s_aw_valid_i),
+        .s_ready_o (s_aw_ready_o),
+        .m_data_o  (m_aw_o      ),
+        .m_valid_o (m_aw_valid_o),
+        .m_ready_i (m_aw_ready_i)
     );
     stream_register #(
         .REG_TYPE (W_REG_TYPE                 ),
         .data_t   (ni_signals_pkg::noc_axi_w_t)
     ) i_w_reg (
-        .clk_i     (clk_i                 ),
-        .rst_n_i   (rst_n_i               ),
-        .s_data_i  (w                     ),
-        .s_valid_i (rst_n_i && s_w_valid_i),
-        .s_ready_o (s_w_ready_o           ),
-        .m_data_o  (m_w_o                 ),
-        .m_valid_o (m_w_valid_o           ),
-        .m_ready_i (m_w_ready_i           )
+        .clk_i     (clk_i      ),
+        .rst_n_i   (rst_n_i    ),
+        .s_data_i  (w          ),
+        .s_valid_i (s_w_valid_i),
+        .s_ready_o (s_w_ready_o),
+        .m_data_o  (m_w_o      ),
+        .m_valid_o (m_w_valid_o),
+        .m_ready_i (m_w_ready_i)
     );
     stream_register #(
         .REG_TYPE (AR_REG_TYPE     ),
         .data_t   (nsu_ar_request_t)
     ) i_ar_reg (
-        .clk_i     (clk_i                  ),
-        .rst_n_i   (rst_n_i                ),
-        .s_data_i  (ar                     ),
-        .s_valid_i (rst_n_i && s_ar_valid_i),
-        .s_ready_o (s_ar_ready_o           ),
-        .m_data_o  (m_ar_o                 ),
-        .m_valid_o (m_ar_valid_o           ),
-        .m_ready_i (m_ar_ready_i           )
+        .clk_i     (clk_i       ),
+        .rst_n_i   (rst_n_i     ),
+        .s_data_i  (ar          ),
+        .s_valid_i (s_ar_valid_i),
+        .s_ready_o (s_ar_ready_o),
+        .m_data_o  (m_ar_o      ),
+        .m_valid_o (m_ar_valid_o),
+        .m_ready_i (m_ar_ready_i)
     );
 
     // synthesis translate_off

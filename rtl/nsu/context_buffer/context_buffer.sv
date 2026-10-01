@@ -78,16 +78,16 @@ module nsu_context_buffer #(
 
     assign m_awid_o            = map_id(s_aw_i.response);
     assign m_arid_o            = map_id(s_ar_i.response);
-    assign s_aw_ready_o        = rst_n_i && aw_ready && !w_full;
-    assign s_ar_ready_o        = rst_n_i && ar_ready;
-    assign m_w_context_valid_o = rst_n_i && !w_empty;
+    assign s_aw_ready_o        = aw_ready && !w_full;
+    assign s_ar_ready_o        = ar_ready;
+    assign m_w_context_valid_o = !w_empty;
     assign m_w_context_o       = m_w_context_valid_o ? w_head : '0;
     assign m_w_beat_o          = m_w_context_valid_o ? w_beat_reg : '0;
     assign w_pop               = w_accept_i && w_last_i;
-    assign m_b_valid_o         = rst_n_i && s_b_valid_i && b_valid && b_grant;
-    assign m_r_valid_o         = rst_n_i && s_r_valid_i && r_valid && r_grant;
-    assign s_b_ready_o         = rst_n_i && b_valid && b_grant && m_b_ready_i;
-    assign s_r_ready_o         = rst_n_i && r_valid && r_grant && m_r_ready_i;
+    assign m_b_valid_o         = s_b_valid_i && b_valid && b_grant;
+    assign m_r_valid_o         = s_r_valid_i && r_valid && r_grant;
+    assign s_b_ready_o         = b_valid && b_grant && m_b_ready_i;
+    assign s_r_ready_o         = r_valid && r_grant && m_r_ready_i;
     assign m_b_o               = m_b_valid_o ? b : '0;
     assign m_r_o               = m_r_valid_o ? r : '0;
 
@@ -127,26 +127,26 @@ module nsu_context_buffer #(
         .FullBw   (1'b1            ),
         .data_t   (nsu_context_t   )
     ) i_aw_context (
-        .clk_i            (clk_i                             ),
-        .rst_ni           (rst_n_i                           ),
-        .clr_i            (1'b0                              ),
-        .inp_id_i         (m_awid_o                          ),
-        .inp_data_i       (s_aw_i.response                   ),
-        .inp_req_i        (rst_n_i && s_aw_valid_i && !w_full),
-        .inp_gnt_o        (aw_ready                          ),
-        .exists_data_i    ('0                                ),
-        .exists_mask_i    ('0                                ),
-        .exists_req_i     ('0                                ),
-        .exists_o         (                                  ),
-        .exists_gnt_o     (                                  ),
-        .oup_id_i         (s_b_i.bid                         ),
-        .oup_req_i        (rst_n_i && s_b_valid_i            ),
-        .oup_pop_i        (s_b_valid_i && s_b_ready_o        ),
-        .oup_data_o       (b_context                         ),
-        .oup_data_valid_o (b_valid                           ),
-        .oup_gnt_o        (b_grant                           ),
-        .full_o           (                                  ),
-        .empty_o          (                                  )
+        .clk_i            (clk_i                     ),
+        .rst_ni           (rst_n_i                   ),
+        .clr_i            (1'b0                      ),
+        .inp_id_i         (m_awid_o                  ),
+        .inp_data_i       (s_aw_i.response           ),
+        .inp_req_i        (s_aw_valid_i && !w_full   ),
+        .inp_gnt_o        (aw_ready                  ),
+        .exists_data_i    ('0                        ),
+        .exists_mask_i    ('0                        ),
+        .exists_req_i     ('0                        ),
+        .exists_o         (                          ),
+        .exists_gnt_o     (                          ),
+        .oup_id_i         (s_b_i.bid                 ),
+        .oup_req_i        (s_b_valid_i               ),
+        .oup_pop_i        (s_b_valid_i && s_b_ready_o),
+        .oup_data_o       (b_context                 ),
+        .oup_data_valid_o (b_valid                   ),
+        .oup_gnt_o        (b_grant                   ),
+        .full_o           (                          ),
+        .empty_o          (                          )
     );
     cc_id_queue #(
         .IdWidth  (OUTPUT_ID_WIDTH ),
@@ -159,7 +159,7 @@ module nsu_context_buffer #(
         .clr_i            (1'b0                                     ),
         .inp_id_i         (m_arid_o                                 ),
         .inp_data_i       (s_ar_i.response                          ),
-        .inp_req_i        (rst_n_i && s_ar_valid_i                  ),
+        .inp_req_i        (s_ar_valid_i                             ),
         .inp_gnt_o        (ar_ready                                 ),
         .exists_data_i    ('0                                       ),
         .exists_mask_i    ('0                                       ),
@@ -167,7 +167,7 @@ module nsu_context_buffer #(
         .exists_o         (                                         ),
         .exists_gnt_o     (                                         ),
         .oup_id_i         (s_r_i.rid                                ),
-        .oup_req_i        (rst_n_i && s_r_valid_i                   ),
+        .oup_req_i        (s_r_valid_i                              ),
         .oup_pop_i        (s_r_valid_i && s_r_ready_o && s_r_i.rlast),
         .oup_data_o       (r_context                                ),
         .oup_data_valid_o (r_valid                                  ),

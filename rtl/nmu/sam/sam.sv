@@ -124,11 +124,11 @@ module nmu_sam #(
         .sam_rule_t     (sam_rule_t    ),
         .SAM            (SAM           )
     ) i_aw_ni_sam (
-        .addr_i         (s_aw_i.awaddr              ),
-        .lookup_en_i    (noc_rst_n_i && s_aw_valid_i),
-        .sam_idx_o      (aw_sam_idx                 ),
-        .lookup_valid_o (aw_lookup_valid            ),
-        .lookup_error_o (aw_lookup_error            )
+        .addr_i         (s_aw_i.awaddr  ),
+        .lookup_en_i    (s_aw_valid_i   ),
+        .sam_idx_o      (aw_sam_idx     ),
+        .lookup_valid_o (aw_lookup_valid),
+        .lookup_error_o (aw_lookup_error)
     );
 
     ni_sam #(
@@ -139,15 +139,15 @@ module nmu_sam #(
         .sam_rule_t     (sam_rule_t    ),
         .SAM            (SAM           )
     ) i_ar_ni_sam (
-        .addr_i         (s_ar_i.araddr              ),
-        .lookup_en_i    (noc_rst_n_i && s_ar_valid_i),
-        .sam_idx_o      (ar_sam_idx                 ),
-        .lookup_valid_o (ar_lookup_valid            ),
-        .lookup_error_o (ar_lookup_error            )
+        .addr_i         (s_ar_i.araddr  ),
+        .lookup_en_i    (s_ar_valid_i   ),
+        .sam_idx_o      (ar_sam_idx     ),
+        .lookup_valid_o (ar_lookup_valid),
+        .lookup_error_o (ar_lookup_error)
     );
 
-    assign s_aw_ready_o = noc_rst_n_i && aw_slice_ready;
-    assign s_ar_ready_o = noc_rst_n_i && ar_slice_ready;
+    assign s_aw_ready_o = aw_slice_ready;
+    assign s_ar_ready_o = ar_slice_ready;
 
     assign aw_decoded.axi                            = s_aw_i;
     assign aw_decoded.route.route.domain.dst_id      = aw_sam_idx.dst_id;
@@ -167,28 +167,28 @@ module nmu_sam #(
         .REG_TYPE (AW_SAM_REG_TYPE                  ),
         .data_t   (ni_types_pkg::nmu_sam_aw_result_t)
     ) i_aw_reg_slice (
-        .clk_i     (noc_clk_i                                     ),
-        .rst_n_i   (noc_rst_n_i                                   ),
-        .s_valid_i (noc_rst_n_i && s_aw_valid_i && aw_lookup_valid),
-        .s_ready_o (aw_slice_ready                                ),
-        .s_data_i  (aw_decoded                                    ),
-        .m_valid_o (m_aw_valid_o                                  ),
-        .m_ready_i (m_aw_ready_i                                  ),
-        .m_data_o  (m_aw_o                                        )
+        .clk_i     (noc_clk_i                      ),
+        .rst_n_i   (noc_rst_n_i                    ),
+        .s_valid_i (s_aw_valid_i && aw_lookup_valid),
+        .s_ready_o (aw_slice_ready                 ),
+        .s_data_i  (aw_decoded                     ),
+        .m_valid_o (m_aw_valid_o                   ),
+        .m_ready_i (m_aw_ready_i                   ),
+        .m_data_o  (m_aw_o                         )
     );
 
     stream_register #(
         .REG_TYPE (AR_SAM_REG_TYPE                  ),
         .data_t   (ni_types_pkg::nmu_sam_ar_result_t)
     ) i_ar_reg_slice (
-        .clk_i     (noc_clk_i                                     ),
-        .rst_n_i   (noc_rst_n_i                                   ),
-        .s_valid_i (noc_rst_n_i && s_ar_valid_i && ar_lookup_valid),
-        .s_ready_o (ar_slice_ready                                ),
-        .s_data_i  (ar_decoded                                    ),
-        .m_valid_o (m_ar_valid_o                                  ),
-        .m_ready_i (m_ar_ready_i                                  ),
-        .m_data_o  (m_ar_o                                        )
+        .clk_i     (noc_clk_i                      ),
+        .rst_n_i   (noc_rst_n_i                    ),
+        .s_valid_i (s_ar_valid_i && ar_lookup_valid),
+        .s_ready_o (ar_slice_ready                 ),
+        .s_data_i  (ar_decoded                     ),
+        .m_valid_o (m_ar_valid_o                   ),
+        .m_ready_i (m_ar_ready_i                   ),
+        .m_data_o  (m_ar_o                         )
     );
 
     // synthesis translate_off

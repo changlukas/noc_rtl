@@ -47,22 +47,22 @@ module nsu_rx_channel_assign #(
         (s_dat_valid_i[w_vc] && s_dat_i[w_vc].header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataW)) :
         (s_req_valid_i && req_is_w));
     assign aw_data[0]  = '{header: s_req_i.header, payload: PAYLOAD_WIDTH'(s_req_i.payload)};
-    assign aw_valid[0] = rst_n_i && s_req_valid_i && req_is_aw;
+    assign aw_valid[0] = s_req_valid_i && req_is_aw;
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_aw
         assign aw_data[vc+1]  = s_dat_i[vc];
-        assign aw_valid[vc+1] = rst_n_i && s_dat_valid_i[vc] &&
+        assign aw_valid[vc+1] = s_dat_valid_i[vc] &&
             s_dat_i[vc].header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataAw);
         assign s_dat_ready_o[vc] = (aw_valid[vc+1] && aw_ready[vc+1]) ||
             (m_w_valid_o && m_w_ready_i && w_context_i.response.is_data && w_vc == VC_IDX_W'(vc));
     end
-    assign s_req_ready_o = rst_n_i && ((aw_valid[0] && aw_ready[0]) ||
+    assign s_req_ready_o = ((aw_valid[0] && aw_ready[0]) ||
         (m_ar_valid_o && m_ar_ready_i) ||
         (m_w_valid_o && m_w_ready_i && !w_context_i.response.is_data));
-    assign m_aw_valid_o = rst_n_i && selected_aw_valid;
+    assign m_aw_valid_o = selected_aw_valid;
     assign m_aw_o       = m_aw_valid_o ? selected_aw : '0;
-    assign m_ar_valid_o = rst_n_i && s_req_valid_i && req_is_ar;
+    assign m_ar_valid_o = s_req_valid_i && req_is_ar;
     assign m_ar_o       = m_ar_valid_o ? s_req_i : '0;
-    assign m_w_valid_o  = rst_n_i && w_valid;
+    assign m_w_valid_o  = w_valid;
     assign m_w_o        = m_w_valid_o ? w_flit : '0;
     rr_arb_tree #(
         .NumIn     (NUM_AW_CH ),
@@ -71,17 +71,17 @@ module nsu_rx_channel_assign #(
         .LockIn    (1'b1      ),
         .FairArb   (1'b1      )
     ) i_aw_arb (
-        .clk_i   (clk_i                  ),
-        .rst_ni  (rst_n_i                ),
-        .flush_i (1'b0                   ),
-        .rr_i    ('0                     ),
-        .req_i   (aw_valid               ),
-        .gnt_o   (aw_ready               ),
-        .data_i  (aw_data                ),
-        .req_o   (selected_aw_valid      ),
-        .gnt_i   (rst_n_i && m_aw_ready_i),
-        .data_o  (selected_aw            ),
-        .idx_o   (                       )
+        .clk_i   (clk_i            ),
+        .rst_ni  (rst_n_i          ),
+        .flush_i (1'b0             ),
+        .rr_i    ('0               ),
+        .req_i   (aw_valid         ),
+        .gnt_o   (aw_ready         ),
+        .data_i  (aw_data          ),
+        .req_o   (selected_aw_valid),
+        .gnt_i   (m_aw_ready_i     ),
+        .data_o  (selected_aw      ),
+        .idx_o   (                 )
     );
 endmodule
 

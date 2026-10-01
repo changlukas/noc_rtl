@@ -165,14 +165,14 @@ module nmu_request_packetize #(
     end
     wire [NUM_NMU_REQ_CH-1:0] req_valid, req_ready;
     wire [NUM_NMU_DAT_CH-1:0] dat_valid, dat_ready;
-    assign req_valid[NMU_REQ_AW_IDX] = rst_n_i && s_aw_valid_i && !aw_is_data;
-    assign req_valid[NMU_REQ_W_IDX]  = rst_n_i && s_w_valid_i && !w_is_data;
-    assign req_valid[NMU_REQ_AR_IDX] = rst_n_i && s_ar_valid_i;
-    assign dat_valid[NMU_DAT_AW_IDX] = rst_n_i && s_aw_valid_i && aw_is_data;
-    assign dat_valid[NMU_DAT_W_IDX]  = rst_n_i && s_w_valid_i && w_is_data;
-    assign s_aw_ready_o              = rst_n_i && (aw_is_data ? dat_ready[NMU_DAT_AW_IDX] : req_ready[NMU_REQ_AW_IDX]);
-    assign s_w_ready_o               = rst_n_i && (w_is_data ? dat_ready[NMU_DAT_W_IDX] : req_ready[NMU_REQ_W_IDX]);
-    assign s_ar_ready_o              = rst_n_i && req_ready[NMU_REQ_AR_IDX];
+    assign req_valid[NMU_REQ_AW_IDX] = s_aw_valid_i && !aw_is_data;
+    assign req_valid[NMU_REQ_W_IDX]  = s_w_valid_i && !w_is_data;
+    assign req_valid[NMU_REQ_AR_IDX] = s_ar_valid_i;
+    assign dat_valid[NMU_DAT_AW_IDX] = s_aw_valid_i && aw_is_data;
+    assign dat_valid[NMU_DAT_W_IDX]  = s_w_valid_i && w_is_data;
+    assign s_aw_ready_o              = (aw_is_data ? dat_ready[NMU_DAT_AW_IDX] : req_ready[NMU_REQ_AW_IDX]);
+    assign s_w_ready_o               = (w_is_data ? dat_ready[NMU_DAT_W_IDX] : req_ready[NMU_REQ_W_IDX]);
+    assign s_ar_ready_o              = req_ready[NMU_REQ_AR_IDX];
     always_comb begin
         req_flit = '0;
         dat_flit = '0;

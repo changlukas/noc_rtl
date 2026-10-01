@@ -66,9 +66,9 @@ module nmu_reorder_storage #(
 
     assign next_base_o = next_base;
     assign free_cnt_o  = free_cnt;
-    assign wr_ready_o  = rst_n_i && wr_valid_i && wr_addr < (TAG_W+1)'(DEPTH) &&
+    assign wr_ready_o  = wr_valid_i && wr_addr < (TAG_W+1)'(DEPTH) &&
         alloc_reg[wr_idx] && !complete_reg[wr_idx];
-    assign rd_entry_complete_o = rst_n_i && rd_en_i &&
+    assign rd_entry_complete_o = rd_en_i &&
         int'(rd_addr_i) < DEPTH && complete_reg[rd_idx];
     // Payload memory is intentionally unreset; expose only completed entries.
     assign rd_data_o  = rd_entry_complete_o ? data_reg[rd_idx] : data_t'('0);

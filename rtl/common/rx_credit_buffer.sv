@@ -53,8 +53,8 @@ module rx_credit_buffer #(
     wire [AXI_CH_WIDTH-1:0] channel = s_ctrl_i.header[AXI_CH_LSB +: AXI_CH_WIDTH];
     wire ctrl_full, ctrl_empty;
     wire ctrl_t ctrl_head;
-    assign s_ctrl_ready_o = rst_n_i && !ctrl_full;
-    assign m_ctrl_valid_o = rst_n_i && !ctrl_empty;
+    assign s_ctrl_ready_o = !ctrl_full;
+    assign m_ctrl_valid_o = !ctrl_empty;
     assign m_ctrl_o       = m_ctrl_valid_o ? ctrl_head : '0;
     cc_fifo #(
         .Depth       (CTRL_FIFO_DEPTH),
@@ -76,9 +76,9 @@ module rx_credit_buffer #(
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_dat_vc
         assign m_dat_o[vc] = m_dat_valid_o[vc] ? dat_head[vc] : '0;
         if (DAT_VC_MASK[vc]) begin : gen_active
-            assign dat_push[vc]      = rst_n_i && s_dat_valid_i && dat_vc == VC_ID_WIDTH'(vc);
+            assign dat_push[vc]      = s_dat_valid_i && dat_vc == VC_ID_WIDTH'(vc);
             assign dat_pop[vc]       = m_dat_valid_o[vc] && m_dat_ready_i[vc];
-            assign m_dat_valid_o[vc] = rst_n_i && !dat_empty[vc];
+            assign m_dat_valid_o[vc] = !dat_empty[vc];
             cc_fifo #(
                 .Depth       (CREDIT_DEPTH           ),
                 .FallThrough (1'b0                   ),
@@ -114,7 +114,7 @@ module rx_credit_buffer #(
             credit_return_reg <= credit_return_next;
         end
     end
-    assign dat_credit_return_o = ~rst_n_i ? '0 : credit_return_reg;
+    assign dat_credit_return_o = credit_return_reg;
 
     // synthesis translate_off
     always @(posedge clk_i) begin

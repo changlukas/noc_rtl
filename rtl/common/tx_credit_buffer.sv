@@ -41,8 +41,8 @@ module tx_credit_buffer #(
     end
     wire ctrl_full, ctrl_empty;
     wire ctrl_t ctrl_head;
-    assign s_ctrl_ready_o = rst_n_i && !ctrl_full;
-    assign m_ctrl_valid_o = rst_n_i && !ctrl_empty;
+    assign s_ctrl_ready_o = !ctrl_full;
+    assign m_ctrl_valid_o = !ctrl_empty;
     assign m_ctrl_o       = m_ctrl_valid_o ? ctrl_head : '0;
     cc_fifo #(
         .Depth       (CTRL_FIFO_DEPTH),
@@ -69,8 +69,8 @@ module tx_credit_buffer #(
         if (DAT_VC_MASK[vc]) begin : gen_active
             assign m_dat_o[vc]       = dat_req[vc] ? dat_head[vc] : '0;
             assign m_dat_valid_o[vc] = dat_req[vc];
-            assign dat_ready_o[vc] = rst_n_i && !dat_full[vc];
-            assign dat_req[vc] = rst_n_i && !dat_empty[vc] &&
+            assign dat_ready_o[vc] = !dat_full[vc];
+            assign dat_req[vc] = !dat_empty[vc] &&
                 (credit_left[vc] || dat_credit_return_i[vc]);
             cc_fifo #(
                 .Depth       (CREDIT_DEPTH),
@@ -92,15 +92,15 @@ module tx_credit_buffer #(
             cc_credit_counter #(
                 .NumCredits (CREDIT_DEPTH)
             ) i_credit (
-                .clk_i         (clk_i                             ),
-                .rst_ni        (rst_n_i                           ),
-                .clr_i         (1'b0                              ),
-                .credit_o      (                                  ),
-                .credit_give_i (rst_n_i && dat_credit_return_i[vc]),
-                .credit_take_i (dat_pop[vc]                       ),
-                .credit_left_o (credit_left[vc]                   ),
-                .credit_crit_o (                                  ),
-                .credit_full_o (                                  )
+                .clk_i         (clk_i                  ),
+                .rst_ni        (rst_n_i                ),
+                .clr_i         (1'b0                   ),
+                .credit_o      (                       ),
+                .credit_give_i (dat_credit_return_i[vc]),
+                .credit_take_i (dat_pop[vc]            ),
+                .credit_left_o (credit_left[vc]        ),
+                .credit_crit_o (                       ),
+                .credit_full_o (                       )
             );
         end else begin : gen_unused
             assign dat_ready_o[vc]   = 1'b0;
