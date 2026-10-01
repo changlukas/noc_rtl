@@ -804,8 +804,8 @@ addSubGroup "Response Delay" -e FALSE
 addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/delay_en
 endSubGroup "Response Delay"
 addSubGroup "Before Delay" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/delayed_bus/b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/delayed_bus/b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/delayed_bus/r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/delayed_bus/r_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_rsp.b_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_req.b_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_rsp.r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_req.r_ready
 endSubGroup "Before Delay"

@@ -5,10 +5,10 @@ Workstation directories under `/home/mingwei/noc_project/`:
 | Directory | DUT / environment | Cases |
 | --- | --- | --- |
 | `nmu-standalone/` | NMU RTL with request/response loopback | Existing 15 patterns |
-| `nsu-standalone/` | NSU context buffer and asynchronous full-top AW/W/B checks | `context`, `request` |
+| `nsu-standalone/` | NMU RTL, direct TB links, four NSU RTL and AXI memories | Existing 15 patterns |
 | `sim/` | NMU RTL, one C++ router, four NSU RTL and AXI memories | Existing 15 patterns |
 
-NSU standalone contains the existing focused tests; it does not yet provide the full independent read/write pattern platform.
+NSU standalone and router integration share the same stimulus, memories and checkers. Direct TB links use per-VC FIFOs and downstream credit counters to connect the four destinations without a router model. Direct-link cycle counts are not router performance measurements.
 
 ```sh
 cd /home/mingwei/noc_project/sim

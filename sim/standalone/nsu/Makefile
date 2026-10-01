@@ -2,16 +2,16 @@
 SHELL := /bin/bash
 .NOTPARALLEL:
 ROOT := $(abspath ../../..)
-SOURCE ?= $(ROOT)/build/sim/stage
+RTL_STAGE ?= $(ROOT)/sim/standalone/nmu/output/i8_n5_b128_r1/stage
 OUT := $(ROOT)/build/nsu-standalone/stage
-CASE ?= request
-.PHONY: help prepare compile run sim list clean
+CASE ?= ctrl_write_single
+.PHONY: help prepare compile run sim regress run_wave view list clean
 help:
-	@echo 'make run CASE=context|request | make list | make clean'
+	@echo 'make run CASE=<case> | make run_wave CASE=<case> | make view CASE=<case> | make clean'
 prepare:
-	python3 prepare.py --source "$(SOURCE)" --out "$(OUT)"
-compile run: prepare
-compile run sim list:
+	python3 prepare.py --rtl-stage "$(RTL_STAGE)" --out "$(OUT)"
+compile run regress run_wave: prepare
+compile run sim regress run_wave view list:
 	$(MAKE) --no-print-directory -C "$(OUT)" $@ CASE=$(CASE)
 clean:
 	@if [ -f "$(OUT)/Makefile" ]; then $(MAKE) --no-print-directory -C "$(OUT)" clean; fi

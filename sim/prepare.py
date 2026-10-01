@@ -14,7 +14,7 @@ from gen_tb_top import emit_sam_pkg, num_vc
 from gen_standalone_patterns import generate
 
 
-def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
+def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False):
     rtl_stage, out = Path(rtl_stage).resolve(), Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     profile = yaml.safe_load(Path(profile_path or ROOT / "sim/profile.yml").read_text())
@@ -75,6 +75,12 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
                      "deps/axi-0.39.7/src/axi_sim_mem.sv",
                      "deps/floonoc-dv/axi_reorder_compare.sv",
                      "sim/tb_nmu_cosim.sv"):
+        if direct and relative.startswith("ref_model/top/"):
+            continue
+        copy(ROOT / relative, "repo/" + relative)
+        source_list.append("repo/" + relative)
+    if direct:
+        relative = "sim/standalone/nsu/ni_direct_link.sv"
         copy(ROOT / relative, "repo/" + relative)
         source_list.append("repo/" + relative)
     for relative in (
@@ -117,18 +123,19 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
             copy(path, str(Path("patterns") / path.relative_to(patterns)))
     for name in ("signals.rc", "topology.yml", "README.md"):
         copy(ROOT / "sim" / name, name)
-    for directory in ("ref_model/dpi", "ref_model/c_model/include", "ref_model/c_model/tests/common",
-                      "specgen/generated/cpp"):
-        for path in (ROOT / directory).rglob("*"):
-            if path.is_file():
-                copy(path, "repo/" + str(path.relative_to(ROOT)))
-    yaml_source = ROOT / "deps/yaml-cpp"
-    for directory in ("include", "src"):
-        for path in (yaml_source / directory).rglob("*"):
-            if path.is_file():
-                copy(path, "deps/yaml-cpp/" + str(path.relative_to(yaml_source)))
-    for path in yaml_source.glob("LICENSE*"):
-        copy(path, "deps/yaml-cpp/" + path.name)
+    if not direct:
+        for directory in ("ref_model/dpi", "ref_model/c_model/include", "ref_model/c_model/tests/common",
+                          "specgen/generated/cpp"):
+            for path in (ROOT / directory).rglob("*"):
+                if path.is_file():
+                    copy(path, "repo/" + str(path.relative_to(ROOT)))
+        yaml_source = ROOT / "deps/yaml-cpp"
+        for directory in ("include", "src"):
+            for path in (yaml_source / directory).rglob("*"):
+                if path.is_file():
+                    copy(path, "deps/yaml-cpp/" + str(path.relative_to(yaml_source)))
+        for path in yaml_source.glob("LICENSE*"):
+            copy(path, "deps/yaml-cpp/" + path.name)
     # One profile drives both generated languages and every DAT receiver.
     sys.path.insert(0, str(ROOT / "specgen"))
     constants = yaml.safe_load((ROOT / "specgen/source/constants.yaml").read_text())
@@ -143,6 +150,9 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     emit_profile(ROOT, out, constants, noc_id_width)
     (out / "profile.yml").write_text(yaml.safe_dump(profile, sort_keys=False))
     (out / "profile.mk").write_text(f"INPUT_ID_WIDTH ?= {pattern_id_width}\nOUTPUT_ID_WIDTH ?= {noc_id_width}\n")
+    (out / "environment.mk").write_text("DIRECT_LINK := %d\n" % int(direct))
+    if direct:
+        (out / "signals.rc").write_text((out / "signals.rc").read_text().replace("Router Links", "Direct Links"))
     copy(ROOT / "sim/script/Makefile", "Makefile")
     copy(ROOT / "sim/script/run.py", "run.py")
     copy(ROOT / "sim/standalone/common/clean.sh", "clean.sh")

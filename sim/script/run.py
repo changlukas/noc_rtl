@@ -18,7 +18,7 @@ if a.mode != "auto":
     patterns /= a.mode
 cases = (patterns / "cases.list").read_text().split()
 if a.case not in cases:
-    p.error("Unsupported co-simulation CASE '{}'. Use make list in cosim/. "
+    p.error("Unsupported co-simulation CASE '{}'. Use make list. "
             "Available cases: {}".format(a.case, ", ".join(cases)))
 stim = patterns / a.case
 for name in ("schedule.txt", "read.txt", "write.txt"):
@@ -38,6 +38,10 @@ log = r.stdout.decode(errors="replace")
 log_path = report / (a.case + ("_corrupt" if a.corrupt else "") + ".log")
 diagnostics = re.sub(r"Warning: [^\n]*\nMacro 'FFARN' is deprecated\. Use 'FF' instead\.\n", "", log)
 failed = r.returncode != 0 or bool(re.search(r"(?im)^(?:Warning:|Error:|Fatal:)|\b(?:mismatch|does not match|Assertion failed)\b", diagnostics))
+if a.wave:
+    wave_file = report / (a.case + ".fsdb")
+    failed |= (not re.search(r"\*Verdi\*.*Create FSDB file", log) or
+               not wave_file.is_file() or wave_file.stat().st_size == 0)
 passed = "NMU_COSIM_COUNTS" in log and "AXI_ORDERING_CHECK_DRAINED" in log and not failed
 if a.corrupt:
     errors = re.findall(r"(?m)^Error: [^\n]*\n([^\n]*)", log)

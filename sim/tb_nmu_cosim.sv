@@ -231,6 +231,38 @@ module tb_nmu_cosim #(
         .rx_dat_flit_i     (tx_dat_flit[NMU_PORT]),
         .rx_dat_crdvalid_o (tx_dat_credit[NMU_PORT])
     );
+`ifdef TB_DIRECT_LINK
+    function automatic logic [NUM_NSUS:0][ni_flit_pkg::DST_ID_WIDTH-1:0] node_ids();
+        for (int p = 0; p <= NUM_NSUS; p++)
+            node_ids[p] = ni_flit_pkg::DST_ID_WIDTH'(p == 0 ? NMU_ID : nsu_id(p));
+    endfunction
+    initial if (!RTL_NSU) $fatal(1, "Direct-link environment requires RTL NSU");
+    ni_direct_link #(
+        .NUM_NSUS (NUM_NSUS ),
+        .NODE_IDS (node_ids())
+    ) i_direct_link (
+        .clk_i             (clk          ),
+        .rst_n_i           (noc_rst_n    ),
+        .tx_req_valid_o    (tx_req_valid ),
+        .tx_req_flit_o     (tx_req_flit  ),
+        .tx_req_ready_i    (tx_req_ready ),
+        .rx_req_valid_i    (rx_req_valid ),
+        .rx_req_flit_i     (rx_req_flit  ),
+        .rx_req_ready_o    (rx_req_ready ),
+        .tx_rsp_valid_o    (tx_rsp_valid ),
+        .tx_rsp_flit_o     (tx_rsp_flit  ),
+        .tx_rsp_ready_i    (tx_rsp_ready ),
+        .rx_rsp_valid_i    (rx_rsp_valid ),
+        .rx_rsp_flit_i     (rx_rsp_flit  ),
+        .rx_rsp_ready_o    (rx_rsp_ready ),
+        .tx_dat_valid_o    (tx_dat_valid ),
+        .tx_dat_flit_o     (tx_dat_flit  ),
+        .tx_dat_crdvalid_i (tx_dat_credit),
+        .rx_dat_valid_i    (rx_dat_valid ),
+        .rx_dat_flit_i     (rx_dat_flit  ),
+        .rx_dat_crdvalid_o (rx_dat_credit)
+    );
+`else
     router_wrap i_router (
         .clk_i           (clk),
         .rst_n_i         (noc_rst_n),
@@ -254,6 +286,7 @@ module tb_nmu_cosim #(
         .rx_dat_flit     (rx_dat_flit),
         .rx_dat_crdvalid (rx_dat_credit)
     );
+`endif
     for (genvar n = 0; n < NUM_NSUS; n++) begin : gen_nsu
         localparam int PORT = n + 1;
         AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
@@ -376,7 +409,9 @@ module tb_nmu_cosim #(
             assign device_bus.rlast = mem_bus.r_last;
             assign device_bus.rvalid = mem_bus.r_valid;
             assign device_bus.ruser = mem_bus.r_user;
-        end else begin : gen_cmodel_nsu
+        end
+`ifndef TB_DIRECT_LINK
+        else begin : gen_cmodel_nsu
         nsu_wrap i_nsu (
             .clk_i             (clk),
             .rst_n_i           (noc_rst_n),
@@ -440,6 +475,7 @@ module tb_nmu_cosim #(
         assign mem_rsp.rlast = mem_bus.r_last;
         assign mem_rsp.rvalid = mem_bus.r_valid;
         end
+`endif
         wire delay_en = reorder_test != 0 && PORT == 4;
         if (RSP_DELAY_CYCLES == 0) begin : gen_no_delay
             `AXI_ASSIGN(delayed_bus, mem_bus)
@@ -544,12 +580,14 @@ module tb_nmu_cosim #(
             foreach (bytes[address]) memory_q[address].push_back(bytes[address]);
         endtask
     endclass
+`ifndef TB_DIRECT_LINK
     import "DPI-C" context function int cmodel_check_error(output string message);
     always @(negedge clk) begin : check_model_error
         string message;
         if (noc_rst_n && cmodel_check_error(message) != 0)
             $fatal(1, "C++ model error: %s", message);
     end
+`endif
     int b_count = 0, r_count = 0, r_beats = 0, checked_bytes = 0;
     int expected_writes, expected_reads, expected_beats;
     int live_w[2**INPUT_ID_WIDTH] = '{default:0};
@@ -637,6 +675,7 @@ module tb_nmu_cosim #(
         bus.rvalid && !bus.rready |=> bus.rvalid &&
         $stable({bus.rid, bus.rdata, bus.rresp, bus.rlast}))
         else $fatal(1, "R response changed under backpressure");
+`ifndef TB_DIRECT_LINK
     import "DPI-C" context function void cmodel_init();
     import "DPI-C" context function void cmodel_finalize();
     import "DPI-C" context function longint unsigned cmodel_router_create(
@@ -646,9 +685,11 @@ module tb_nmu_cosim #(
         port_id, input string config_path);
     import "DPI-C" context function void cmodel_nsu_set_dat_credit_depth(
         input longint unsigned ctx, input int depth);
+`endif
     initial begin : run
         string stim_dir;
         int first_char;
+`ifndef TB_DIRECT_LINK
         cmodel_init();
         router_ctx = cmodel_router_create("router", ROUTER_X, ROUTER_Y,
             MESH_DIM, MESH_DIM, NUM_DAT_VC);
@@ -660,6 +701,7 @@ module tb_nmu_cosim #(
             cmodel_nsu_set_dat_credit_depth(nsu_ctx[n], CREDIT_DEPTH);
             end
         end
+`endif
         void'($value$plusargs("reorder_test=%d", reorder_test));
         $display("RESPONSE_DELAY enabled=%0d west_setting=%0d", reorder_test != 0, RSP_DELAY_CYCLES);
         $display("DAT_CREDIT_DEPTH router=%0d nmu_rx=%0d nsu_rx=%0d",
@@ -773,7 +815,9 @@ module tb_nmu_cosim #(
         scoreboard.reset();
         $display("NMU_COSIM_COUNTS writes=%0d reads=%0d r_beats=%0d checked_bytes=%0d",
             b_count, r_count, r_beats, checked_bytes);
+`ifndef TB_DIRECT_LINK
         cmodel_finalize();
+`endif
         $finish;
     end
     initial begin
