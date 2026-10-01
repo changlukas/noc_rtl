@@ -77,7 +77,7 @@ run_wave: run
 
 view:
 	@test -f "$(REPORT)/$(CASE).fsdb" || { echo 'Run make run_wave CASE=$(CASE) first' >&2; exit 1; }
-	@cat "$(WAVE_RC)" $(if $(filter 1,$(RTL_NSU)),"$(ROOT)/signals_nsu.rc",) | sed 's|@FSDB@|$(REPORT)/$(CASE).fsdb|g' > "$(REPORT)/$(CASE).rc"
+	@cat "$(WAVE_RC)" | sed 's|@FSDB@|$(REPORT)/$(CASE).fsdb|g' > "$(REPORT)/$(CASE).rc"
 	$(VERDI_HOME)/bin/nWave -ssf "$(REPORT)/$(CASE).fsdb" -sswr "$(REPORT)/$(CASE).rc"
 
 clean:

@@ -115,7 +115,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     for path in patterns.rglob("*"):
         if path.is_file():
             copy(path, str(Path("patterns") / path.relative_to(patterns)))
-    for name in ("signals.rc", "signals_nsu.rc", "topology.yml", "README.md"):
+    for name in ("signals.rc", "topology.yml", "README.md"):
         copy(ROOT / "sim" / name, name)
     for directory in ("ref_model/dpi", "ref_model/c_model/include", "ref_model/c_model/tests/common",
                       "specgen/generated/cpp"):
