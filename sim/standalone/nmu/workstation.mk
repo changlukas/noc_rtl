@@ -1,5 +1,5 @@
 ifneq ($(origin TESTBENCH),undefined)
-$(error Select the directory: NMU loopback here; NMU/router/NSU in cosim/)
+$(error Select the directory: NMU loopback here; NMU/router/NSU in ../sim/)
 endif
 ifneq ($(strip $(CASE)),)
 ifeq ($(filter $(CASE),$(shell cat cases.list)),)

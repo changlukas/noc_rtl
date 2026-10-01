@@ -10,7 +10,7 @@ for width, depth in ((1, 1), (2, 3), (3, 4)):
     binary = build / "simv"
     command = [os.environ.get("VCS", "vcs"), "-full64", "-sverilog", "-assert", "svaext",
                "-override_timescale=1ns/1ps", "-f", "files.f",
-               "repo/rtl/nsu/context_buffer/tb_nsu_context_buffer.sv",
+               "repo/sim/standalone/nsu/tb_nsu_context_buffer.sv",
                "-top", "tb_nsu_context_buffer",
                "-pvalue+tb_nsu_context_buffer.OUTPUT_ID_WIDTH=%d" % width,
                "-pvalue+tb_nsu_context_buffer.DEPTH=%d" % depth,
@@ -28,7 +28,7 @@ build.mkdir(parents=True, exist_ok=True)
 binary = build / "simv"
 subprocess.run([os.environ.get("VCS", "vcs"), "-full64", "-sverilog", "-assert", "svaext",
                 "-override_timescale=1ns/1ps", "-f", "files.f",
-                "repo/rtl/nsu/top/tb_nsu_elaborate.sv", "-top", "tb_nsu_elaborate",
+                "repo/sim/standalone/nsu/tb_nsu_elaborate.sv", "-top", "tb_nsu_elaborate",
                 "-Mdir=" + str(build / "csrc"), "-o", str(binary),
                 "-l", str(build / "compile.log")], check=True)
 result = subprocess.run([str(binary)], stdout=subprocess.PIPE,

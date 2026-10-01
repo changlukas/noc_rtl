@@ -160,7 +160,7 @@ make regress SIMULATOR=verilator "$@"
             "Issue: 83\nCheckout HEAD: " + revision + "\n"
             "Compare SHA256SUMS for exact packaged source/config/pattern bytes.\n")
         (root / "README.txt").write_text(
-            "NMU standalone loopback. NMU/router/NSU co-simulation is in cosim/.\n"
+            "NMU standalone loopback. NMU/router/NSU co-simulation is in ../sim/.\n"
             "make run CASE=ctrl_write_single\n"
             "make run_wave CASE=single_id_reorder\n"
             "make view CASE=single_id_reorder\n"

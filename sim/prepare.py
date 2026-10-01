@@ -8,7 +8,7 @@ import json
 import sys
 import yaml
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "sim/tools"))
 from gen_tb_top import emit_sam_pkg, num_vc
 from gen_standalone_patterns import generate
@@ -17,7 +17,7 @@ from gen_standalone_patterns import generate
 def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     rtl_stage, out = Path(rtl_stage).resolve(), Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    profile = yaml.safe_load(Path(profile_path or ROOT / "sim/cosim/nmu/profile.yml").read_text())
+    profile = yaml.safe_load(Path(profile_path or ROOT / "sim/profile.yml").read_text())
     noc_id_width = profile.get("output_id_width", 3)
     # Wrapper records use the generated AXI width; NMU external width can be overridden separately.
     pattern_id_width = profile.get("input_id_width", noc_id_width)
@@ -74,12 +74,10 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
                      "deps/axi-0.39.7/src/axi_delayer.sv",
                      "deps/axi-0.39.7/src/axi_sim_mem.sv",
                      "deps/floonoc-dv/axi_reorder_compare.sv",
-                     "sim/cosim/nmu/tb_nmu_cosim.sv"):
+                     "sim/tb_nmu_cosim.sv"):
         copy(ROOT / relative, "repo/" + relative)
         source_list.append("repo/" + relative)
     for relative in (
-        "rtl/nsu/context_buffer/tb_nsu_context_buffer.sv",
-        "rtl/nsu/top/tb_nsu_elaborate.sv",
         "sim/dv/tb_axi_reorder_compare.sv",
         "rtl/common/tests/tb_axi_id_remap.sv",
         "rtl/common/tests/nmu_id_remap_fixture.sv",
@@ -95,7 +93,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     for path in (ROOT / "deps/floonoc-dv").rglob("*"):
         if path.is_file() and path.suffix != ".sv":
             copy(path, "repo/" + str(path.relative_to(ROOT)))
-    topo = ROOT / "sim/cosim/nmu/topology.yml"
+    topo = ROOT / "sim/topology.yml"
     (out / "topology_pkg.sv").write_text(emit_sam_pkg(yaml.safe_load(topo.read_text())))
     (out / "files.f").write_text("\n".join(source_list) + "\n")
     patterns = ROOT / f"sim/test_patterns/cosim/generated/i{pattern_id_width}"
@@ -117,9 +115,8 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     for path in patterns.rglob("*"):
         if path.is_file():
             copy(path, str(Path("patterns") / path.relative_to(patterns)))
-    for path in (ROOT / "sim/cosim/nmu").glob("*"):
-        if path.is_file():
-            copy(path, path.name)
+    for name in ("signals.rc", "signals_nsu.rc", "topology.yml", "README.md"):
+        copy(ROOT / "sim" / name, name)
     for directory in ("ref_model/dpi", "ref_model/c_model/include", "ref_model/c_model/tests/common",
                       "specgen/generated/cpp"):
         for path in (ROOT / directory).rglob("*"):
@@ -146,13 +143,12 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     emit_profile(ROOT, out, constants, noc_id_width)
     (out / "profile.yml").write_text(yaml.safe_dump(profile, sort_keys=False))
     (out / "profile.mk").write_text(f"INPUT_ID_WIDTH ?= {pattern_id_width}\nOUTPUT_ID_WIDTH ?= {noc_id_width}\n")
-    copy(ROOT / "sim/cosim/nmu/script/Makefile", "Makefile")
-    copy(ROOT / "sim/cosim/nmu/script/run.py", "run.py")
+    copy(ROOT / "sim/script/Makefile", "Makefile")
+    copy(ROOT / "sim/script/run.py", "run.py")
     copy(ROOT / "sim/standalone/common/clean.sh", "clean.sh")
-    copy(ROOT / "sim/cosim/nmu/script/test_pipeline.py", "test_pipeline.py")
-    copy(ROOT / "sim/cosim/nmu/script/test_ordering_checker.py", "test_ordering_checker.py")
-    copy(ROOT / "sim/cosim/nmu/script/test_nsu_context.py", "test_nsu_context.py")
-    copy(ROOT / "sim/cosim/nmu/script/build_key.py", "build_key.py")
+    copy(ROOT / "sim/script/test_pipeline.py", "test_pipeline.py")
+    copy(ROOT / "sim/script/test_ordering_checker.py", "test_ordering_checker.py")
+    copy(ROOT / "sim/script/build_key.py", "build_key.py")
     retired = out / "repo/rtl/nmu/request_path/id_remap.sv"
     if retired.exists():
         retired.unlink()

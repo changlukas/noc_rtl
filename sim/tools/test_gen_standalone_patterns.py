@@ -152,7 +152,7 @@ def test_mixed_performance_inputs(tmp_path):
 
 @pytest.mark.parametrize("mode", ["control", "data", "rand"])
 def test_cosim_memory_dependencies(tmp_path, mode):
-    topology = REPO / "sim/cosim/nmu/topology.yml"
+    topology = REPO / "sim/topology.yml"
     names = generate(tmp_path, topology, 3, mode=mode, profile="cosim")
     assert "request_rand" in names
     assert "single_id_reorder" in names
@@ -196,7 +196,7 @@ def test_cosim_memory_dependencies(tmp_path, mode):
 
 
 def test_cosim_additional_memory_phases(tmp_path):
-    names = generate(tmp_path, REPO / "sim/cosim/nmu/topology.yml", 3,
+    names = generate(tmp_path, REPO / "sim/topology.yml", 3,
                      profile="cosim", catalog=REPO / "sim/test_patterns/cosim/cases.json")
     assert len(names) == 8
     for name in names:
@@ -262,7 +262,7 @@ def test_cosim_additional_memory_phases(tmp_path):
 def test_cosim_reorder_destinations_and_delay_selection(tmp_path, mode):
     import yaml
     from address_map import pack_config
-    topo = REPO / "sim/cosim/nmu/topology.yml"
+    topo = REPO / "sim/topology.yml"
     _, entries = pack_config(yaml.safe_load(topo.read_text()))
     assert {(e["dst_id"], e["port"]) for e in entries} == {(0x10, 0), (0x21, 0), (0x12, 0), (0x01, 0)}
     names = generate(tmp_path, topo, 3, mode=mode, profile="cosim")
@@ -286,7 +286,7 @@ def test_cosim_reorder_destinations_and_delay_selection(tmp_path, mode):
 
 def test_capacity_profile_inputs(tmp_path):
     catalog = REPO / "sim/test_patterns/cosim/capacity_perf.json"
-    names = generate(tmp_path, REPO / "sim/cosim/nmu/topology.yml", 8,
+    names = generate(tmp_path, REPO / "sim/topology.yml", 8,
                      catalog=catalog, profile="cosim")
     for name in names:
         writes = _parse_write(tmp_path / name / "write.txt")
@@ -300,5 +300,5 @@ def test_capacity_profile_inputs(tmp_path):
         schedule = (tmp_path / name / "schedule.txt").read_text()
         assert "+backpressure=0" in schedule and "+reorder_test=0" in schedule
     with pytest.raises(ValueError, match="num_ids"):
-        generate(tmp_path / "invalid", REPO / "sim/cosim/nmu/topology.yml", 3,
+        generate(tmp_path / "invalid", REPO / "sim/topology.yml", 3,
                  catalog=catalog, profile="cosim")
