@@ -31,6 +31,9 @@ module nsu_response_packetize #(
     dat_flit_t r;
     axi_pkg::largest_addr_t r_addr;
     logic [LANE_W-1:0] r_lane;
+    logic [ni_params_pkg::AXI_DATA_WIDTH-1:0] r_data;
+    int unsigned r_lower_byte;
+    int unsigned r_upper_byte;
     function automatic logic [HEADER_WIDTH-1:0] make_header(
         input ni_types_pkg::nsu_context_t response,
         input logic [AXI_CH_WIDTH-1:0] channel
@@ -55,6 +58,21 @@ module nsu_response_packetize #(
         r_addr = axi_pkg::beat_addr(axi_pkg::largest_addr_t'(s_r_i.response.local_addr),
             s_r_i.response.size, s_r_i.response.len, s_r_i.response.burst, 16'(s_r_i.beat_index));
         r_lane = LANE_W'(r_addr >> $clog2(NOC_NARROW_DATA_WIDTH/8));
+        r_lower_byte = int'(axi_pkg::beat_lower_byte(
+            axi_pkg::largest_addr_t'(s_r_i.response.local_addr),
+            s_r_i.response.size, s_r_i.response.len, s_r_i.response.burst,
+            16'(ni_params_pkg::AXI_DATA_WIDTH/8), 16'(s_r_i.beat_index)));
+        r_upper_byte = int'(axi_pkg::beat_upper_byte(
+            axi_pkg::largest_addr_t'(s_r_i.response.local_addr),
+            s_r_i.response.size, s_r_i.response.len, s_r_i.response.burst,
+            16'(ni_params_pkg::AXI_DATA_WIDTH/8), 16'(s_r_i.beat_index)));
+        // AXI leaves bytes outside the transfer unspecified.
+        r_data = '0;
+        for (int byte_idx = 0; byte_idx < ni_params_pkg::AXI_DATA_WIDTH/8; byte_idx++) begin
+            if (s_r_valid_i && byte_idx >= r_lower_byte && byte_idx <= r_upper_byte) begin
+                r_data[byte_idx*8 +: 8] = s_r_i.axi.rdata[byte_idx*8 +: 8];
+            end
+        end
         if (s_b_valid_i) begin
             b.header = make_header(s_b_i.response, AXI_CH_WIDTH'(s_b_i.response.is_data ? AXI_CH_DataB : AXI_CH_NarrowB));
             b.payload[B_BID_LSB +: B_BID_WIDTH] = s_b_i.axi.bid;
@@ -66,13 +84,13 @@ module nsu_response_packetize #(
                 r.payload[DATA_R_RID_LSB +: DATA_R_RID_WIDTH] = s_r_i.axi.rid;
                 r.payload[DATA_R_RRESP_LSB +: DATA_R_RRESP_WIDTH] = s_r_i.axi.rresp;
                 r.payload[DATA_R_RLAST_LSB] = s_r_i.axi.rlast;
-                r.payload[DATA_R_RDATA_LSB +: DATA_R_RDATA_WIDTH] = s_r_i.axi.rdata;
+                r.payload[DATA_R_RDATA_LSB +: DATA_R_RDATA_WIDTH] = r_data;
             end else begin
                 r.payload[NARROW_R_RID_LSB +: NARROW_R_RID_WIDTH] = s_r_i.axi.rid;
                 r.payload[NARROW_R_RRESP_LSB +: NARROW_R_RRESP_WIDTH] = s_r_i.axi.rresp;
                 r.payload[NARROW_R_RLAST_LSB] = s_r_i.axi.rlast;
                 r.payload[NARROW_R_RDATA_LSB +: NARROW_R_RDATA_WIDTH] =
-                    s_r_i.axi.rdata[int'(r_lane)*NOC_NARROW_DATA_WIDTH +: NOC_NARROW_DATA_WIDTH];
+                    r_data[int'(r_lane)*NOC_NARROW_DATA_WIDTH +: NOC_NARROW_DATA_WIDTH];
             end
         end
     end
