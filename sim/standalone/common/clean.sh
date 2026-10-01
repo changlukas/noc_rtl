@@ -2,7 +2,11 @@
 # Clean generated standalone artifacts and the project-specific VCS cache.
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-package_dir=$(cd "$script_dir/.." && pwd -P)
+if [[ -f "$script_dir/files.f" ]]; then
+    package_dir=$script_dir
+else
+    package_dir=$(cd "$script_dir/.." && pwd -P)
+fi
 [[ -f "$package_dir/files.f" && -f "$script_dir/Makefile" ]] || {
     echo "Not a standalone simulation tree" >&2
     exit 1

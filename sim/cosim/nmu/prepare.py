@@ -148,6 +148,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None):
     (out / "profile.mk").write_text(f"INPUT_ID_WIDTH ?= {pattern_id_width}\nOUTPUT_ID_WIDTH ?= {noc_id_width}\n")
     copy(ROOT / "sim/cosim/nmu/script/Makefile", "Makefile")
     copy(ROOT / "sim/cosim/nmu/script/run.py", "run.py")
+    copy(ROOT / "sim/standalone/common/clean.sh", "clean.sh")
     copy(ROOT / "sim/cosim/nmu/script/test_pipeline.py", "test_pipeline.py")
     copy(ROOT / "sim/cosim/nmu/script/test_ordering_checker.py", "test_ordering_checker.py")
     copy(ROOT / "sim/cosim/nmu/script/test_nsu_context.py", "test_nsu_context.py")

@@ -4,11 +4,14 @@ SHELL := /bin/bash
 ROOT := $(CURDIR)
 CASE ?= ctrl_write_single
 WAVE ?= 0
+ifneq ($(filter run_wave view,$(MAKECMDGOALS)),)
+override WAVE := 1
+endif
 MODE ?= auto
 RSP_DELAY ?= 2
 REG_TYPE ?= 0
 IO_FIFO_DEPTH ?= 32
-RTL_NSU ?= 0
+RTL_NSU ?= 1
 DEVICE_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NSU_AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 CONTEXT_DEPTH ?= 32
 -include profile.mk
@@ -37,9 +40,16 @@ DPI := $(BUILD)/dpi_$(shell python3 build_key.py cpp "$(CPPFLAGS) $(CXX)")
 YAML_BUILD := $(BUILD)/yaml_$(shell python3 build_key.py yaml "$(CPPFLAGS) $(CXX)")
 SIM := $(BUILD)/vcs_wave$(WAVE)_$(shell python3 build_key.py sv "$(VCS_FLAGS) $(WAVE_FLAGS) $(DPI)")
 YAML_OBJ := $(patsubst deps/yaml-cpp/src/%.cpp,$(YAML_BUILD)/%.o,$(YAML_SRC))
-.PHONY: help compile run sim regress run_wave run_wave_view corrupt nWave
+.PHONY: help list compile run sim regress run_wave view clean corrupt
 help:
-	@echo 'make run CASE=ctrl_write_single | make regress | make run_wave CASE=data_write_burst'
+	@printf '%s\n' \
+	 'make run CASE=<case>        Compile and simulate' \
+	 'make run_wave CASE=<case>   Compile and simulate with FSDB' \
+	 'make view CASE=<case>       Open existing FSDB and signal groups' \
+	 'make clean                 Remove simulation and GUI output' \
+	 'make list                  List the 15 test cases'
+list:
+	@cat pattern.txt
 $(YAML_BUILD)/%.o: deps/yaml-cpp/src/%.cpp $(YAML_HEADERS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) -c $< -o $@
@@ -63,13 +73,15 @@ regress: compile
 	@set -e; while read name; do $(MAKE) --no-print-directory sim CASE=$$name; done < pattern.txt
 corrupt: compile
 	python3 run.py --binary "$(SIM)/simv" --case data_read_single --report "$(REPORT)" --corrupt
-run_wave_view: nWave
+run_wave: run
 
-nWave: run_wave
-	@cat "$(WAVE_RC)" $(if $(filter 1,$(RTL_NSU)),"$(ROOT)/signals_nsu.rc",) | sed 's|@FSDB@|$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).fsdb|g' > "$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).rc"
-	$(VERDI_HOME)/bin/nWave -ssf "$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).fsdb" -sswr "$(BUILD)/report_wave1/$(if $(filter-out auto,$(MODE)),$(MODE)/,)$(CASE).rc"
-run_wave:
-	$(MAKE) run WAVE=1 CASE=$(CASE)
+view:
+	@test -f "$(REPORT)/$(CASE).fsdb" || { echo 'Run make run_wave CASE=$(CASE) first' >&2; exit 1; }
+	@cat "$(WAVE_RC)" $(if $(filter 1,$(RTL_NSU)),"$(ROOT)/signals_nsu.rc",) | sed 's|@FSDB@|$(REPORT)/$(CASE).fsdb|g' > "$(REPORT)/$(CASE).rc"
+	$(VERDI_HOME)/bin/nWave -ssf "$(REPORT)/$(CASE).fsdb" -sswr "$(REPORT)/$(CASE).rc"
+
+clean:
+	@bash "$(ROOT)/clean.sh"
 
 .PHONY: print-build-dirs
 print-build-dirs:

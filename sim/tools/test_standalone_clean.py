@@ -116,3 +116,18 @@ def test_fault_requires_checker_diagnostic_not_exit_status(tmp_path):
         result = subprocess.run(["make", "-C", str(script), "fault", f"run_dir={run}"],
                                 capture_output=True)
         assert (result.returncode == 0) == passes
+
+
+def test_cosim_clean_preserves_inputs(tmp_path):
+    stage = tmp_path / "cosim"
+    stage.mkdir()
+    shutil.copy2(ROOT / "sim/standalone/common/clean.sh", stage / "clean.sh")
+    keep = ["files.f", "Makefile", "patterns/read.txt", "signals.rc", "signals_nsu.rc", "repo/source.sv"]
+    remove = ["build/dpi_cache/model.so", "build/report_wave1/read.fsdb", "novas.conf", "verdiLog/run.log"]
+    for name in keep + remove:
+        path = stage / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(name)
+    subprocess.run(["bash", str(stage / "clean.sh")], check=True)
+    assert all((stage / name).read_text() == name for name in keep)
+    assert all(not (stage / name).exists() for name in remove)

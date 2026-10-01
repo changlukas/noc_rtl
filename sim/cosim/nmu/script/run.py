@@ -18,8 +18,8 @@ if a.mode != "auto":
     patterns /= a.mode
 cases = (patterns / "cases.list").read_text().split()
 if a.case not in cases:
-    p.error("Unsupported co-simulation CASE '{}'. Use make list TESTBENCH=cosim "
-            "from nmu-standalone/. Available cases: {}".format(a.case, ", ".join(cases)))
+    p.error("Unsupported co-simulation CASE '{}'. Use make list in cosim/. "
+            "Available cases: {}".format(a.case, ", ".join(cases)))
 stim = patterns / a.case
 for name in ("schedule.txt", "read.txt", "write.txt"):
     if not (stim / name).is_file():

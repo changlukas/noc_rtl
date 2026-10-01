@@ -133,12 +133,11 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
         (root / "pattern_list.txt").write_text(
             "NMU standalone control/data/random patterns\n\n"
             "First run (compile + simulate): make run CASE=ctrl_write_burst\n"
-            "After compilation (reuse binary): make sim CASE=ctrl_write_burst\n"
             "Ordering/outstanding scenarios: MODE=control|data|rand, default control\n"
-            "Random example: make sim CASE=single_id_outstanding MODE=rand SEED=7\n"
+            "Random example: make run CASE=single_id_outstanding MODE=rand SEED=7\n"
             "Fixed ctrl_*/data_* cases select their own mode; request_rand mixes both.\n"
-            "Full matrix: make regress\n"
             "Waveform: make run_wave CASE=ctrl_write_burst\n"
+            "View existing waveform: make view CASE=ctrl_write_burst\n"
             "Display this list: make list\n\n"
             + "\n".join(f"{i:2d}. {name}\n    {descriptions[name]}" for i, name in enumerate(names, 1))
             + "\n\nDefault simulator: VCS. Local override: SIMULATOR=verilator.\n"
@@ -161,21 +160,15 @@ make regress SIMULATOR=verilator "$@"
             "Issue: 83\nCheckout HEAD: " + revision + "\n"
             "Compare SHA256SUMS for exact packaged source/config/pattern bytes.\n")
         (root / "README.txt").write_text(
-            "Issue #83 NMU injection/ejection synchronized simulation tree.\n"
-            "Run all (VCS default): bash run_vcs.sh\n"
-            "Same suite locally: make regress SIMULATOR=verilator\n"
-            "Shared configuration: script/config.mk\n"
-            "Run one: make run CASE=ctrl_write_single\n"
-            "FSDB: make run_wave CASE=single_id_reorder\n"
-            "Reuse binary: make sim CASE=ctrl_read_burst\n"
-            "Open waveform and signal groups: make nWave CASE=single_id_reorder\n"
-            "Waveform template: script/nWaveLog/signals.rc (@FSDB@ is replaced for the selected CASE).\n"
-            "Package logs: make report\n"
-            "Clean all build/wave/log/GUI artifacts: make clean (retains signal RC files).\n"
-            "Requires an initialized VCS environment, GNU Make and Bash. Python 3.6+ is used for seeded pattern generation. No Git or network needed.\n"
-            "Default: external ID width 8, AXI clock 10ns, NoC clock 10ns, B/R depth 128.\n"
-            "No NSU, memory model or C++ DPI. REQ/RSP and DAT use the same standalone checker.\n"
-            "See the retrieved VCS reports for the verified case/mode/seed matrix.\n")
+            "NMU standalone loopback. NMU/router/NSU co-simulation is in cosim/.\n"
+            "make run CASE=ctrl_write_single\n"
+            "make run_wave CASE=single_id_reorder\n"
+            "make view CASE=single_id_reorder\n"
+            "make clean\n"
+            "make list\n\n"
+            "Settings: script/config.mk. Waveform groups: script/nWaveLog/signals.rc.\n"
+            "VCS is the workstation default. Local override: SIMULATOR=verilator.\n"
+            "clean removes build products, reports and GUI output; keeps sources, patterns and signal RC files.\n")
         # Transport carries the complete original master ID; conversion is at NSU.
         import sys
         sys.path.insert(0, str(repo / "specgen"))

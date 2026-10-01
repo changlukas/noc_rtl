@@ -6,6 +6,9 @@ SHELL := /bin/bash
 script_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 package_dir := $(abspath $(script_dir)/..)
 include $(script_dir)/config.mk
+ifneq ($(filter run_wave view,$(MAKECMDGOALS)),)
+override WAVE := 1
+endif
 SIMULATOR ?= vcs
 CASE ?= ctrl_write_single
 MODE ?= auto
@@ -56,23 +59,19 @@ VCS_FLAGS += +define+DUMP_WAVE -P $(PLI_DIR)/novas.tab $(PLI_DIR)/pli.a
 VERILATOR_FLAGS += +define+DUMP_WAVE --trace-fst
 endif
 
-.PHONY: help sanity_check compile run sim regress block_regress legacy_regress run_wave run_wave_view nWave view fault report clean
+.PHONY: help sanity_check compile run sim regress block_regress legacy_regress run_wave view fault report clean list
 help:
 	@printf '%s\n' \
-	 'make run CASE=ctrl_write_single     Compile and run (VCS default)' \
-	 'make sim CASE=ctrl_read_burst       Reuse existing executable' \
-	 'make regress                       Compile once, all standalone cases and fault check' \
-	 'make in_order_perf                 In-order read/write performance without ROB allocation' \
-	 'make out_of_order_perf             Reordering with ROB allocation-space checks' \
-	 'make legacy_regress                Retained topology traffic and mixed tests' \
-	 'make run_wave CASE=single_id_reorder' \
-	 'make nWave CASE=single_id_reorder  (load signal groups)' \
-	 'make run_wave_view CASE=ctrl_write_single (run then open nWave)' \
-	 'make clean                         Remove all build/wave/log/GUI artifacts; retain signal RC files' \
-	 'make regress SIMULATOR=verilator    Same sources, cases and configuration' \
-	 'Shared scenarios: MODE=control|data|rand SEED=1 (default control)' \
-	 'Shared overrides: ID_WIDTH, NOC_HALF_PERIOD, BUFFER_DEPTH, R_ROB_EN' \
-	 'Patterns are generated for a specific ID_WIDTH; synchronize matching inputs before changing it.'
+	 'make run CASE=<case>        Compile and simulate' \
+	 'make run_wave CASE=<case>   Compile and simulate with waveform' \
+	 'make view CASE=<case>       Open existing waveform and signal groups' \
+	 'make clean                 Remove simulation and GUI output' \
+	 'make list                  List the 15 test cases'
+
+list:
+	@cat "$(package_dir)/pattern_list.txt"
+
+case_list := $(firstword $(wildcard $(package_dir)/cases.list $(package_dir)/cases/standalone/cases.list))
 
 sanity_check:
 	@if [[ -n "$(CASE)" ]]; then grep -Fxq "$(CASE)" "$(package_dir)/cases/standalone/cases.list" || { echo "Unknown CASE" >&2; exit 1; }; fi
@@ -126,7 +125,10 @@ sim: sanity_check
 	@grep -q 'PASS NMU standalone' "$(report_dir)/$(case_label).log"
 	@echo 'PASS: $(case_label)'
 
-block_regress regress: compile
+regress: compile
+	@while read -r name; do $(MAKE) --no-print-directory -f "$(script_dir)/Makefile" sim CASE=$$name; done < "$(case_list)"
+
+block_regress: compile
 	@while read -r name; do \
 	  case "$$name" in ctrl_*|data_*|request_rand) modes=auto ;; *) modes="control data rand" ;; esac; \
 	  for mode in $$modes; do $(MAKE) --no-print-directory -f "$(script_dir)/Makefile" sim CASE=$$name MODE=$$mode run_dir="$(run_dir)"; done; \
@@ -156,13 +158,7 @@ fault: sanity_check
 	@echo 'PASS: expected DAT corruption was detected'
 
 
-run_wave:
-	@$(MAKE) --no-print-directory -f "$(script_dir)/Makefile" run WAVE=1 PATTERN=$(PATTERN) CASE=$(CASE)
-
-run_wave_view: run_wave nWave
-
-nWave:
-	@$(MAKE) --no-print-directory -f "$(script_dir)/Makefile" view WAVE=1 SIMULATOR=vcs PATTERN=$(PATTERN) CASE=$(CASE)
+run_wave: run
 
 view:
 	@test -f "$(wave_file)" || { echo 'Run make run_wave first' >&2; exit 1; }
