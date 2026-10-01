@@ -74,7 +74,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
                      "deps/axi-0.39.7/src/axi_delayer.sv",
                      "deps/axi-0.39.7/src/axi_sim_mem.sv",
                      "deps/floonoc-dv/axi_reorder_compare.sv",
-                     "sim/tb_nmu_cosim.sv"):
+                     "sim/tb_top.sv"):
         if direct and relative.startswith("ref_model/top/"):
             continue
         copy(ROOT / relative, "repo/" + relative)

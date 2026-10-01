@@ -37,7 +37,7 @@ YAML_HEADERS := $(if $(wildcard deps/yaml-cpp/include),$(shell find deps/yaml-cp
 ifeq ($(WAVE),1)
 WAVE_FLAGS := +define+DUMP_WAVE -P $(PLI_DIR)/novas.tab $(PLI_DIR)/pli.a
 endif
-VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_nmu_cosim -pvalue+tb_nmu_cosim.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_nmu_cosim.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_nmu_cosim.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_nmu_cosim.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_nmu_cosim.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_nmu_cosim.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_nmu_cosim.RTL_NSU=$(RTL_NSU) -pvalue+tb_nmu_cosim.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_nmu_cosim.CONTEXT_DEPTH=$(CONTEXT_DEPTH)
+VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_top -pvalue+tb_top.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_top.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_top.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_top.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_top.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_top.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_top.RTL_NSU=$(RTL_NSU) -pvalue+tb_top.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_top.CONTEXT_DEPTH=$(CONTEXT_DEPTH)
 ifeq ($(DIRECT_LINK),0)
 DPI := $(BUILD)/dpi_$(shell python3 build_key.py cpp "$(CPPFLAGS) $(CXX)")
 YAML_BUILD := $(BUILD)/yaml_$(shell python3 build_key.py yaml "$(CPPFLAGS) $(CXX)")

@@ -18,7 +18,7 @@ root = Path.cwd()
 out = root / options.report
 out.mkdir(parents=True, exist_ok=True)
 lines = (root / "files.f").read_text().splitlines()
-lines = [line for line in lines if not line.endswith(("tb_nmu_cosim.sv", "router_wrap.sv", "nsu_wrap.sv"))]
+lines = [line for line in lines if not line.endswith(("tb_top.sv", "router_wrap.sv", "nsu_wrap.sv"))]
 lines += ["repo/rtl/nmu/request_packetize/request_inject_tb_dut.sv"]
 filelist = out / "files.f"
 filelist.write_text("\n".join(lines) + "\n")

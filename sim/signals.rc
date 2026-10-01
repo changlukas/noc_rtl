@@ -8,804 +8,924 @@ top 0
 activeDirFile "" "@FSDB@"
 
 addGroup "Clock / Reset"
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/clk
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/axi_rst_n
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/noc_rst_n
+addSignal -h 15 -UNSIGNED -HEX /tb_top/clk
+addSignal -h 15 -UNSIGNED -HEX /tb_top/axi_rst_n
+addSignal -h 15 -UNSIGNED -HEX /tb_top/noc_rst_n
 addGroup "Master AXI"
 addSubGroup "Channels" -e TRUE
 addSubGroup "AW" -e TRUE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/awvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/awready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/awaddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/awlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/awsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/awburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/awvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/awready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/awaddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/awlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/awsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/awburst
 endSubGroup "AW"
 addSubGroup "W" -e TRUE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/wvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/wready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/wlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/wvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/wready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/wlast
 endSubGroup "W"
 addSubGroup "B" -e TRUE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/bvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/bready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/bid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/bresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/bvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/bready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/bid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/bresp
 endSubGroup "B"
 addSubGroup "AR" -e TRUE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/arvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/arready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/araddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/arlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/arsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/arburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/arvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/arready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/araddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/arlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/arsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/arburst
 endSubGroup "AR"
 addSubGroup "R" -e TRUE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/rvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/rready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/rid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/rresp
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/rlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/rvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/rready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/rid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/rresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/rlast
 endSubGroup "R"
 addSubGroup "Payload" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/wdata
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/wstrb
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/bus/rdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/wdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/wstrb
+addSignal -h 15 -UNSIGNED -HEX /tb_top/bus/rdata
 endSubGroup "Payload"
 endSubGroup "Channels"
 addGroup "Slave AXI [0]"
 addSubGroup "Channels" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/awvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/awready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/awaddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/awlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/awsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/awburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/awvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/awready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/awaddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/awlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/awsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/awburst
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/wvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/wready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/wlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/wvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/wready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/wlast
 endSubGroup "W"
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/bvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/bready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/bid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/bresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/bvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/bready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/bid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/bresp
 endSubGroup "B"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/arvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/arready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/araddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/arlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/arsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/arburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/arvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/arready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/araddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/arlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/arsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/arburst
 endSubGroup "AR"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/rvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/rready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/rid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/rresp
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/rlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/rvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/rready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/rid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/rresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/rlast
 endSubGroup "R"
 addSubGroup "Payload" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/wdata
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/wstrb
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/device_bus/rdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/wdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/wstrb
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/device_bus/rdata
 endSubGroup "Payload"
 endSubGroup "Channels"
 addGroup "Slave AXI [1]"
 addSubGroup "Channels" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/awvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/awready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/awaddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/awlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/awsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/awburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/awvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/awready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/awaddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/awlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/awsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/awburst
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/wvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/wready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/wlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/wvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/wready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/wlast
 endSubGroup "W"
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/bvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/bready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/bid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/bresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/bvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/bready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/bid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/bresp
 endSubGroup "B"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/arvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/arready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/araddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/arlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/arsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/arburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/arvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/arready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/araddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/arlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/arsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/arburst
 endSubGroup "AR"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/rvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/rready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/rid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/rresp
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/rlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/rvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/rready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/rid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/rresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/rlast
 endSubGroup "R"
 addSubGroup "Payload" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/wdata
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/wstrb
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/device_bus/rdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/wdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/wstrb
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/device_bus/rdata
 endSubGroup "Payload"
 endSubGroup "Channels"
 addGroup "Slave AXI [2]"
 addSubGroup "Channels" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/awvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/awready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/awaddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/awlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/awsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/awburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/awvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/awready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/awaddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/awlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/awsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/awburst
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/wvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/wready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/wlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/wvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/wready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/wlast
 endSubGroup "W"
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/bvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/bready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/bid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/bresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/bvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/bready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/bid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/bresp
 endSubGroup "B"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/arvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/arready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/araddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/arlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/arsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/arburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/arvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/arready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/araddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/arlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/arsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/arburst
 endSubGroup "AR"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/rvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/rready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/rid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/rresp
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/rlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/rvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/rready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/rid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/rresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/rlast
 endSubGroup "R"
 addSubGroup "Payload" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/wdata
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/wstrb
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/device_bus/rdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/wdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/wstrb
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/device_bus/rdata
 endSubGroup "Payload"
 endSubGroup "Channels"
 addGroup "Slave AXI [3]"
 addSubGroup "Channels" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/awvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/awready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/awaddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/awlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/awsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/awburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/awvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/awready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/awaddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/awlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/awsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/awburst
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/wvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/wready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/wlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/wvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/wready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/wlast
 endSubGroup "W"
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/bvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/bready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/bid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/bresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/bvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/bready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/bid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/bresp
 endSubGroup "B"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/arvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/arready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/araddr
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/arlen
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/arsize
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/arburst
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/arvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/arready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/araddr
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/arlen
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/arsize
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/arburst
 endSubGroup "AR"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/rvalid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/rready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/rid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/rresp
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/rlast
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/rvalid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/rready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/rid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/rresp
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/rlast
 endSubGroup "R"
 addSubGroup "Payload" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/wdata
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/wstrb
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/device_bus/rdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/wdata
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/wstrb
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/device_bus/rdata
 endSubGroup "Payload"
 endSubGroup "Channels"
 addGroup "Router Links"
 addSubGroup "REQ" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_req_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_req_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_req_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_req_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_req_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_req_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_req_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_req_ready
 endSubGroup "REQ"
 addSubGroup "RSP" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_rsp_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_rsp_ready
 endSubGroup "RSP"
 addSubGroup "DAT" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_dat_credit
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_dat_credit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_dat_credit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_dat_credit
 endSubGroup "DAT"
 addSubGroup "Payload" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_req_flit
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_req_flit
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_rsp_flit
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_rsp_flit
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/rx_dat_flit
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/tx_dat_flit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_req_flit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_req_flit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_rsp_flit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_rsp_flit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/rx_dat_flit
+addSignal -h 15 -UNSIGNED -HEX /tb_top/tx_dat_flit
 endSubGroup "Payload"
 addGroup "NMU"
+addSubGroup "NoC Interface" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/noc_clk
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/noc_rst_n
+addSubGroup "TX REQ" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/tx_req_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/tx_req_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/tx_req_ready_i
+endSubGroup "TX REQ"
+addSubGroup "TX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/tx_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/tx_dat_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/tx_dat_crdvalid_i
+endSubGroup "TX DAT"
+addSubGroup "RX RSP" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/rx_rsp_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/rx_rsp_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/rx_rsp_ready_o
+endSubGroup "RX RSP"
+addSubGroup "RX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/rx_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/rx_dat_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/rx_dat_crdvalid_o
+endSubGroup "RX DAT"
+endSubGroup "NoC Interface"
 addSubGroup "Request Path" -e FALSE
 addSubGroup "AXI Request FIFO" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
 endSubGroup "W"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
 endSubGroup "AR"
 endSubGroup "AXI Request FIFO"
 addSubGroup "SAM" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/path_aw
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/path_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/path_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/path_ar
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/path_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/path_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/path_aw
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/path_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/path_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/path_ar
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/path_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/path_ar_ready
 endSubGroup "SAM"
 addSubGroup "Request Packetize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/req_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/req_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/req_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/req_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/dat_ready
 endSubGroup "Request Packetize"
 addSubGroup "TX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/req_sel
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/req_write_lock_reg
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/dat_write_lock_reg
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/dat_vc
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_channel_assign/dat_vc_available
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_channel_assign/req_sel
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_channel_assign/req_write_lock_reg
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_channel_assign/dat_write_lock_reg
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_channel_assign/dat_vc
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_channel_assign/dat_vc_available
 endSubGroup "TX Channel Assign"
 addSubGroup "TX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/credit_left
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_credit_return_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/i_tx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_credit_buffer/credit_left
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_credit_buffer/dat_credit_return_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/i_tx_credit_buffer/dat_pop
 endSubGroup "TX Credit Buffer"
 addSubGroup "TX Arbitration" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/tx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_request_path/tx_dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/tx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_request_path/tx_dat_ready
 endSubGroup "TX Arbitration"
 endSubGroup "Request Path"
 addSubGroup "Response Path" -e FALSE
 addSubGroup "RX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_push
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/dat_pop
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_rx_credit_buffer/credit_return_reg
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_rx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_rx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_rx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_rx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_rx_credit_buffer/dat_push
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_rx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_rx_credit_buffer/credit_return_reg
 endSubGroup "RX Credit Buffer"
 addSubGroup "RX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/rx_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/rx_rsp_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/rx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/rx_dat_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/selected_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/selected_rsp_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/selected_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/selected_dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/rx_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/rx_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/rx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/rx_dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/selected_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/selected_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/selected_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/selected_dat_ready
 endSubGroup "RX Channel Assign"
 addSubGroup "Response Depacketize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/decoded_b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/decoded_b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/decoded_r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/decoded_r_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/decoded_b_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/decoded_b_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/decoded_r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/decoded_r_ready
 endSubGroup "Response Depacketize"
 addSubGroup "Ordering" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/aw_reorder
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/ar_reorder
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/aw_can_accept
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/ar_can_accept
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/aw_tag
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/ar_tag
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/b_free_cnt
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/r_free_cnt
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/b_direct
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/r_direct
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/b_retire_id
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_ordering/r_retire_id
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/aw_reorder
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/ar_reorder
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/aw_can_accept
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/ar_can_accept
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/aw_tag
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/ar_tag
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/b_free_cnt
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/r_free_cnt
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/b_direct
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/r_direct
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/b_retire_id
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_ordering/r_retire_id
 endSubGroup "Ordering"
 addSubGroup "AXI Response FIFO" -e FALSE
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
 endSubGroup "B"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/dut/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/dut/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
 endSubGroup "R"
 endSubGroup "AXI Response FIFO"
 endSubGroup "Response Path"
 addGroup "NSU [0]"
+addSubGroup "NoC Interface" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/noc_clk
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/noc_rst_n
+addSubGroup "RX REQ" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/rx_req_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/rx_req_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/rx_req_ready_o
+endSubGroup "RX REQ"
+addSubGroup "RX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/rx_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/rx_dat_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/rx_dat_crdvalid_o
+endSubGroup "RX DAT"
+addSubGroup "TX RSP" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/tx_rsp_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/tx_rsp_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/tx_rsp_ready_i
+endSubGroup "TX RSP"
+addSubGroup "TX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/tx_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/tx_dat_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/tx_dat_crdvalid_i
+endSubGroup "TX DAT"
+endSubGroup "NoC Interface"
 addSubGroup "Request Path" -e FALSE
 addSubGroup "RX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
 endSubGroup "RX Credit Buffer"
 addSubGroup "RX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
 endSubGroup "RX Channel Assign"
 addSubGroup "Request Depacketize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
 endSubGroup "Request Depacketize"
 addSubGroup "AXI Request FIFO" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
 endSubGroup "W"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
 endSubGroup "AR"
 endSubGroup "AXI Request FIFO"
 endSubGroup "Request Path"
 addSubGroup "Response Path" -e FALSE
 addSubGroup "AXI Response FIFO" -e FALSE
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
 endSubGroup "B"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
 endSubGroup "R"
 endSubGroup "AXI Response FIFO"
 addSubGroup "Context Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/aw_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/aw_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/ar_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/ar_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_beat
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_accept
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_last
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/aw_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/aw_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/ar_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/ar_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_beat
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_accept
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_last
 endSubGroup "Context Buffer"
 addSubGroup "Context" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/aw_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/ar_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/aw_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/ar_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/w_context
 endSubGroup "Context"
 addSubGroup "Response Packetize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
 endSubGroup "Response Packetize"
 addSubGroup "TX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
 endSubGroup "TX Channel Assign"
 addSubGroup "TX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
 endSubGroup "TX Credit Buffer"
 addSubGroup "TX Arbitration" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[0]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
 endSubGroup "TX Arbitration"
 endSubGroup "Response Path"
 addGroup "NSU [1]"
+addSubGroup "NoC Interface" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/noc_clk
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/noc_rst_n
+addSubGroup "RX REQ" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/rx_req_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/rx_req_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/rx_req_ready_o
+endSubGroup "RX REQ"
+addSubGroup "RX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/rx_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/rx_dat_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/rx_dat_crdvalid_o
+endSubGroup "RX DAT"
+addSubGroup "TX RSP" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/tx_rsp_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/tx_rsp_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/tx_rsp_ready_i
+endSubGroup "TX RSP"
+addSubGroup "TX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/tx_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/tx_dat_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/tx_dat_crdvalid_i
+endSubGroup "TX DAT"
+endSubGroup "NoC Interface"
 addSubGroup "Request Path" -e FALSE
 addSubGroup "RX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
 endSubGroup "RX Credit Buffer"
 addSubGroup "RX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
 endSubGroup "RX Channel Assign"
 addSubGroup "Request Depacketize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
 endSubGroup "Request Depacketize"
 addSubGroup "AXI Request FIFO" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
 endSubGroup "W"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
 endSubGroup "AR"
 endSubGroup "AXI Request FIFO"
 endSubGroup "Request Path"
 addSubGroup "Response Path" -e FALSE
 addSubGroup "AXI Response FIFO" -e FALSE
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
 endSubGroup "B"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
 endSubGroup "R"
 endSubGroup "AXI Response FIFO"
 addSubGroup "Context Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/aw_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/aw_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/ar_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/ar_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_beat
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_accept
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_last
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/aw_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/aw_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/ar_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/ar_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_beat
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_accept
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_last
 endSubGroup "Context Buffer"
 addSubGroup "Context" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/aw_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/ar_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/aw_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/ar_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/w_context
 endSubGroup "Context"
 addSubGroup "Response Packetize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
 endSubGroup "Response Packetize"
 addSubGroup "TX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
 endSubGroup "TX Channel Assign"
 addSubGroup "TX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
 endSubGroup "TX Credit Buffer"
 addSubGroup "TX Arbitration" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[1]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
 endSubGroup "TX Arbitration"
 endSubGroup "Response Path"
 addGroup "NSU [2]"
+addSubGroup "NoC Interface" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/noc_clk
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/noc_rst_n
+addSubGroup "RX REQ" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/rx_req_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/rx_req_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/rx_req_ready_o
+endSubGroup "RX REQ"
+addSubGroup "RX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/rx_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/rx_dat_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/rx_dat_crdvalid_o
+endSubGroup "RX DAT"
+addSubGroup "TX RSP" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/tx_rsp_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/tx_rsp_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/tx_rsp_ready_i
+endSubGroup "TX RSP"
+addSubGroup "TX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/tx_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/tx_dat_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/tx_dat_crdvalid_i
+endSubGroup "TX DAT"
+endSubGroup "NoC Interface"
 addSubGroup "Request Path" -e FALSE
 addSubGroup "RX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
 endSubGroup "RX Credit Buffer"
 addSubGroup "RX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
 endSubGroup "RX Channel Assign"
 addSubGroup "Request Depacketize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
 endSubGroup "Request Depacketize"
 addSubGroup "AXI Request FIFO" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
 endSubGroup "W"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
 endSubGroup "AR"
 endSubGroup "AXI Request FIFO"
 endSubGroup "Request Path"
 addSubGroup "Response Path" -e FALSE
 addSubGroup "AXI Response FIFO" -e FALSE
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
 endSubGroup "B"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
 endSubGroup "R"
 endSubGroup "AXI Response FIFO"
 addSubGroup "Context Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/aw_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/aw_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/ar_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/ar_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_beat
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_accept
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_last
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/aw_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/aw_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/ar_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/ar_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_beat
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_accept
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_last
 endSubGroup "Context Buffer"
 addSubGroup "Context" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/aw_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/ar_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/aw_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/ar_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/w_context
 endSubGroup "Context"
 addSubGroup "Response Packetize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
 endSubGroup "Response Packetize"
 addSubGroup "TX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
 endSubGroup "TX Channel Assign"
 addSubGroup "TX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
 endSubGroup "TX Credit Buffer"
 addSubGroup "TX Arbitration" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[2]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
 endSubGroup "TX Arbitration"
 endSubGroup "Response Path"
 addGroup "NSU [3]"
+addSubGroup "NoC Interface" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/noc_clk
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/noc_rst_n
+addSubGroup "RX REQ" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/rx_req_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/rx_req_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/rx_req_ready_o
+endSubGroup "RX REQ"
+addSubGroup "RX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/rx_dat_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/rx_dat_flit_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/rx_dat_crdvalid_o
+endSubGroup "RX DAT"
+addSubGroup "TX RSP" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/tx_rsp_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/tx_rsp_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/tx_rsp_ready_i
+endSubGroup "TX RSP"
+addSubGroup "TX DAT" -e FALSE
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/tx_dat_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/tx_dat_flit_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/tx_dat_crdvalid_i
+endSubGroup "TX DAT"
+endSubGroup "NoC Interface"
 addSubGroup "Request Path" -e FALSE
 addSubGroup "RX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_push
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_rx_credit_buffer/credit_return_reg
 endSubGroup "RX Credit Buffer"
 addSubGroup "RX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/selected_ar_ready
 endSubGroup "RX Channel Assign"
 addSubGroup "Request Depacketize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_aw_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_w_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/decoded_ar_ready
 endSubGroup "Request Depacketize"
 addSubGroup "AXI Request FIFO" -e FALSE
 addSubGroup "AW" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_aw_fifo/dst_ready_i
 endSubGroup "AW"
 addSubGroup "W" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_w_fifo/dst_ready_i
 endSubGroup "W"
 addSubGroup "AR" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_request_path/i_request_fifo/i_ar_fifo/dst_ready_i
 endSubGroup "AR"
 endSubGroup "AXI Request FIFO"
 endSubGroup "Request Path"
 addSubGroup "Response Path" -e FALSE
 addSubGroup "AXI Response FIFO" -e FALSE
 addSubGroup "B" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_b_fifo/dst_ready_i
 endSubGroup "B"
 addSubGroup "R" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_valid_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/src_ready_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_valid_o
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_response_fifo/i_r_fifo/dst_ready_i
 endSubGroup "R"
 endSubGroup "AXI Response FIFO"
 addSubGroup "Context Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/aw_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/aw_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/awid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/ar_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/ar_context_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/arid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_context_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_beat
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_accept
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_last
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/aw_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/aw_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/awid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/ar_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/ar_context_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/arid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_context_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_beat
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_accept
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_last
 endSubGroup "Context Buffer"
 addSubGroup "Context" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/aw_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/ar_context
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/aw_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/ar_context
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/w_context
 endSubGroup "Context"
 addSubGroup "Response Packetize" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_b_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/packet_r_ready
 endSubGroup "Response Packetize"
 addSubGroup "TX Channel Assign" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/assigned_rsp_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/assigned_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/dat_fifo_ready
 endSubGroup "TX Channel Assign"
 addSubGroup "TX Credit Buffer" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/ctrl_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_full
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_empty
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/credit_left
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_credit_return_i
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/i_tx_credit_buffer/dat_pop
 endSubGroup "TX Credit Buffer"
 addSubGroup "TX Arbitration" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/gen_rtl_nsu/i_nsu/i_response_path/tx_dat_ready
 endSubGroup "TX Arbitration"
 endSubGroup "Response Path"
 addGroup "Test Status"
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/reorder_test
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/ordering_done
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/b_count
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/r_count
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/r_beats
+addSignal -h 15 -UNSIGNED -HEX /tb_top/reorder_test
+addSignal -h 15 -UNSIGNED -HEX /tb_top/ordering_done
+addSignal -h 15 -UNSIGNED -HEX /tb_top/b_count
+addSignal -h 15 -UNSIGNED -HEX /tb_top/r_count
+addSignal -h 15 -UNSIGNED -HEX /tb_top/r_beats
 addSubGroup "Response Delay" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/delay_en
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/delay_en
 endSubGroup "Response Delay"
 addSubGroup "Before Delay" -e FALSE
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_rsp.b_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_req.b_ready
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_rsp.r_valid
-addSignal -h 15 -UNSIGNED -HEX /tb_nmu_cosim/gen_nsu[3]/i_memory/axi_req.r_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/i_memory/axi_rsp.b_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/i_memory/axi_req.b_ready
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/i_memory/axi_rsp.r_valid
+addSignal -h 15 -UNSIGNED -HEX /tb_top/gen_nsu[3]/i_memory/axi_req.r_ready
 endSubGroup "Before Delay"

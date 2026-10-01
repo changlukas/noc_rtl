@@ -1,7 +1,7 @@
 `timescale 1ps / 1ps
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
-module tb_nmu_cosim #(
+module tb_top #(
     parameter int unsigned INPUT_ID_WIDTH  = ni_params_pkg::AXI_ID_WIDTH,
     parameter int unsigned OUTPUT_ID_WIDTH = ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned MAX_OUTSTANDING_PER_ID = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
@@ -893,9 +893,9 @@ module tb_nmu_cosim #(
 `ifdef DUMP_WAVE
     initial begin : dump_wave
         string wave_file;
-        if (!$value$plusargs("wave_file=%s", wave_file)) wave_file = "nmu_cosim.fsdb";
+        if (!$value$plusargs("wave_file=%s", wave_file)) wave_file = "ni.fsdb";
         $fsdbDumpfile(wave_file);
-        $fsdbDumpvars(0, tb_nmu_cosim, "+all");
+        $fsdbDumpvars(0, tb_top, "+all");
     end
 `endif
     int perf_cycle = 0, perf_start = -1, perf_end = -1;
