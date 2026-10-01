@@ -15,7 +15,7 @@ module tb_nmu_cosim #(
     import ni_params_pkg::*;
     localparam int unsigned NUM_IDS = 1 << INPUT_ID_WIDTH;
     localparam time CLK_PERIOD = 1ns;
-    localparam time APPL_DELAY = CLK_PERIOD / 10;
+    localparam time APPL_DELAY = 0ps;
     localparam time ACQ_DELAY  = CLK_PERIOD / 5;
     localparam int NUM_PORTS = 5;
     localparam int NMU_PORT = 0;
