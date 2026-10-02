@@ -88,3 +88,7 @@ Run log 與 .run.json 保留 command、profile、source manifest digest、stimul
 
 未命中的 bin 需區分缺 stimulus、組態不可達、規格不支援或 RTL 問題；不因數值低就直接 waiver。
 歷史 baseline 與 stimulus 擴充結果分別見 verification-baseline.md、verification-stimulus-results.md。
+
+## Latest full native baseline
+
+15/15 cases PASS; coverage gaps and the proposed follow-up plan are in [Coverage review](verification-coverage-review.md). Follow-up stimulus is pending review.

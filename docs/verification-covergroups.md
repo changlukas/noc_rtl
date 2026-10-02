@@ -51,7 +51,10 @@ Native integration report:
 `/home/mingwei/noc_project/sim/build/covergroup-migration/urg/dashboard.html`
 
 VDB:
-`/home/mingwei/noc_project/sim/build/vcs_wave0_c849a054211c/simv.vdb`
+`/home/mingwei/noc_project/sim/build/native-coverage-baseline/prior-six-cases.vdb`
+
+The six-case VDB was preserved before the full fifteen-case regression.
+The latest baseline and proposed follow-up plan are in [Coverage review](verification-coverage-review.md).
 
 Reproduction inputs, downloaded native reports and source audit:
 local `build/covergroup-migration/`. Existing historical reports are preserved.
