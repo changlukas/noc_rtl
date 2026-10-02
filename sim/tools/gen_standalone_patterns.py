@@ -56,12 +56,15 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         if case_name is not None and "mode" in case and mode not in ("auto", selected):
             raise ValueError(name + " requires MODE=" + selected)
         random_fields = case.get("random", False) or selected == "rand"
+        random_memory = profile == "cosim" and case.get("random", False)
+        concurrent_rw = case.get("concurrent_rw", False) or random_memory
         rng = random.Random(seed)
         target = out / name
         target.mkdir(parents=True, exist_ok=True)
         writes, reads = [], []
         init_writes, verify_reads = [], []
         preload = []
+        route_slots = {}
         capacity = case.get("legacy_mixed", False)
         count = 64 if capacity else case["count"]
         classes = [selected] * count
@@ -114,6 +117,11 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     dest = txn % len(routes[classes[txn]])
                 elif case.get("destinations") == "random":
                     dest = rng.randrange(len(routes[classes[txn]]))
+            if random_memory and not is_data and route_slots.get(dest, 0) == 32:
+                available = [d for d in range(len(routes["control"])) if route_slots.get(d, 0) < 32]
+                if not available:
+                    raise ValueError("random control stimulus exceeds disjoint address capacity")
+                dest = rng.choice(available)
             route = routes[classes[txn]][dest]
             step = 1 << size
             offset = 256 + (txn % 8)*max(8, step)
@@ -127,14 +135,17 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 if case.get("capacity_test"):
                     offset = (txn // len(routes[classes[txn]])) * (length + 1) * step
             if "burst_lengths" in case:
-                offset = txn * 4096 if is_data else sum(case["burst_lengths"][:txn]) * step
+                # Alternate region start, a 4 KB boundary, and the SAM end.
+                span = (length + 1) * step
+                offset = (0, 4096 - span, route["size"] - span)[txn % 3]
+            if random_memory and not is_data:
+                offset = route_slots.get(dest, 0) * 64
+                route_slots[dest] = route_slots.get(dest, 0) + 1
             address = route["base"] + offset
             operation = case.get("operation", "both")
             if case.get("random"):
                 # Paired directions keep every class/single/burst category non-vacuous.
                 operation = "both"
-            if profile == "cosim" and not name.endswith("_single"):
-                operation = "both"  # read cases initialize through the real write path
             if operation in ("write", "both"):
                 # Keep the transaction marker in opaque AWUSER[7:0], below collective control.
                 fields = _ax_fields(axi_id, address, length, size, True, user=txn & 0xff)
@@ -145,6 +156,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                         fields[1] = hex(address + (0x10000 if is_data else 0x800))
                         if int(fields[1], 16) + (length+1)*step > route["base"] + route["size"]:
                             raise ValueError("concurrent write crosses SAM window")
+                if random_memory:
+                    fields[1] = hex(address + (0x10000 if is_data else 0x800))
                 writes.extend(fields)
                 coverage[classes[txn]+"_write"] += 1
                 span = (length+1)*(1 << size)
@@ -174,15 +187,26 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                             mask = (0, 0x5555555555555555, 0xaaaaaaaaaaaaaaaa,
                                     1 << (addr % 64))[(txn + beat) % 4]
                             strobe = hex(int(strobe, 16) & mask)
+                    if random_memory:
+                        full_strobe = int(strobe, 16)
+                        mask = (0, (1 << 64)-1, 0x5555555555555555,
+                                rng.getrandbits(64))[(txn + beat) % 4]
+                        strobe = hex(full_strobe & mask)
                     writes.append(f"{data} {strobe} {user}")
-            if profile == "cosim" and operation == "read":
-                preload.append(f"@{address:x}")
-                preload.append(" ".join(f"{(address + b) & 255:02x}" for b in range(step)))
+            if profile == "cosim" and (operation == "read" or random_memory):
+                bases = [address]
+                if random_memory:
+                    bases.append(address + (0x10000 if is_data else 0x800))
+                for base in bases:
+                    if base + (length+1)*step > route["base"] + route["size"]:
+                        raise ValueError("preload crosses SAM window")
+                    preload.append(f"@{base:x}")
+                    preload.append(" ".join(f"{(base + b) & 255:02x}" for b in range((length+1)*step)))
             if operation in ("read", "both"):
                 fields = _ax_fields(axi_id, address, length, size, False)
                 fields[4] = str(burst)
                 reads.extend(fields)
-                if profile == "cosim" and case.get("concurrent_rw"):
+                if profile == "cosim" and concurrent_rw:
                     fields[1] = hex(address + (0x10000 if is_data else 0x800))
                     verify_reads.extend(fields)
                 coverage[classes[txn]+"_read"] += 1
@@ -204,7 +228,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     f"+min_unique={case.get('min_unique', 1)}",
                     f"+backpressure={int(name == 'backpressure')}",
                     f"+init_phase={int(bool(init_writes))}",
-                    f"+concurrent_rw={int(bool(case.get('concurrent_rw')))}",
+                    f"+concurrent_rw={int(bool(concurrent_rw))}",
                     f"+stall_cycles={case.get('stall_cycles', 0)}",
                     f"+hold_cycles={case.get('hold_cycles', 0)}",
                     f"+capacity_test={int(bool(case.get('capacity_test')))}",

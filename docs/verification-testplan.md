@@ -4,8 +4,8 @@
 
 ## 範圍與判定
 
-本輪 baseline 使用既有 15 個 case、MODE=auto、既有 seed 與參數，執行於
-`sim/`：一個 NMU RTL、單個 C++ Router、四個 NSU RTL 與 AXI memories。
+本平台使用 15 個公開 case；目前整合組態為 MODE=auto、seed=1，
+`sim/` 包含一個 NMU RTL、單個 C++ Router、四個 NSU RTL 與 AXI memories。
 共用 `tb_top` 的 direct-link 環境可使用相同 coverage；本輪不重跑第二套完整矩陣。
 NMU-only loopback 的歷史驗證保留，不能當作本輪整合 coverage。
 Router RTL、多 NMU source、multihop、physical CDC/RDC 與 synthesis/STA 不在本輪。
@@ -18,9 +18,10 @@ Router RTL、多 NMU source、multihop、physical CDC/RDC 與 synthesis/STA 不�
 - 所有 transaction 覆蓋在實際 handshake 取樣；R inversion 以 RLAST completion 計算，
   不代表 read-beat interleaving coverage。
 
-本輪不變更 stimulus、DUT、參數預設、file-master 排程或 C++ model。
+第一批 baseline 不改 stimulus，結果保留於 `verification-baseline.md`。
+第二批只擴充 stimulus；DUT、參數預設、既有 driver/checker 與 C++ model 不變。
 
-## 第一批：現有 case 與必要事件
+## Case 與必要事件
 
 Machine-readable case requirements：[`sim/coverage_plan.json`](../sim/coverage_plan.json)。
 
@@ -28,22 +29,29 @@ Machine-readable case requirements：[`sim/coverage_plan.json`](../sim/coverage_
 |---|---|---|---|
 | ctrl_write_single | 一筆 control write | AW/B、control destination decode | ordering compare、AXI protocol |
 | ctrl_read_single | 一筆 control read；memory preload | AR/RLAST、control decode | scoreboard、ordering compare |
-| ctrl_write_burst | control burst 2/4/8/16/32/64/128/256 | AW/AR length、size、ID、destination、完成數 | scoreboard、ordering compare、SAM checker |
-| ctrl_read_burst | 同上；目前 co-sim stimulus 與 write burst 重疊 | 同上，重疊不重複計算功能覆蓋 | 同上 |
+| ctrl_write_burst | 15 筆 control write burst；長度如下 | AW length、size、ID、destination、B 完成數 | ordering compare、SAM checker |
+| ctrl_read_burst | 15 筆 control read burst；memory preload | AR length、R 完成數 | scoreboard、ordering compare、SAM checker |
 | single_id_outstanding | same-ID 多筆 pending | write/read multiple pending | 既有 min_outstanding、ordering compare |
 | multi_id_outstanding | multi-ID 多筆 pending | write/read multiple pending、實際 ID | 既有 min_unique、min_outstanding |
 | multi_id_out_of_order | 跨 destination 的不同 ID response 延遲 | B/R cross-ID inversion | ordering compare、scoreboard |
 | single_id_reorder | same-ID 跨 destination response 延遲 | B/R same-ID inversion、ROB retirement | ordering compare、scoreboard |
 | data_write_single | 一筆 data write | AW/B、data destination decode | ordering compare、AXI protocol |
-| data_write_burst | data burst 2/4/8/16/32/64 | AW/AR length、size、ID、destination、完成數 | scoreboard、ordering compare、SAM checker |
+| data_write_burst | 11 筆 data write burst；長度如下 | AW length、size、ID、destination、B 完成數 | ordering compare、SAM checker |
 | data_read_single | 一筆 data read；memory preload | AR/RLAST、data decode | scoreboard、ordering compare |
-| data_read_burst | 同上；目前 co-sim stimulus 與 write burst 重疊 | 同上，重疊不重複計算功能覆蓋 | 同上 |
-| ctrl_rand | 現有 control random file | control transaction、length/size/ID/destination | scoreboard、ordering compare |
-| data_rand | 現有 data random file | data transaction、length/size/ID/destination | 同上 |
-| request_rand | 現有混合 control/data random file | 兩種 traffic 的 AW/AR handshake | 同上 |
+| data_read_burst | 11 筆 data read burst；memory preload | AR length、R 完成數 | scoreboard、ordering compare、SAM checker |
+| ctrl_rand | control random、WSTRB、並行 R/W、readback | control transaction、length/size/ID/destination | scoreboard、ordering compare |
+| data_rand | data random、WSTRB、並行 R/W、readback | data transaction、length/size/ID/destination | 同上 |
+| request_rand | 混合 control/data random、WSTRB、並行 R/W、readback | 兩種 traffic 的 AW/AR handshake | 同上 |
 
-目前 co-sim 非 single case 會執行 write 與 read phase；第一批只記錄此事實。
-single 測試不增加 readback。第二批再處理 burst read/write stimulus 重複與新增條件。
+Control burst length：2/3/4/7/8/15/16/31/32/63/64/127/128/255/256。
+Data burst length：2/3/4/7/8/15/16/31/32/63/64。皆為 full-width INCR，
+輪流從 SAM 起點、結束於第一個 4 KB 邊界、結束於 SAM 尾端發送。
+write burst 不發 read；read burst 使用 memory preload，不發 write。
+
+Random case 的 co-sim/direct profile 發送 64 write 與 64 並行 read，完成後再發
+64 readback。讀寫區域互不重疊，write transaction 之間亦不重疊；memory 與
+scoreboard 使用相同 preload。WSTRB 包含 full、partial、zero，保留未寫入 byte 的
+預期值。NMU-only profile 仍使用既有 synthetic loopback，不宣稱 memory readback。
 
 ## Resource 與交互作用觀察
 
@@ -109,8 +117,10 @@ profile 與實際 stimulus digest。VDB 保留在對應 content-addressed SV bui
 後續 ID 相關 coverage 應涵蓋不同 source identity／NoC ID 映到相同 device ID，
 以及相對應 context 的保存與退休。本輪單 NMU、相同 ID width 不宣稱完成 collision coverage。
 
-第二批：burst 邊界與非 2 次方長度、write strobe、capacity/reuse、random 合法組合；
-整理 co-sim burst 重複。各容量測試需依當次參數判定真正限制資源。
+第二批已補 burst 邊界、非 2 次方長度、random write strobe 與並行 R/W，並分開 burst read/write。
+結果見 [Stimulus expansion acceptance](verification-stimulus-results.md)。
+Capacity/reuse 仍待補強，各容量測試需依當次參數判定真正限制資源。
+WSTRB full/partial 的 active-lane monitor 分類亦未完成。
 
 第三批：HoL destination blocking、reorder+backpressure、capacity recovery、
 reset recovery、concurrent read/write。既有 directed 性能測試維持無額外 stall。

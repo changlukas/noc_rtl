@@ -67,10 +67,17 @@ def test_burst_patterns_cover_full_width_lengths(tmp_path, name):
     generate(tmp_path, REPO / "sim/configs/mesh_2x2.yml")
     txns = _parse_write(tmp_path / name / "write.txt")
     data = name.startswith("data")
-    assert [t["len"] + 1 for t in txns] == ([2, 4, 8, 16, 32, 64] if data else
-                                                  [2, 4, 8, 16, 32, 64, 128, 256])
+    assert [t["len"] + 1 for t in txns] == ([2,3,4,7,8,15,16,31,32,63,64] if data else
+                                                  [2,3,4,7,8,15,16,31,32,63,64,127,128,255,256])
     assert {t["size"] for t in txns} == {6 if data else 3}
     assert {t["burst"] for t in txns} == {1}
+    import yaml
+    from address_map import pack_config
+    _, entries = pack_config(yaml.safe_load((REPO / "sim/configs/mesh_2x2.yml").read_text()))
+    route = next(e for e in entries if e["space"] == ("memory" if data else "config"))
+    assert any(t["addr"] == route["base"] for t in txns)
+    assert any(t["addr"] + ((t["len"]+1) << t["size"]) == route["base"] + route["size"] for t in txns)
+    assert any((t["addr"] + ((t["len"]+1) << t["size"])) % 4096 == 0 for t in txns)
     for t in txns:
         end = t["addr"] + ((t["len"] + 1) << t["size"]) - 1
         assert t["addr"] >> 12 == end >> 12
@@ -160,6 +167,25 @@ def test_cosim_memory_dependencies(tmp_path, mode):
     for name in names:
         writes = _parse_write(tmp_path / name / "write.txt")
         reads = _parse_read(tmp_path / name / "read.txt")
+        if name.endswith("write_burst"):
+            assert writes and not reads
+            continue
+        if name.endswith("read_burst"):
+            assert reads and not writes
+            words = (tmp_path / name / "preload.mem").read_text().split()
+            memory = {}
+            for word in words:
+                if word.startswith("@"):
+                    addr = int(word[1:], 16)
+                else:
+                    memory[addr] = int(word, 16)
+                    addr += 1
+            for t in reads:
+                for addr in range(t["addr"], t["addr"] + ((t["len"]+1) << t["size"])):
+                    assert memory[addr] == addr & 255
+            continue
+        if name.endswith("_rand"):
+            continue  # Concurrent phase dependencies are checked below.
         if name.endswith("write_single"):
             assert len(writes) == 1 and not reads
             assert writes[0]["len"] == 0
@@ -302,3 +328,42 @@ def test_capacity_profile_inputs(tmp_path):
     with pytest.raises(ValueError, match="num_ids"):
         generate(tmp_path / "invalid", REPO / "sim/topology.yml", 3,
                  catalog=catalog, profile="cosim")
+
+
+@pytest.mark.parametrize("seed", [1, 17, 29])
+@pytest.mark.parametrize("name", ["ctrl_rand", "data_rand", "request_rand"])
+def test_random_concurrent_memory_and_strobes(tmp_path, seed, name):
+    generate(tmp_path, REPO / "sim/topology.yml", 3, profile="cosim",
+             seed=seed, case_name=name)
+    root = tmp_path / name
+    writes = _parse_write(root / "write.txt")
+    reads = _parse_read(root / "read.txt")
+    verify = _parse_read(root / "verify_read.txt")
+    assert len(writes) == len(reads) == len(verify) == 64
+    def addresses(txns):
+        return {a for t in txns for a in range(t["addr"], t["addr"] + ((t["len"]+1) << t["size"]))}
+    memory = {}
+    for word in (root / "preload.mem").read_text().split():
+        if word.startswith("@"):
+            addr = int(word[1:], 16)
+        else:
+            memory[addr] = int(word, 16)
+            addr += 1
+    assert len(addresses(writes)) == sum((t["len"]+1) << t["size"] for t in writes)
+    assert not addresses(writes) & addresses(reads)
+    assert addresses(writes + reads + verify) <= memory.keys()
+    assert addresses(verify) == addresses(writes)
+    kinds = set()
+    for t in writes:
+        step = 1 << t["size"]
+        end = t["addr"] + step*(t["len"]+1)-1
+        assert t["addr"] >> 12 == end >> 12
+        assert end % (1 << 32) < (0x2001000 if name == "ctrl_rand" or t["addr"] % (1 << 32) >= 0x2000000 else 0x2000000)
+        for beat, line in enumerate(t["beats"]):
+            _, mask, _ = line.split()
+            full = ((1 << step)-1) << ((t["addr"] + beat*step) % 64)
+            mask = int(mask, 16)
+            assert mask & ~full == 0
+            kinds.add("zero" if mask == 0 else "full" if mask == full else "partial")
+    assert kinds == {"full", "partial", "zero"}
+    assert "+concurrent_rw=1" in (root / "schedule.txt").read_text()
