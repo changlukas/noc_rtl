@@ -126,6 +126,8 @@ module axi_sim_mem #(
 
   for (genvar i = 0; i < NumPorts; i++) begin
     initial begin
+      // Local adaptation: restart channel workers on reset; retain memory contents.
+      forever begin
       automatic ar_t ar_queue[$];
       automatic aw_t aw_queue[$];
       automatic b_t b_queue[$];
@@ -136,6 +138,8 @@ module axi_sim_mem #(
       mon_r[i] = '0;
       wait (rst_ni);
       fork
+        begin
+        fork
         // AW
         forever begin
           @(posedge clk_i);
@@ -293,7 +297,14 @@ module axi_sim_mem #(
             end
           end
         end
-      join
+        join
+        end
+        begin
+          @(negedge rst_ni);
+        end
+      join_any
+      disable fork;
+      end
     end
 
     // Assign the monitor output in the next clock cycle.  Rationale: We only know whether we are

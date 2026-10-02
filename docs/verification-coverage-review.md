@@ -108,3 +108,8 @@ Functional score 依目前 bins 與工具權重計算，不代表規格完成比
 既有指令：make sim COVERAGE=1 MODE=auto CASE=<case> REPORT=<report-directory>；
 先完成相同 source/config 的 compile。本輪 cached binary 直接重用。
 報告：urg -full64 -dir <baseline.vdb> -report <urg-directory> -format both。
+
+
+## Follow-up
+
+The approved stress extension and native coverage merge are recorded in [Stress acceptance](verification-stress-results.md). The baseline above remains historical.

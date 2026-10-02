@@ -56,6 +56,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         if case_name is not None and "mode" in case and mode not in ("auto", selected):
             raise ValueError(name + " requires MODE=" + selected)
         random_fields = case.get("random", False) or selected == "rand"
+        if case.get("stress_test") or case.get("response_backpressure"):
+            random_fields = False
         random_memory = profile == "cosim" and case.get("random", False)
         concurrent_rw = case.get("concurrent_rw", False) or random_memory
         rng = random.Random(seed)
@@ -122,6 +124,19 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 if not available:
                     raise ValueError("random control stimulus exceeds disjoint address capacity")
                 dest = rng.choice(available)
+            if case.get("stress_test") == 1:
+                dest = (txn // num_ids) % len(routes[classes[txn]])
+            if case.get("response_backpressure") and case.get("require_buffered"):
+                # Leave one response FIFO entry for the delayed head transaction.
+                dest = 2 if txn < 31 else (1, 2, 3, 0)[(txn-31) % 4]
+            if case.get("capacity_target") in ("per_id", "context"):
+                dest = 0 if case["capacity_target"] == "per_id" else txn % len(routes[classes[txn]])
+                if case["capacity_target"] == "per_id":
+                    axi_id = 0
+            if case.get("stress_test") == 2:
+                # ID 0 targets the unblocked peer; remaining IDs fill the blocked NSU.
+                dest = 0 if txn == 0 else 1
+                axi_id = 0 if txn == 0 else 1 + (txn-1) % (num_ids-1)
             route = routes[classes[txn]][dest]
             step = 1 << size
             offset = 256 + (txn % 8)*max(8, step)
@@ -141,6 +156,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             if random_memory and not is_data:
                 offset = route_slots.get(dest, 0) * 64
                 route_slots[dest] = route_slots.get(dest, 0) + 1
+            if case.get("stress_test") in (1, 2):
+                offset = txn * step
             address = route["base"] + offset
             operation = case.get("operation", "both")
             if case.get("random"):
@@ -193,7 +210,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                                 rng.getrandbits(64))[(txn + beat) % 4]
                         strobe = hex(full_strobe & mask)
                     writes.append(f"{data} {strobe} {user}")
-            if profile == "cosim" and (operation == "read" or random_memory):
+            if profile == "cosim" and (operation == "read" or random_memory or case.get("stress_test") == 3):
                 bases = [address]
                 if random_memory:
                     bases.append(address + (0x10000 if is_data else 0x800))
@@ -234,6 +251,12 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     f"+capacity_test={int(bool(case.get('capacity_test')))}",
                     f"+data_case={int(selected == 'data')}",
                     f"+reorder_test={2 if case.get('require_buffered') else int(bool(case.get('require_ooo')))}"]
+        if case.get("capacity_target"):
+            args.append("+capacity_target=" + case["capacity_target"])
+        if case.get("response_backpressure"):
+            args.append("+response_backpressure")
+        if case.get("stress_test"):
+            args.append(f"+stress_test={case['stress_test']}")
         if preload:
             args.append("+preload")
         (target / "schedule.txt").write_text("\n".join(args) + "\n")

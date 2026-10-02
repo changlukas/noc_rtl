@@ -14,6 +14,7 @@ module tb_axi_reorder_compare;
     } rule_t;
     localparam rule_t [1:0] RULES = '{'{0, 32'h800, 32'h1000}, '{0, 0, 32'h800}};
     bit clk = 0;
+    bit rst_n = 1;
     always #5 clk = ~clk;
     test_req_t source_req;
     test_resp_t source_rsp;
@@ -28,7 +29,7 @@ module tb_axi_reorder_compare;
         .b_chan_t(test_b_chan_t), .ar_chan_t(test_ar_chan_t),
         .r_chan_t(test_r_chan_t), .req_t(test_req_t), .rsp_t(test_resp_t)
     ) dut (
-        .clk_i(clk), .rst_ni(1'b1),
+        .clk_i(clk), .rst_ni(rst_n),
         .mon_mst_req_i(source_req), .mon_mst_rsp_i(source_rsp),
         .mon_slv_req_i(target_req), .mon_slv_rsp_i(target_rsp),
         .end_of_sim_o(done)
@@ -117,6 +118,19 @@ module tb_axi_reorder_compare;
     initial begin
         clear_bus();
         void'($value$plusargs("fault=%d", fault));
+        if (fault == 5 || fault == 6) begin
+            w(0, 64'hdead);
+            aw(0, 0, 32'h300);
+            aw(1, 2, 32'h300);
+            ar(0, 1, 32'h400);
+            ar(1, 3, 32'h400);
+            r(1, 3, 64'hbeef);
+            @(negedge clk);
+            rst_n = 0;
+            repeat (3) @(negedge clk);
+            rst_n = 1;
+            if (fault == 6) fault = 4;
+        end
         w(0, 64'h1111);
         aw(0, 0, 32'h100);
         aw(0, fault == 1 ? 0 : 1, 32'h200);

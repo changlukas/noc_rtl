@@ -367,3 +367,53 @@ def test_random_concurrent_memory_and_strobes(tmp_path, seed, name):
             kinds.add("zero" if mask == 0 else "full" if mask == full else "partial")
     assert kinds == {"full", "partial", "zero"}
     assert "+concurrent_rw=1" in (root / "schedule.txt").read_text()
+
+
+@pytest.mark.parametrize("mode", ["control", "data", "rand"])
+def test_stress_patterns_legal_and_distinct(tmp_path, mode):
+    import json
+    catalog = REPO / "sim/test_patterns/stress/cases.json"
+    names = generate(tmp_path, REPO / "sim/topology.yml", 3,
+                     profile="cosim", mode=mode, catalog=catalog)
+    assert names == ["capacity_reuse", "hol_blocking", "reset_recovery"]
+    for name in names:
+        writes = _parse_write(tmp_path / name / "write.txt")
+        reads = _parse_read(tmp_path / name / "read.txt")
+        assert len(writes) == len(reads)
+        byte_addresses = set()
+        for t in writes:
+            span = (t["len"]+1) << t["size"]
+            addresses = set(range(t["addr"], t["addr"]+span))
+            assert not byte_addresses & addresses
+            byte_addresses |= addresses
+            assert t["addr"] >> 12 == (t["addr"]+span-1) >> 12
+        if name == "hol_blocking":
+            assert len({t["addr"] >> 32 for t in writes}) == 2
+            by_id = {i: {t["addr"] >> 32 for t in writes if t["id"] == i} for i in range(8)}
+            assert all(len(d) == 1 for d in by_id.values())
+        if name == "reset_recovery":
+            assert (tmp_path / name / "preload.mem").exists()
+    original = json.loads(catalog.read_text())["cases"][0]
+    for target in ("per_id", "context", "rob"):
+        path = tmp_path / (target+".json")
+        path.write_text(json.dumps(dict(cases=[dict(original, capacity_target=target)])))
+        generate(tmp_path / target, REPO / "sim/topology.yml", 3,
+                 profile="cosim", mode=mode, catalog=path)
+        txns = _parse_write(tmp_path / target / "capacity_reuse/write.txt")
+        assert len({t["id"] for t in txns}) == (1 if target == "per_id" else 8)
+        assert len({t["addr"] >> 32 for t in txns}) == (1 if target == "per_id" else 4)
+
+
+@pytest.mark.parametrize("mode", ["control", "data", "rand"])
+def test_reorder_backpressure_prefill(tmp_path, mode):
+    import json
+    original = json.loads((REPO / "sim/test_patterns/standalone/cases.json").read_text())
+    case = next(c for c in original["cases"] if c["name"] == "single_id_reorder")
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps(dict(cases=[dict(case, count=64, response_backpressure=True)])))
+    generate(tmp_path, REPO / "sim/topology.yml", 3, profile="cosim", mode=mode, catalog=catalog)
+    txns = _parse_write(tmp_path / "single_id_reorder/write.txt")
+    assert len(txns) == 64 and all(t["len"] == 0 for t in txns)
+    assert all(t["addr"] >> 32 == 2 for t in txns[:31])
+    assert [t["addr"] >> 32 for t in txns[31:35]] == [1, 2, 3, 0]
+    assert len({t["id"] for t in txns}) == 1

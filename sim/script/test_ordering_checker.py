@@ -14,7 +14,7 @@ subprocess.run([os.environ.get("VCS", "vcs"), "-full64", "-sverilog", "-assert",
                 "-o", str(binary), "-l", str(build / "compile.log")], check=True)
 for fault, expected in [(0, None), (1, "AW mismatch or same-ID request reordered"),
                         (2, "AR mismatch or same-ID request reordered"),
-                        (3, "W mismatch"), (4, "R mismatch")]:
+                        (3, "W mismatch"), (4, "R mismatch"), (5, None), (6, "R mismatch")]:
     result = subprocess.run([str(binary), "+fault=" + str(fault)],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
     (build / ("fault_%d.log" % fault)).write_text(result.stdout)

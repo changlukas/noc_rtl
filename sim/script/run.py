@@ -15,6 +15,9 @@ p.add_argument("--mode", choices=("auto", "control", "data", "rand"), default="a
 p.add_argument("--wave", action="store_true")
 p.add_argument("--corrupt", action="store_true")
 p.add_argument("--coverage", action="store_true")
+p.add_argument("--backpressure", action="store_true")
+p.add_argument("--target", choices=("per_id", "context", "rob"), default="per_id")
+p.add_argument("--seed", type=int, default=1)
 a = p.parse_args()
 patterns = Path("patterns")
 if a.mode != "auto":
@@ -23,7 +26,19 @@ cases = (patterns / "cases.list").read_text().split()
 if a.case not in cases:
     p.error("Unsupported co-simulation CASE '{}'. Use make list. "
             "Available cases: {}".format(a.case, ", ".join(cases)))
-stim = patterns / a.case
+pattern = a.case
+if a.backpressure:
+    if a.case not in ("single_id_reorder", "multi_id_out_of_order"):
+        p.error("BACKPRESSURE=1 requires a reorder case")
+    pattern += "_backpressure"
+if a.case == "capacity_reuse":
+    pattern += "_" + a.target
+stim = patterns / pattern
+if not 0 <= a.seed <= 0xffffffff:
+    p.error("SEED must be an unsigned 32-bit integer")
+if a.case != "reset_recovery" and a.seed != json.loads((stim / "manifest.json").read_text())["seed"]:
+    p.error("SEED changes reset timing only; regenerate patterns to change transaction seed")
+run_name = pattern + "_" + a.mode + "_s" + str(a.seed)
 for name in ("schedule.txt", "read.txt", "write.txt"):
     if not (stim / name).is_file():
         p.error("Incomplete co-simulation pattern '{}': missing {}. "
@@ -31,11 +46,12 @@ for name in ("schedule.txt", "read.txt", "write.txt"):
 report = Path(a.report)
 report.mkdir(parents=True, exist_ok=True)
 args = [str(Path(a.binary).resolve()), "+stim_dir=" + str(stim.resolve())]
-args += (stim / "schedule.txt").read_text().split()
+args += [v for v in (stim / "schedule.txt").read_text().split() if not v.startswith("+seed=")]
+args += ["+seed=" + str(a.seed)]
 if a.coverage:
     args += ["-cm", "line+cond+fsm+tgl+branch+assert",
              "-cm_dir", str(Path(a.binary).resolve()) + ".vdb",
-             "-cm_name", a.case + "_" + a.mode]
+             "-cm_name", run_name]
 if a.wave:
     args += ["+wave_file=" + str((report / (a.case + ".fsdb")).resolve())]
 if a.corrupt:
@@ -63,7 +79,7 @@ log_path.write_text(log)
 print(log)
 if a.coverage:
     # Run provenance only. Functional coverage bins/results belong to VCS/URG.
-    result = dict(case=a.case, mode=a.mode, passed=passed, command=args,
+    result = dict(case=a.case, mode=a.mode, target=a.target, backpressure=a.backpressure, seed=a.seed, passed=passed, command=args,
                   vdb=str(Path(a.binary).resolve()) + ".vdb",
                   source_manifest_sha256=hashlib.sha256(Path("SHA256SUMS").read_bytes()).hexdigest(),
                   profile=Path("profile.yml").read_text(),

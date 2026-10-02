@@ -6,6 +6,7 @@ Local adaptations:
 - Buffer observed W beats until their AW destination is known; do not change DUT stimulus timing.
 - Compare W data only on asserted WSTRB lanes; use existing axi_pkg byte-lane functions for narrow R transfers.
 - Match only the oldest pending request per source ID at each destination; allow different IDs to overtake. Associate W bursts with the matched AW and map responses by downstream ID.
+- Clear pending records on reset and suppress channel sampling during reset; comparisons are unchanged.
 - Sample dynamic queue status on the falling clock edge for VCS 2017 compatibility.
 
 The monitor observes source AXI and all destination AXI interfaces. It checks request forwarding and per-ID response order. It does not inspect internal NoC tags or prove ROB coverage. Identical same-ID B payloads cannot distinguish two already available responses.

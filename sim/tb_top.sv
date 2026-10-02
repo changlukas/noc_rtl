@@ -43,6 +43,13 @@ module tb_top #(
     wire rd_order_full = dut.path_ar_valid &&
         dut.i_response_path.i_ordering.rd_outstanding_cnt_reg[dut.path_ar.axi.arid] >= MAX_OUTSTANDING_PER_ID;
     int reorder_test = 0;
+    int stress_test = 0;
+    string capacity_target = "per_id";
+    bit response_backpressure = 0;
+    bit block_b = 0, block_r = 0;
+    wire [NUM_NSUS-1:0] aw_context_full, ar_context_full;
+    wire [NUM_NSUS-1:0] aw_context_accept, ar_context_accept;
+    wire [NUM_NSUS-1:0] memory_b_blocked, memory_r_blocked;
     int dst_wr_cnt[NUM_NSUS] = '{default:0};
     int dst_rd_cnt[NUM_NSUS] = '{default:0};
     function automatic int nsu_id(input int port);
@@ -351,6 +358,10 @@ module tb_top #(
                 .rx_dat_valid_i(tx_dat_valid[PORT]), .rx_dat_flit_i(tx_dat_flit[PORT]),
                 .rx_dat_crdvalid_o(tx_dat_credit[PORT])
             );
+            assign aw_context_full[n] = i_nsu.i_response_path.i_context_buffer.i_aw_context.full_o;
+            assign ar_context_full[n] = i_nsu.i_response_path.i_context_buffer.i_ar_context.full_o;
+            assign aw_context_accept[n] = i_nsu.aw_context_valid && i_nsu.aw_context_ready;
+            assign ar_context_accept[n] = i_nsu.ar_context_valid && i_nsu.ar_context_ready;
             initial begin
                 repeat (99990) @(posedge clk);
                 $display("NSU_TIMEOUT node=%0d aw_vr=%b%b w_vr=%b%b ar_vr=%b%b b_vr=%b%b r_vr=%b%b", n,
@@ -508,6 +519,28 @@ module tb_top #(
                 );
             end
         end
+        AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
+            .AXI_ID_WIDTH(DEVICE_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) memory_bus();
+        typedef logic [DEVICE_ID_WIDTH-1:0] memory_id_t;
+        `AXI_TYPEDEF_ALL(gate, mon_addr_t, memory_id_t, mon_data_t, mon_strb_t, mon_user_t)
+        gate_req_t gate_req, memory_req;
+        gate_resp_t gate_rsp, memory_rsp;
+        wire stop_b = block_b && (response_backpressure ? PORT == 1 : stress_test != 2 || n == 0 || !aw_context_full[0]);
+        wire stop_r = block_r && (response_backpressure ? PORT == 1 : stress_test != 2 || n == 0 || !ar_context_full[0]);
+        `AXI_ASSIGN_TO_REQ(gate_req, delayed_bus)
+        `AXI_ASSIGN_FROM_RESP(delayed_bus, gate_rsp)
+        `AXI_ASSIGN_FROM_REQ(memory_bus, memory_req)
+        `AXI_ASSIGN_TO_RESP(memory_rsp, memory_bus)
+        always_comb begin
+            memory_req = gate_req;
+            gate_rsp = memory_rsp;
+            memory_req.b_ready = gate_req.b_ready && !stop_b;
+            memory_req.r_ready = gate_req.r_ready && !stop_r;
+            gate_rsp.b_valid = memory_rsp.b_valid && !stop_b;
+            gate_rsp.r_valid = memory_rsp.r_valid && !stop_r;
+        end
+        assign memory_b_blocked[n] = stop_b && memory_rsp.b_valid;
+        assign memory_r_blocked[n] = stop_r && memory_rsp.r_valid;
         axi_sim_mem_intf #(
             .AXI_ADDR_WIDTH     (AXI_ADDR_WIDTH),
             .AXI_DATA_WIDTH     (AXI_DATA_WIDTH),
@@ -520,7 +553,7 @@ module tb_top #(
         ) i_memory (
             .clk_i              (clk),
             .rst_ni             (axi_rst_n),
-            .axi_slv            (delayed_bus),
+            .axi_slv            (memory_bus),
             .mon_w_valid_o      (),
             .mon_w_addr_o       (),
             .mon_w_data_o       (),
@@ -702,6 +735,10 @@ module tb_top #(
             end
         end
 `endif
+        void'($value$plusargs("stress_test=%d", stress_test));
+        void'($value$plusargs("capacity_target=%s", capacity_target));
+        response_backpressure = $test$plusargs("response_backpressure");
+        if (stress_test != 0 && !RTL_NSU) $fatal(1, "Stress cases require RTL NSU");
         void'($value$plusargs("reorder_test=%d", reorder_test));
         $display("RESPONSE_DELAY enabled=%0d west_setting=%0d", reorder_test != 0, RSP_DELAY_CYCLES);
         $display("DAT_CREDIT_DEPTH router=%0d nmu_rx=%0d nsu_rx=%0d",
@@ -765,8 +802,8 @@ module tb_top #(
         rst_n = 1;
         wait (axi_rst_n && noc_rst_n);
         @(posedge clk);
-        scoreboard.enable_all_checks();
-        scoreboard.monitor();
+        start_scoreboard();
+        if (stress_test == 3) run_reset_recovery(stim_dir);
         if (init_phase) begin
             fork init_master.run_aw(); init_master.run_w(); init_master.wait_b(); join
         end
@@ -777,9 +814,11 @@ module tb_top #(
             fork verify_master.run_ar(); verify_master.wait_r(); join
         end else begin
             if (expected_writes != 0) begin
+                start_stress_phase(0);
                 fork master.run_aw(); master.run_w(); receive_b(); join
             end
             if (expected_reads != 0) begin
+                start_stress_phase(1);
                 fork master.run_ar(); receive_r(); join
             end
         end
@@ -804,12 +843,13 @@ module tb_top #(
         if ((stall_cycles != 0 || hold_cycles != 0) &&
                 (b_stall_cnt == 0 || r_stall_cnt == 0))
             $fatal(1, "Response backpressure was not exercised");
-        if (capacity_test && (b_full_cnt == 0 || wr_limit_cnt == 0 || rd_limit_cnt == 0 ||
+        if (capacity_test && stress_test == 0 && (b_full_cnt == 0 || wr_limit_cnt == 0 || rd_limit_cnt == 0 ||
                 aw_stall_cnt == 0 || ar_stall_cnt == 0 ||
                 (data_case ? dat_full_cnt == 0 : r_full_cnt == 0)))
             $fatal(1, "Required capacity saturation was not reached");
         if (concurrent_rw && (overlap_cnt == 0 || w_during_read_cnt == 0 || r_during_write_cnt == 0))
             $fatal(1, "Read/write concurrency was not exercised");
+        check_stress();
         if (!ordering_done) $fatal(1, "AXI ordering checker has pending transactions");
         $display("AXI_ORDERING_CHECK_DRAINED");
         scoreboard.reset();
@@ -916,5 +956,6 @@ module tb_top #(
             NUM_IDS, MAX_OUTSTANDING_PER_ID, perf_end-perf_start+1,
             wr_txn_stall, rd_txn_stall);
     end
+    `include "ni_stress.svh"
     `include "ni_coverage.svh"
 endmodule

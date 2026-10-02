@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 `timescale 1ps / 1ps
 `ifdef NI_COVERAGE
-// Bind observers to existing cells; payloads and handshake behavior are untouched.
+// Observe accepted push/pop events; payloads and handshakes are untouched.
 module ni_fifo_coverage (
     input wire clk_i,
     input wire rst_n_i,
@@ -24,7 +24,7 @@ module ni_fifo_coverage (
         if (!rst_n_i) full_seen = 0;
         else begin
             fifo_coverage.sample(full_i, empty_i, push_i && pop_i,
-                full_seen && push_i && !full_i);
+                full_seen && push_i);
             if (full_i) full_seen = 1;
             else if (push_i) full_seen = 0;
         end
@@ -62,8 +62,8 @@ bind cc_fifo ni_fifo_coverage i_coverage (
     .rst_n_i (rst_ni),
     .full_i  (full_o),
     .empty_i (empty_o),
-    .push_i  (push_i),
-    .pop_i   (pop_i)
+    .push_i  (push_i && !full_o),
+    .pop_i   (pop_i && !empty_o)
 );
 bind cc_credit_counter ni_credit_coverage i_coverage (
     .clk_i         (clk_i),

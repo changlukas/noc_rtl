@@ -1,0 +1,29 @@
+{
+  "cases": [
+    {
+      "name": "capacity_reuse",
+      "count": 320,
+      "burst_beats": 1,
+      "ids": "multiple",
+      "capacity_test": true,
+      "hold_cycles": 4096,
+      "stress_test": 1
+    },
+    {
+      "name": "hol_blocking",
+      "count": 80,
+      "burst_beats": 1,
+      "ids": "multiple",
+      "destinations": "alternate",
+      "stress_test": 2
+    },
+    {
+      "name": "reset_recovery",
+      "count": 8,
+      "burst_beats": 4,
+      "ids": "multiple",
+      "destinations": "alternate",
+      "stress_test": 3
+    }
+  ]
+}

@@ -146,6 +146,30 @@ module axi_reorder_compare #(
   id_t aw_id_queue [NumSlaves][NumAxiIds][$];
   id_t ar_id_queue [NumSlaves][NumAxiIds][$];
 
+  // Local adaptation: reset abandons all pre-reset transactions.
+  always @(negedge rst_ni) begin
+    write_seq = 0;
+    w_pending.delete();
+    w_input_queue.delete();
+    w_queue.delete();
+    for (int i = 0; i < NumSlaves; i++) begin
+      aw_queue[i].delete();
+      aw_seq_queue[i].delete();
+      w_output_queue[i].delete();
+      ar_queue[i].delete();
+      for (int id = 0; id < NumAxiIds; id++) begin
+        b_queue[i][id].delete();
+        r_queue[i][id].delete();
+        aw_id_queue[i][id].delete();
+        ar_id_queue[i][id].delete();
+      end
+    end
+    for (int id = 0; id < NumAxiIds; id++) begin
+      r_out_rsp_queue[id].delete();
+      b_out_rsp_queue[id].delete();
+    end
+  end
+
   typedef logic [$clog2(NumSlaves)-1:0] slv_id_t;
   slv_id_t aw_slv_idx, ar_slv_idx;
 
@@ -179,7 +203,8 @@ module axi_reorder_compare #(
     .idx_o            ( ar_slv_idx            )
   );
 
-  always_ff @(posedge clk_i) begin : step_1
+  always @(posedge clk_i) begin : step_1
+    if (!rst_ni) disable step_1;
     if (mon_mst_req_i.aw_valid && mon_mst_rsp_i.aw_ready) begin
       aw_queue[aw_slv_idx].push_back(mon_mst_req_i.aw);
       aw_seq_queue[aw_slv_idx].push_back(write_seq);
@@ -208,7 +233,8 @@ module axi_reorder_compare #(
 
   // verilog_lint: waive-start always-ff-non-blocking
   for (genvar i = 0; i < NumSlaves; i++) begin : gen_slv_step_2
-    always_ff @(posedge clk_i) begin : step_2
+    always @(posedge clk_i) begin : step_2
+    if (!rst_ni) disable step_2;
       if (mon_slv_req_i[i].aw_valid && mon_slv_rsp_i[i].aw_ready) begin
         automatic aw_chan_t aw_exp, aw_act;
         automatic id_t aw_id;
@@ -304,7 +330,8 @@ module axi_reorder_compare #(
 
   // verilog_lint: waive-start always-ff-non-blocking
   for (genvar i = 0; i < NumSlaves; i++) begin : gen_slv_step_3
-    always_ff @(posedge clk_i) begin : slv_step_3
+    always @(posedge clk_i) begin : slv_step_3
+    if (!rst_ni) disable slv_step_3;
       if (mon_slv_rsp_i[i].b_valid && mon_slv_req_i[i].b_ready) begin
         automatic b_chan_t b;
         b = mon_slv_rsp_i[i].b;
@@ -331,7 +358,8 @@ module axi_reorder_compare #(
   // verilog_lint: waive-stop always-ff-non-blocking
 
   // verilog_lint: waive-start always-ff-non-blocking
-  always_ff @(posedge clk_i) begin : step_4
+  always @(posedge clk_i) begin : step_4
+    if (!rst_ni) disable step_4;
     if (mon_mst_rsp_i.b_valid && mon_mst_req_i.b_ready) begin
       automatic b_chan_t b_exp, b_act;
       automatic id_t b_id;

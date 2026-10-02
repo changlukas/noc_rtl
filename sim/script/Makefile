@@ -10,6 +10,9 @@ ifneq ($(filter run_wave view,$(MAKECMDGOALS)),)
 override WAVE := 1
 endif
 MODE ?= auto
+BACKPRESSURE ?= 0
+TARGET ?= per_id
+SEED ?= 1
 RSP_DELAY ?= 2
 REG_TYPE ?= 0
 IO_FIFO_DEPTH ?= 32
@@ -31,7 +34,7 @@ PLI_DIR ?= $(VERDI_HOME)/share/PLI/VCS/linux64
 export LD_LIBRARY_PATH := $(PLI_DIR)$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
 export VCS_ARCH_OVERRIDE ?= linux
 BUILD := $(ROOT)/build
-REPORT := $(BUILD)/report$(if $(filter 1,$(COVERAGE)),_coverage,)_wave$(WAVE)$(if $(filter-out auto,$(MODE)),/$(MODE),)
+REPORT := $(BUILD)/report$(if $(filter 1,$(COVERAGE)),_coverage,)_wave$(WAVE)$(if $(filter-out auto,$(MODE)),/$(MODE),)$(if $(filter 1,$(BACKPRESSURE)),/backpressure,)$(if $(filter capacity_reuse,$(CASE)),/$(TARGET),)$(if $(filter-out 1,$(SEED)),/seed$(SEED),)
 INCLUDES := -Irepo/ref_model/dpi -Irepo/ref_model/c_model/include -Irepo/ref_model/c_model/tests/common -Irepo/specgen/generated/cpp -Ideps/yaml-cpp/include -Ideps/yaml-cpp/src -I$(VCS_HOME)/include
 CPPFLAGS := -std=c++17 -O1 -fPIC -DYAML_CPP_STATIC_DEFINE $(INCLUDES)
 YAML_SRC := $(wildcard deps/yaml-cpp/src/*.cpp)
@@ -62,7 +65,7 @@ help:
 	 'make run_wave CASE=<case>   Compile and simulate with FSDB' \
 	 'make view CASE=<case>       Open existing FSDB and signal groups' \
 	 'make clean                 Remove simulation and GUI output' \
-	 'make list                  List the 15 test cases'
+	 'make list                  List the 18 test cases'
 list:
 	@cat pattern.txt
 ifeq ($(DIRECT_LINK),0)
@@ -85,7 +88,7 @@ $(SIM)/simv: $(DPI_DEP)
 compile: $(SIM)/simv
 run: compile sim
 sim:
-	python3 run.py --binary "$(SIM)/simv" --case "$(CASE)" --mode "$(MODE)" --report "$(REPORT)" $(if $(filter 1,$(WAVE)),--wave,) $(if $(filter 1,$(COVERAGE)),--coverage,)
+	python3 run.py --binary "$(SIM)/simv" --case "$(CASE)" --mode "$(MODE)" --target "$(TARGET)" --seed "$(SEED)" $(if $(filter 1,$(BACKPRESSURE)),--backpressure,) --report "$(REPORT)" $(if $(filter 1,$(WAVE)),--wave,) $(if $(filter 1,$(COVERAGE)),--coverage,)
 regress: compile
 	@set -e; while read name; do $(MAKE) --no-print-directory sim CASE=$$name; done < pattern.txt
 corrupt: compile

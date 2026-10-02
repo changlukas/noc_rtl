@@ -40,7 +40,24 @@ Data burst length：2/3/4/7/8/15/16/31/32/63/64。
 
 Random 在 co-sim/direct profile 發送 64 write 與 64 並行 read，完成後 64 readback。
 讀寫區域與各 write transaction 的地址互不重疊；memory 與 scoreboard 使用相同 preload。
-這次 covergroup 遷移不修改上述 stimulus。
+本輪 stress 擴充保留上述 15 組預設 stimulus。
+
+## Stress cases 與變體
+
+| Case／選項 | Stimulus | 必須觀察到 |
+|---|---|---|
+| single_id_reorder BACKPRESSURE=1 | 64 筆、source B/R 暫停；先填入 31 筆，再跨 destination 亂序 | 同一筆已 inversion 的 B/R 在 ROB output 被擋住 |
+| multi_id_out_of_order BACKPRESSURE=1 | 64 筆、source B/R 暫停 | cross-ID inversion、B/R output stall |
+| capacity_reuse TARGET=per_id | 320 筆 single、same ID／destination | read/write per-ID admission limit 後恢復接受 |
+| capacity_reuse TARGET=context | 320 筆 single；每 ID 固定 destination、阻擋 memory response | 四個 NSU 的 AW/AR context 各自 full 後恢復接受 |
+| capacity_reuse TARGET=rob | 320 筆 single；same ID 跨 destination、阻擋 memory response | B/R ROB 所有 entries occupied 後重新 allocation |
+| hol_blocking | 80 筆 single；阻擋 north memory response | north AW/AR context full 時，west response 仍可到達 source，之後全部 drain |
+| reset_recovery | 8 write／8 read pending 時隨機選 reset cycle；reset 後重送 | 無 stale response、fresh traffic 正確完成 |
+
+正式驗證使用目前預設容量；stress 的固定 transaction 數不保證覆蓋任意更大的組態。
+HoL case 驗證獨立 destination response 的進展，不宣稱共享 FIFO 的所有 HoL 情境皆已排除。
+Reset 範圍含全部 NI、TB links 與 C++ router instance；memory 保留內容，checker 清除舊 transaction。
+既有 AXI file master、memory、scoreboard、ordering compare 持續負責 traffic 與正確性判定。
 
 ## Functional coverage model
 
@@ -50,7 +67,9 @@ Random 在 co-sim/direct profile 發送 64 write 與 64 並行 read，完成後 
 | Covergroup | Sample 條件／coverpoint | Cross／限制 |
 |---|---|---|
 | transaction_cg | Source AW/AR handshake：方向、control/data、ID、代表性 length、size、INCR、destination | direction × traffic／length／destination；目前整合 memory profile 只用 INCR |
-| write_strobe_cg | W handshake：WSTRB 為 1 的 bit 數，含 zero | 尚未依 AW active byte lanes 分類 full/partial |
+| write_strobe_cg | 配對已 handshake 的 AW/W：依 active byte lanes 分類 zero／partial／full、起始 lane、size | strobe × size；1-byte transfer 無 partial 組合 |
+| boundary_cg | AW/AR handshake：4 KB 尾端、SAM 起點／尾端 | direction × control/data × boundary |
+| stress_cg | per-ID limit/reuse、ROB full/reuse、blocked destination 下其他路徑完成、reset 後完成、同筆 inversion/output stall | 各事件 × read/write |
 | outstanding_cg | Source AXI pending：idle、single、multiple | read pending × write pending；不是 ordering 內部容量 |
 | ordering_cg | Ordering ingress 的 B／RLAST arrival，相對仍 pending 的較早 request | direction × same-ID inversion／cross-ID inversion；不是 read-beat interleaving |
 | rob_cg | B/R 各一個 instance：bypass/reorder allocation、storage retire、無 tail space、per-ID limit、AXI/output stall | free_cnt 為零不代表所有 ROB entries occupied；output stall 不等於該筆曾發生 inversion |
@@ -59,6 +78,7 @@ Random 在 co-sim/direct profile 發送 64 write 與 64 並行 read，完成後 
 | credit_cg | 每個 credit counter：available、give、take | 三者 cross；排除無 stored credit、無 give 卻 take 的非法組合，仍由 primitive assertion 檢查 |
 
 Sampling 的 pending count、request identity queue、full_seen 只用於辨識情境。
+FIFO/context recovery 以 full 後實際接受 push 判定；包含 FullBw 在 full 狀態同 cycle pop/push 的 reuse。
 覆蓋次數、bins、cross 與百分比由 simulator 管理，不再維護事件計數字典或 Python coverage parser。
 Monitor 無法配對 response 或結束時尚有 records 會報錯，避免把不完整觀察當成有效 coverage。
 
@@ -80,10 +100,10 @@ Run log 與 .run.json 保留 command、profile、source manifest digest、stimul
 
 ## 尚待規劃／補強
 
-- Capacity full/reuse：依當次參數確認真正限制資源；context full 不等於動態 ID mapping table 用滿。
-- HoL isolation、仲裁 fairness、no-avoidable-bubble，以及 reorder × backpressure 的同筆 transaction 關聯。
-- 整合 reset recovery、獨立時脈 CDC、代表性 ID／FIFO／context／ROB／REG_TYPE 組態與多 seed。
-- Active-lane strobe 分類、完整 supported response-error coverage、其他必要 functional crosses。
+- 動態 ID mapping table 容量；NSU context full 不等於 ID mapping table 用滿。
+- 任意 VC／多 source 的 HoL isolation、仲裁 fairness、no-avoidable-bubble。
+- 獨立時脈 CDC、代表性 ID／FIFO／context／ROB／REG_TYPE 組態與 transaction 多 seed。
+- 完整 supported response-error coverage、其他必要 functional crosses。
 - 多 NMU source、Router RTL、multihop、physical CDC/RDC、synthesis/STA 不在目前平台驗收範圍。
 
 未命中的 bin 需區分缺 stimulus、組態不可達、規格不支援或 RTL 問題；不因數值低就直接 waiver。
@@ -91,4 +111,4 @@ Run log 與 .run.json 保留 command、profile、source manifest digest、stimul
 
 ## Latest full native baseline
 
-15/15 cases PASS; coverage gaps and the proposed follow-up plan are in [Coverage review](verification-coverage-review.md). Follow-up stimulus is pending review.
+15/15 cases PASS; coverage gaps and the proposed follow-up plan are in [Coverage review](verification-coverage-review.md). The approved stress extension is implemented; see [Stress acceptance](verification-stress-results.md) for the 29-run native merge and remaining gaps.

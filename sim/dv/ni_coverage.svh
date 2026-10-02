@@ -30,15 +30,56 @@
     endgroup
     transaction_cg transaction_coverage = new();
 
-    covergroup write_strobe_cg with function sample(int active_bytes);
+    mon_aw_chan_t cov_aw_queue[$];
+    mon_w_chan_t cov_w_queue[$];
+    int cov_w_beat = 0;
+    bit cov_b_inverted[1 << ni_flit_pkg::ORDERING_TAG_WIDTH] = '{default:0};
+    bit cov_r_inverted[1 << ni_flit_pkg::ORDERING_TAG_WIDTH] = '{default:0};
+
+    covergroup write_strobe_cg with function sample(int kind, int lane, int size);
         option.per_instance = 1;
-        // Raw WSTRB population; full/partial classification requires AW byte lanes.
-        cp_bytes: coverpoint active_bytes {
-            bins zero = {0};
-            bins nonzero[] = {[1:AXI_DATA_WIDTH/8]};
+        cp_strobe: coverpoint kind { bins zero = {0}; bins partial = {1}; bins full = {2}; }
+        cp_lane: coverpoint lane { bins lane[] = {[0:AXI_DATA_WIDTH/8-1]}; }
+        cp_size: coverpoint size { bins size[] = {[0:$clog2(AXI_DATA_WIDTH/8)]}; }
+        strobe_size: cross cp_strobe, cp_size {
+            ignore_bins byte_partial = binsof(cp_strobe.partial) && binsof(cp_size) intersect {0};
         }
     endgroup
     write_strobe_cg write_strobe_coverage = new();
+
+    covergroup boundary_cg with function sample(bit is_read, bit is_data,
+            bit page_end, bit sam_start, bit sam_end);
+        option.per_instance = 1;
+        cp_direction: coverpoint is_read { bins write = {0}; bins read = {1}; }
+        cp_traffic: coverpoint is_data { bins control = {0}; bins data = {1}; }
+        cp_page_end: coverpoint page_end { bins observed = {1}; }
+        cp_sam_start: coverpoint sam_start { bins observed = {1}; }
+        cp_sam_end: coverpoint sam_end { bins observed = {1}; }
+        page_boundary: cross cp_direction, cp_traffic, cp_page_end;
+        sam_first: cross cp_direction, cp_traffic, cp_sam_start;
+        sam_last: cross cp_direction, cp_traffic, cp_sam_end;
+    endgroup
+    boundary_cg boundary_coverage = new();
+
+    covergroup stress_cg with function sample(bit is_read, bit limit_reuse,
+            bit rob_full, bit rob_reuse, bit hol_progress, bit reset_recovered,
+            bit inversion_stall);
+        option.per_instance = 1;
+        cp_direction: coverpoint is_read { bins write = {0}; bins read = {1}; }
+        cp_limit_reuse: coverpoint limit_reuse { bins observed = {1}; }
+        cp_rob_full: coverpoint rob_full { bins observed = {1}; }
+        cp_rob_reuse: coverpoint rob_reuse { bins observed = {1}; }
+        cp_hol: coverpoint hol_progress { bins observed = {1}; }
+        cp_reset: coverpoint reset_recovered { bins observed = {1}; }
+        cp_inversion_stall: coverpoint inversion_stall { bins observed = {1}; }
+        direction_limit_reuse: cross cp_direction, cp_limit_reuse;
+        storage_full: cross cp_direction, cp_rob_full;
+        storage_reuse: cross cp_direction, cp_rob_reuse;
+        direction_hol_progress: cross cp_direction, cp_hol;
+        reset_recovery: cross cp_direction, cp_reset;
+        reorder_backpressure: cross cp_direction, cp_inversion_stall;
+    endgroup
+    stress_cg stress_coverage = new();
 
     covergroup outstanding_cg with function sample(int writes, int reads);
         option.per_instance = 1;
@@ -91,6 +132,10 @@
             if (addr >= topology_pkg::SAM[rule].start_addr &&
                     addr < topology_pkg::SAM[rule].end_addr) begin
                 is_data = topology_pkg::SAM[rule].idx.is_data;
+                boundary_coverage.sample(is_read, is_data,
+                    ((addr + ((len+1) << size)) % 4096) == 0,
+                    addr == topology_pkg::SAM[rule].start_addr,
+                    addr + ((len+1) << size) == topology_pkg::SAM[rule].end_addr);
                 for (int n = 0; n < NUM_NSUS; n++)
                     if (topology_pkg::SAM[rule].idx.dst_id == nsu_id(n+1)) destination = n;
                 break;
@@ -133,15 +178,32 @@
         end
         if (index < 0) $fatal(1, "Coverage monitor cannot match ordering response");
         ordering_coverage.sample(is_read, older_same_id, older_other_id);
+        if (reorder && (older_same_id || older_other_id)) begin
+            if (is_read) cov_r_inverted[tag] = 1;
+            else cov_b_inverted[tag] = 1;
+        end
     endtask
 
     always @(posedge clk) begin : sample_ni_coverage
         cov_request_t request;
         int wr_total, rd_total;
+        mon_aw_chan_t aw;
+        mon_w_chan_t w;
+        mon_strb_t mask;
+        int lo, hi;
         if (!axi_rst_n) begin
             reset_coverage.sample(cov_wr_pending.size() != 0 || cov_rd_pending.size() != 0);
             cov_wr_pending.delete();
             cov_rd_pending.delete();
+            cov_aw_queue.delete();
+            cov_w_queue.delete();
+            cov_w_beat = 0;
+            cov_b_stall_inversion = 0;
+            cov_r_stall_inversion = 0;
+            foreach (cov_b_inverted[tag]) begin
+                cov_b_inverted[tag] = 0;
+                cov_r_inverted[tag] = 0;
+            end
             foreach (cov_wr_live[id]) begin
                 cov_wr_live[id] = 0;
                 cov_rd_live[id] = 0;
@@ -151,6 +213,7 @@
                 cov_address(0, vip.aw_addr, int'(vip.aw_id), int'(vip.aw_len),
                     int'(vip.aw_size), int'(vip.aw_burst));
                 cov_wr_live[vip.aw_id]++;
+                cov_aw_queue.push_back(mon_mst_raw.aw);
             end
             if (vip.ar_valid && vip.ar_ready) begin
                 cov_address(1, vip.ar_addr, int'(vip.ar_id), int'(vip.ar_len),
@@ -158,7 +221,24 @@
                 cov_rd_live[vip.ar_id]++;
             end
             if (vip.w_valid && vip.w_ready) begin
-                write_strobe_coverage.sample($countones(vip.w_strb));
+                cov_w_queue.push_back(mon_mst_raw.w);
+            end
+            // AW and W are independent; pair accepted beats in AXI write order.
+            while (cov_aw_queue.size() != 0 && cov_w_queue.size() != 0) begin
+                aw = cov_aw_queue[0];
+                w = cov_w_queue.pop_front();
+                lo = axi_pkg::beat_lower_byte(aw.addr, aw.size, aw.len, aw.burst,
+                    AXI_DATA_WIDTH/8, cov_w_beat);
+                hi = axi_pkg::beat_upper_byte(aw.addr, aw.size, aw.len, aw.burst,
+                    AXI_DATA_WIDTH/8, cov_w_beat);
+                mask = '0;
+                for (int lane = lo; lane <= hi; lane++) mask[lane] = 1;
+                write_strobe_coverage.sample(w.strb == 0 ? 0 : w.strb == mask ? 2 : 1,
+                    lo, int'(aw.size));
+                if (w.last) begin
+                    void'(cov_aw_queue.pop_front());
+                    cov_w_beat = 0;
+                end else cov_w_beat++;
             end
             if (vip.b_valid && vip.b_ready) begin
                 cov_wr_live[vip.b_id]--;
@@ -191,6 +271,20 @@
             if (`COV_ORDER.s_r_valid_i && `COV_ORDER.s_r_ready_o && `COV_ORDER.s_r_i.axi.rlast)
                 cov_response(1, int'(`COV_ORDER.s_r_i.axi.rid),
                     int'(`COV_ORDER.s_r_i.meta.ordering_tag), `COV_ORDER.s_r_i.meta.ordering_req);
+            if (`COV_ORDER.b_sel_valid && !`COV_ORDER.m_b_ready_i &&
+                    cov_b_inverted[`COV_ORDER.wr_order_head[`COV_ORDER.b_sel_id].base])
+                cov_b_stall_inversion = 1;
+            if (`COV_ORDER.r_sel_valid && !`COV_ORDER.m_r_ready_i &&
+                    cov_r_inverted[`COV_ORDER.rd_order_head[`COV_ORDER.r_sel_id].base])
+                cov_r_stall_inversion = 1;
+            if (`COV_ORDER.b_retire && `COV_ORDER.b_sel_valid)
+                cov_b_inverted[`COV_ORDER.wr_order_head[`COV_ORDER.b_sel_id].base] = 0;
+            if (`COV_ORDER.r_retire && `COV_ORDER.r_sel_valid && `COV_ORDER.m_r_o.rlast)
+                cov_r_inverted[`COV_ORDER.rd_order_head[`COV_ORDER.r_sel_id].base] = 0;
+            stress_coverage.sample(0, wr_limit_reused, b_storage_full, b_storage_reused,
+                hol_wr_progress, reset_complete && b_count != 0, cov_b_stall_inversion);
+            stress_coverage.sample(1, rd_limit_reused, r_storage_full, r_storage_reused,
+                hol_rd_progress, reset_complete && r_count != 0, cov_r_stall_inversion);
             b_rob_coverage.sample(
                 `COV_ORDER.aw_accept ? (`COV_ORDER.aw_reorder ? 2 : 1) : 0,
                 `COV_ORDER.b_retire && `COV_ORDER.b_sel_valid,
@@ -206,7 +300,8 @@
     end
 
     final begin
-        if (cov_wr_pending.size() != 0 || cov_rd_pending.size() != 0)
+        if (cov_wr_pending.size() != 0 || cov_rd_pending.size() != 0 ||
+                cov_aw_queue.size() != 0 || cov_w_queue.size() != 0)
             $error("Coverage monitor has pending ordering records");
     end
     `undef COV_ORDER

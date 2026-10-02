@@ -79,6 +79,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
             continue
         copy(ROOT / relative, "repo/" + relative)
         source_list.append("repo/" + relative)
+    copy(ROOT / "sim/dv/ni_stress.svh", "repo/sim/dv/ni_stress.svh")
     copy(ROOT / "sim/dv/ni_coverage.svh", "repo/sim/dv/ni_coverage.svh")
     copy(ROOT / "sim/dv/ni_resource_coverage.sv", "repo/sim/dv/ni_resource_coverage.sv")
     source_list += ["+incdir+repo/sim/dv", "repo/sim/dv/ni_resource_coverage.sv"]
@@ -113,15 +114,36 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     if extra_catalog:
         cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim", catalog=extra_catalog)
     (patterns / "cases.list").write_text("\n".join(cases) + "\n")
+    stress_catalog = ROOT / "sim/test_patterns/stress/cases.json"
+    cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim", catalog=stress_catalog)
+    (patterns / "cases.list").write_text("\n".join(cases) + "\n")
     common_cases = [case["name"] for case in json.loads(
         (ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]
         if not (case.get("reset_warmup") or case.get("legacy_mixed") or case.get("require_stall"))]
+    common_cases += [case["name"] for case in json.loads(stress_catalog.read_text())["cases"]]
     (out / "pattern.txt").write_text("\n".join(common_cases) + "\n")
     for mode in ("control", "data", "rand"):
         mode_cases = generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode)
         mode_cases += generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
                                catalog=ROOT / "sim/test_patterns/cosim/cases.json")
+        mode_cases += generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
+                               catalog=stress_catalog)
         (patterns / mode / "cases.list").write_text("\n".join(mode_cases) + "\n")
+    variants = json.loads(stress_catalog.read_text())["cases"][:1]
+    variants = [dict(variants[0], name="capacity_reuse_"+target, capacity_target=target)
+                for target in ("per_id", "context", "rob")]
+    base_cases = json.loads((ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]
+    variants += [dict(case, name=case["name"]+"_backpressure", count=64, hold_cycles=1024,
+                     response_backpressure=True)
+                 for case in base_cases if case["name"] in ("single_id_reorder", "multi_id_out_of_order")]
+    variant_catalog = out / "stress-variants.json"
+    variant_catalog.write_text(json.dumps(dict(cases=variants), indent=2)+"\n")
+    for mode in ("auto", "control", "data", "rand"):
+        directory = patterns if mode == "auto" else patterns / mode
+        existing = (directory / "cases.list").read_text().split()
+        extra = generate(directory, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
+                         catalog=variant_catalog)
+        (directory / "cases.list").write_text("\n".join(existing+extra)+"\n")
     for path in patterns.rglob("*"):
         if path.is_file():
             copy(path, str(Path("patterns") / path.relative_to(patterns)))
