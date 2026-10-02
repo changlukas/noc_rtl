@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Fail closed on model, protocol and existing scoreboard diagnostics."""
 import argparse
+import hashlib
+import json
 from pathlib import Path
 import re
 import subprocess
@@ -60,9 +62,13 @@ if passed:
 log_path.write_text(log)
 print(log)
 if a.coverage:
-    from coverage_report import write_case
-    result = write_case(log, a.case, passed, stim, report, a.binary, a.mode, args)
-    if not result["observation_valid"]:
-        raise SystemExit("Coverage observation is invalid; see coverage JSON")
+    # Run provenance only. Functional coverage bins/results belong to VCS/URG.
+    result = dict(case=a.case, mode=a.mode, passed=passed, command=args,
+                  vdb=str(Path(a.binary).resolve()) + ".vdb",
+                  source_manifest_sha256=hashlib.sha256(Path("SHA256SUMS").read_bytes()).hexdigest(),
+                  profile=Path("profile.yml").read_text(),
+                  stimulus_sha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                                   for p in sorted(stim.iterdir()) if p.is_file()})
+    (report / (a.case + ".run.json")).write_text(json.dumps(result, indent=2) + "\n")
 if not passed:
     raise SystemExit("Co-simulation acceptance failed")

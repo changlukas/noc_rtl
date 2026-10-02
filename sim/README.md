@@ -25,13 +25,28 @@ Repository source entry points: `sim/standalone/nmu/`, `sim/standalone/nsu/`, an
 
 ## Coverage
 
-Use the existing commands with `COVERAGE=1` to collect passive NI observations and
-VCS code/assertion coverage, for example `make run CASE=single_id_reorder COVERAGE=1`.
-The default remains off. Coverage builds reuse the unchanged C++ DPI cache and
-write logs/JSON under `build/report_coverage_wave0` (or the selected wave/mode).
-The VDB is stored beside the corresponding coverage simv binary.
+Use the existing commands with `COVERAGE=1`, for example:
 
-Functional PASS and scenario HIT/MISS are reported separately. A passing simulation
-with no required inversion is a coverage gap, not completed ordering verification.
-Observations do not modify stimulus, DUT timing or the existing checkers.
-See `docs/verification-testplan.md` in the development repository for scope and limits.
+```sh
+make run CASE=request_rand COVERAGE=1
+```
+
+VCS collects SystemVerilog covergroups and code/assertion coverage in the selected
+build's `simv.vdb`. Functional covergroups use per-instance bins and focused crosses.
+Existing scoreboards still determine functional PASS/FAIL. The default is coverage off.
+
+Use the VDB path recorded in `build/report_coverage_wave0/request_rand.run.json`
+(or the selected wave/mode directory) with the native report generator:
+
+```sh
+urg -full64 -dir <path-to-simv.vdb> -report build/coverage -format both
+```
+
+Open `build/coverage/dashboard.html` for the native report. Group/instance/bin
+coverage is separate from RTL line/branch/condition/toggle/FSM coverage.
+Verdi Coverage can also inspect the VDB; nWave's FSDB is the waveform database.
+
+The run JSON stores command, profile and source/stimulus digests only. It does not
+calculate coverage. The former event-count parser and HIT/MISS report are retired;
+old reports remain historical artifacts. See `docs/verification-testplan.md` for
+the model's scope, sampling conditions and remaining coverage gaps.

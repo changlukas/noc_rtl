@@ -82,9 +82,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     copy(ROOT / "sim/dv/ni_coverage.svh", "repo/sim/dv/ni_coverage.svh")
     copy(ROOT / "sim/dv/ni_resource_coverage.sv", "repo/sim/dv/ni_resource_coverage.sv")
     source_list += ["+incdir+repo/sim/dv", "repo/sim/dv/ni_resource_coverage.sv"]
-    copy(ROOT / "sim/coverage_plan.json", "coverage_plan.json")
     copy(ROOT / "sim/script/coverage.hier", "coverage.hier")
-    copy(ROOT / "sim/script/coverage_report.py", "coverage_report.py")
     if direct:
         relative = "sim/standalone/nsu/ni_direct_link.sv"
         copy(ROOT / relative, "repo/" + relative)
@@ -165,6 +163,10 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     copy(ROOT / "sim/script/test_pipeline.py", "test_pipeline.py")
     copy(ROOT / "sim/script/test_ordering_checker.py", "test_ordering_checker.py")
     copy(ROOT / "sim/script/build_key.py", "build_key.py")
+    for name in ("coverage_plan.json", "coverage_report.py"):
+        retired = out / name
+        if retired.exists():
+            retired.unlink()
     retired = out / "repo/rtl/nmu/request_path/id_remap.sv"
     if retired.exists():
         retired.unlink()

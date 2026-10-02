@@ -10,29 +10,26 @@ module ni_fifo_coverage (
     input wire push_i,
     input wire pop_i
 );
-    longint unsigned full_cnt = 0, empty_cnt = 0, push_pop_cnt = 0, recovery_cnt = 0;
     bit full_seen = 0;
+    covergroup fifo_cg with function sample(bit full, bit empty, bit push_pop, bit recovery);
+        option.per_instance = 1;
+        cp_full: coverpoint full { bins observed = {1}; }
+        cp_empty: coverpoint empty { bins observed = {1}; }
+        cp_push_pop: coverpoint push_pop { bins observed = {1}; }
+        cp_recovery: coverpoint recovery { bins observed = {1}; }
+    endgroup
+    fifo_cg fifo_coverage = new();
+
     always @(posedge clk_i) begin
         if (!rst_n_i) full_seen = 0;
         else begin
-            if (empty_i) empty_cnt++;
-            if (full_i) begin
-                full_cnt++;
-                full_seen = 1;
-            end
-            if (push_i && pop_i) push_pop_cnt++;
-            if (full_seen && push_i && !full_i) begin
-                recovery_cnt++;
-                full_seen = 0;
-            end
+            fifo_coverage.sample(full_i, empty_i, push_i && pop_i,
+                full_seen && push_i && !full_i);
+            if (full_i) full_seen = 1;
+            else if (push_i) full_seen = 0;
         end
     end
-    final begin
-        $display("NI_COVER scope=%m event=fifo.full count=%0d", full_cnt);
-        $display("NI_COVER scope=%m event=fifo.empty count=%0d", empty_cnt);
-        $display("NI_COVER scope=%m event=fifo.push_pop count=%0d", push_pop_cnt);
-        $display("NI_COVER scope=%m event=fifo.full_recovery count=%0d", recovery_cnt);
-    end
+
 endmodule
 
 module ni_credit_coverage (
@@ -42,21 +39,22 @@ module ni_credit_coverage (
     input wire give_i,
     input wire take_i
 );
-    longint unsigned zero_cnt = 0, refill_cnt = 0, give_take_cnt = 0, zero_give_take_cnt = 0;
+    covergroup credit_cg with function sample(bit available, bit give, bit take);
+        option.per_instance = 1;
+        cp_available: coverpoint available { bins zero = {0}; bins nonzero = {1}; }
+        cp_give: coverpoint give { bins idle = {0}; bins returned = {1}; }
+        cp_take: coverpoint take { bins idle = {0}; bins sent = {1}; }
+        credit_return_send: cross cp_available, cp_give, cp_take {
+            // Taking with neither stored nor returned credit is prohibited by the cell assertion.
+            ignore_bins no_credit_send = binsof(cp_available.zero) &&
+                binsof(cp_give.idle) && binsof(cp_take.sent);
+        }
+    endgroup
+    credit_cg credit_coverage = new();
     always @(posedge clk_i) begin
-        if (rst_n_i) begin
-            if (!credit_left_i) zero_cnt++;
-            if (!credit_left_i && give_i) refill_cnt++;
-            if (give_i && take_i) give_take_cnt++;
-            if (!credit_left_i && give_i && take_i) zero_give_take_cnt++;
-        end
+        if (rst_n_i) credit_coverage.sample(credit_left_i, give_i, take_i);
     end
-    final begin
-        $display("NI_COVER scope=%m event=credit.zero count=%0d", zero_cnt);
-        $display("NI_COVER scope=%m event=credit.refill_from_zero count=%0d", refill_cnt);
-        $display("NI_COVER scope=%m event=credit.give_take count=%0d", give_take_cnt);
-        $display("NI_COVER scope=%m event=credit.zero_give_take count=%0d", zero_give_take_cnt);
-    end
+
 endmodule
 
 bind cc_fifo ni_fifo_coverage i_coverage (

@@ -1,5 +1,7 @@
 # NI coverage baseline — 2026-10-02
 
+Historical snapshot: the custom event-count/HIT-MISS flow used here has been replaced by native SystemVerilog covergroups. These results are retained unchanged; current coverage definitions are in verification-testplan.md.
+
 ## 執行範圍
 
 一個 NMU RTL、單個 C++ Router、四個 NSU RTL、AXI memories；既有 15 個 case，

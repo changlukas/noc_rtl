@@ -1,5 +1,7 @@
 # NI stimulus expansion acceptance
 
+Historical snapshot: the custom event-count/HIT-MISS flow used here has been replaced by native SystemVerilog covergroups. These results are retained unchanged; current coverage definitions are in verification-testplan.md.
+
 Date: 2026-10-02. This extends the initial coverage baseline; it does not replace its historical measurements.
 
 ## Changes
