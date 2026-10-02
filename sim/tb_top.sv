@@ -916,4 +916,5 @@ module tb_top #(
             NUM_IDS, MAX_OUTSTANDING_PER_ID, perf_end-perf_start+1,
             wr_txn_stall, rd_txn_stall);
     end
+    `include "ni_coverage.svh"
 endmodule

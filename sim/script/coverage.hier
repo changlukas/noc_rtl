@@ -1,0 +1,7 @@
++tree tb_top.dut 0
++tree tb_top.gen_nsu[0].gen_rtl_nsu.i_nsu 0
++tree tb_top.gen_nsu[1].gen_rtl_nsu.i_nsu 0
++tree tb_top.gen_nsu[2].gen_rtl_nsu.i_nsu 0
++tree tb_top.gen_nsu[3].gen_rtl_nsu.i_nsu 0
+-module ni_fifo_coverage
+-module ni_credit_coverage

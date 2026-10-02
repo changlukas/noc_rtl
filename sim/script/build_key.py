@@ -7,6 +7,8 @@ kind = sys.argv[1]
 digest = hashlib.sha256(" ".join(sys.argv).encode())
 if kind == "sv":
     paths = [Path("files.f"), Path("topology_pkg.sv")]
+    if "-cm_hier coverage.hier" in " ".join(sys.argv):
+        paths.append(Path("coverage.hier"))
     paths += [p for root in ("repo", "deps") for p in Path(root).rglob("*") if p.suffix in (".sv", ".svh")]
 elif kind == "cpp":
     paths = [p for root in ("repo/ref_model", "repo/specgen/generated/cpp")

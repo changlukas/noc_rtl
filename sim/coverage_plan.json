@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "scope": "Shared NI tb_top; one NMU, four NSUs, one C++ router or direct TB links. Counts are observed events, not a percentage of all specification features.",
+  "cases": {
+    "ctrl_write_single": [
+      "aw",
+      "b",
+      "aw.control"
+    ],
+    "ctrl_read_single": [
+      "ar",
+      "r.transaction",
+      "ar.control"
+    ],
+    "ctrl_write_burst": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "aw.control",
+      "aw.len.2",
+      "aw.len.4",
+      "aw.len.8",
+      "aw.len.16",
+      "aw.len.32",
+      "aw.len.64",
+      "aw.len.128",
+      "aw.len.256",
+      "ar.len.2",
+      "ar.len.4",
+      "ar.len.8",
+      "ar.len.16",
+      "ar.len.32",
+      "ar.len.64",
+      "ar.len.128",
+      "ar.len.256"
+    ],
+    "ctrl_read_burst": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "aw.control",
+      "aw.len.2",
+      "aw.len.4",
+      "aw.len.8",
+      "aw.len.16",
+      "aw.len.32",
+      "aw.len.64",
+      "aw.len.128",
+      "aw.len.256",
+      "ar.len.2",
+      "ar.len.4",
+      "ar.len.8",
+      "ar.len.16",
+      "ar.len.32",
+      "ar.len.64",
+      "ar.len.128",
+      "ar.len.256"
+    ],
+    "single_id_outstanding": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "wr.multiple_pending",
+      "rd.multiple_pending"
+    ],
+    "multi_id_outstanding": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "wr.multiple_pending",
+      "rd.multiple_pending"
+    ],
+    "multi_id_out_of_order": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "b.cross_id_inversion",
+      "r.cross_id_inversion"
+    ],
+    "single_id_reorder": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "b.same_id_inversion",
+      "r.same_id_inversion",
+      "b.rob_retire",
+      "r.rob_retire"
+    ],
+    "data_write_single": [
+      "aw",
+      "b",
+      "aw.data"
+    ],
+    "data_write_burst": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "aw.data",
+      "aw.len.2",
+      "aw.len.4",
+      "aw.len.8",
+      "aw.len.16",
+      "aw.len.32",
+      "aw.len.64",
+      "ar.len.2",
+      "ar.len.4",
+      "ar.len.8",
+      "ar.len.16",
+      "ar.len.32",
+      "ar.len.64"
+    ],
+    "data_read_single": [
+      "ar",
+      "r.transaction",
+      "ar.data"
+    ],
+    "data_read_burst": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "aw.data",
+      "aw.len.2",
+      "aw.len.4",
+      "aw.len.8",
+      "aw.len.16",
+      "aw.len.32",
+      "aw.len.64",
+      "ar.len.2",
+      "ar.len.4",
+      "ar.len.8",
+      "ar.len.16",
+      "ar.len.32",
+      "ar.len.64"
+    ],
+    "ctrl_rand": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "aw.control"
+    ],
+    "data_rand": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "aw.data"
+    ],
+    "request_rand": [
+      "aw",
+      "b",
+      "ar",
+      "r.transaction",
+      "aw.control",
+      "aw.data",
+      "ar.control",
+      "ar.data"
+    ]
+  },
+  "not_measured": [
+    "HoL isolation scenario",
+    "Independent-clock CDC coverage",
+    "Reset recovery completion and stale-response exclusion",
+    "Full parameter matrix",
+    "Multi-NMU sources / Router RTL / multihop",
+    "Complete supported response-error coverage",
+    "Complete functional cross coverage",
+    "WSTRB full/partial relative to active transfer lanes (only raw strobe population observed)"
+  ]
+}

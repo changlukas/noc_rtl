@@ -12,6 +12,7 @@ p.add_argument("--report", required=True)
 p.add_argument("--mode", choices=("auto", "control", "data", "rand"), default="auto")
 p.add_argument("--wave", action="store_true")
 p.add_argument("--corrupt", action="store_true")
+p.add_argument("--coverage", action="store_true")
 a = p.parse_args()
 patterns = Path("patterns")
 if a.mode != "auto":
@@ -29,6 +30,10 @@ report = Path(a.report)
 report.mkdir(parents=True, exist_ok=True)
 args = [str(Path(a.binary).resolve()), "+stim_dir=" + str(stim.resolve())]
 args += (stim / "schedule.txt").read_text().split()
+if a.coverage:
+    args += ["-cm", "line+cond+fsm+tgl+branch+assert",
+             "-cm_dir", str(Path(a.binary).resolve()) + ".vdb",
+             "-cm_name", a.case + "_" + a.mode]
 if a.wave:
     args += ["+wave_file=" + str((report / (a.case + ".fsdb")).resolve())]
 if a.corrupt:
@@ -54,5 +59,10 @@ if passed:
     log += "NMU_COSIM_CORRUPTION_DETECTED\n" if a.corrupt else "NMU_COSIM_PASS\n"
 log_path.write_text(log)
 print(log)
+if a.coverage:
+    from coverage_report import write_case
+    result = write_case(log, a.case, passed, stim, report, a.binary, a.mode, args)
+    if not result["observation_valid"]:
+        raise SystemExit("Coverage observation is invalid; see coverage JSON")
 if not passed:
     raise SystemExit("Co-simulation acceptance failed")

@@ -4,6 +4,8 @@ SHELL := /bin/bash
 ROOT := $(CURDIR)
 CASE ?= ctrl_write_single
 WAVE ?= 0
+COVERAGE ?= 0
+COVERAGE_METRICS := line+cond+fsm+tgl+branch+assert
 ifneq ($(filter run_wave view,$(MAKECMDGOALS)),)
 override WAVE := 1
 endif
@@ -29,7 +31,7 @@ PLI_DIR ?= $(VERDI_HOME)/share/PLI/VCS/linux64
 export LD_LIBRARY_PATH := $(PLI_DIR)$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
 export VCS_ARCH_OVERRIDE ?= linux
 BUILD := $(ROOT)/build
-REPORT := $(BUILD)/report_wave$(WAVE)$(if $(filter-out auto,$(MODE)),/$(MODE),)
+REPORT := $(BUILD)/report$(if $(filter 1,$(COVERAGE)),_coverage,)_wave$(WAVE)$(if $(filter-out auto,$(MODE)),/$(MODE),)
 INCLUDES := -Irepo/ref_model/dpi -Irepo/ref_model/c_model/include -Irepo/ref_model/c_model/tests/common -Irepo/specgen/generated/cpp -Ideps/yaml-cpp/include -Ideps/yaml-cpp/src -I$(VCS_HOME)/include
 CPPFLAGS := -std=c++17 -O1 -fPIC -DYAML_CPP_STATIC_DEFINE $(INCLUDES)
 YAML_SRC := $(wildcard deps/yaml-cpp/src/*.cpp)
@@ -38,6 +40,9 @@ ifeq ($(WAVE),1)
 WAVE_FLAGS := +define+DUMP_WAVE -P $(PLI_DIR)/novas.tab $(PLI_DIR)/pli.a
 endif
 VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_top -pvalue+tb_top.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_top.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_top.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_top.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_top.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_top.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_top.RTL_NSU=$(RTL_NSU) -pvalue+tb_top.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_top.CONTEXT_DEPTH=$(CONTEXT_DEPTH)
+ifeq ($(COVERAGE),1)
+VCS_FLAGS += +define+NI_COVERAGE -cm $(COVERAGE_METRICS) -cm_hier coverage.hier
+endif
 ifeq ($(DIRECT_LINK),0)
 DPI := $(BUILD)/dpi_$(shell python3 build_key.py cpp "$(CPPFLAGS) $(CXX)")
 YAML_BUILD := $(BUILD)/yaml_$(shell python3 build_key.py yaml "$(CPPFLAGS) $(CXX)")
@@ -80,7 +85,7 @@ $(SIM)/simv: $(DPI_DEP)
 compile: $(SIM)/simv
 run: compile sim
 sim:
-	python3 run.py --binary "$(SIM)/simv" --case "$(CASE)" --mode "$(MODE)" --report "$(REPORT)" $(if $(filter 1,$(WAVE)),--wave,)
+	python3 run.py --binary "$(SIM)/simv" --case "$(CASE)" --mode "$(MODE)" --report "$(REPORT)" $(if $(filter 1,$(WAVE)),--wave,) $(if $(filter 1,$(COVERAGE)),--coverage,)
 regress: compile
 	@set -e; while read name; do $(MAKE) --no-print-directory sim CASE=$$name; done < pattern.txt
 corrupt: compile
