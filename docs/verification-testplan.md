@@ -5,8 +5,8 @@
 ## 範圍與判定
 
 整合平台：一個 NMU RTL、單個 C++ Router、四個 NSU RTL 與 AXI memories。
-Direct-link 平台共用 tb_top、pattern 與 checker，不包含 C++ Router。
-NMU-only loopback 保留既有驗證，尚未移植這份 covergroup model。
+正式驗收與 coverage regression 僅使用上述整合平台。
+Direct-link 與 NMU-only standalone 保留供局部 debug，不納入主要驗收 coverage。
 
 - Functional PASS：既有 scoreboard、axi_reorder_compare、protocol checks 與完成條件通過。
 - Functional coverage：SystemVerilog covergroup／coverpoint／cross，由 VCS 寫入 VDB，URG 或 Verdi Coverage 檢視。
@@ -46,7 +46,7 @@ Random 在 co-sim/direct profile 發送 64 write 與 64 並行 read，完成後 
 
 | Case／選項 | Stimulus | 必須觀察到 |
 |---|---|---|
-| single_id_reorder BACKPRESSURE=1 | 64 筆、source B/R 暫停；先填入 31 筆，再跨 destination 亂序 | 同一筆已 inversion 的 B/R 在 ROB output 被擋住 |
+| single_id_reorder BACKPRESSURE=1 | 64 筆、source B/R 暫停；先填入 response FIFO depth−1 筆，再跨 destination 亂序 | 同一筆已 inversion 的 B/R 在 ROB output 被擋住 |
 | multi_id_out_of_order BACKPRESSURE=1 | 64 筆、source B/R 暫停 | cross-ID inversion、B/R output stall |
 | capacity_reuse TARGET=per_id | 320 筆 single、same ID／destination | read/write per-ID admission limit 後恢復接受 |
 | capacity_reuse TARGET=context | 320 筆 single；每 ID 固定 destination、阻擋 memory response | 四個 NSU 的 AW/AR context 各自 full 後恢復接受 |
@@ -54,7 +54,7 @@ Random 在 co-sim/direct profile 發送 64 write 與 64 並行 read，完成後 
 | hol_blocking | 80 筆 single；阻擋 north memory response | north AW/AR context full 時，west response 仍可到達 source，之後全部 drain |
 | reset_recovery | 8 write／8 read pending 時隨機選 reset cycle；reset 後重送 | 無 stale response、fresh traffic 正確完成 |
 
-正式驗證使用目前預設容量；stress 的固定 transaction 數不保證覆蓋任意更大的組態。
+正式驗證使用預設容量與核准的參數組態；stress 的固定 transaction 數不保證覆蓋任意更大的組態。
 HoL case 驗證獨立 destination response 的進展，不宣稱共享 FIFO 的所有 HoL 情境皆已排除。
 Reset 範圍含全部 NI、TB links 與 C++ router instance；memory 保留內容，checker 清除舊 transaction。
 既有 AXI file master、memory、scoreboard、ordering compare 持續負責 traffic 與正確性判定。
@@ -102,7 +102,7 @@ Run log 與 .run.json 保留 command、profile、source manifest digest、stimul
 
 - 動態 ID mapping table 容量；NSU context full 不等於 ID mapping table 用滿。
 - 任意 VC／多 source 的 HoL isolation、仲裁 fairness、no-avoidable-bubble。
-- 獨立時脈 CDC、代表性 ID／FIFO／context／ROB／REG_TYPE 組態與 transaction 多 seed。
+- 獨立時脈 CDC、更多 source／NoC ID width 組合與 transaction 多 seed；已完成的四組參數驗證見總報告。
 - 完整 supported response-error coverage、其他必要 functional crosses。
 - 多 NMU source、Router RTL、multihop、physical CDC/RDC、synthesis/STA 不在目前平台驗收範圍。
 
@@ -113,6 +113,14 @@ Run log 與 .run.json 保留 command、profile、source manifest digest、stimul
 
 15/15 cases PASS; coverage gaps and the proposed follow-up plan are in [Coverage review](verification-coverage-review.md). The approved stress extension is implemented; see [Stress acceptance](verification-stress-results.md) for the 29-run native merge and remaining gaps.
 
-## Parameter regression follow-up (2026-10-03)
+## 整合環境總報告（2026-10-03）
 
-Four approved power-of-two configurations were evaluated at the existing synchronous clocks. Baseline retained; read-ROB-disabled and small-ROB Router runs pass. Split-VC Router integration fails VC validation, while the identical NI configuration passes direct-link tests. Native functional union is 97.02%; code coverage remains per elaboration because cross-configuration merging drops incompatible data. See [parameter results](verification-parameter-results.md) for evidence and remaining scope. Independent clocks and additional source/NoC ID profiles remain pending.
+四組核准組態在整合環境共 56/56 PASS，Router Split VC 問題已修正。
+Baseline 29 筆 cycles 與修正前一致；functional GROUP union 為 97.17%。
+完整組態、case／cycle、各組 code coverage 與剩餘缺口見 [整合驗證總報告](verification-integration-results.md)。
+
+- 每組態合併該組通過的 cases／seeds，保留獨立 code coverage 與 assertion report。
+- 跨組態只對語意一致的 functional covergroups 使用原生 URG union；保留各組 instance 結果。
+- 不平均各組 code coverage 百分比，不將缺少或不相容的 coverage objects 視為 covered。
+- 保留原始 VDB、source manifest、stimulus digest 與 log；失敗與中途 debug runs 不納入 accepted coverage。
+- 舊的 97.02% 含 direct-link 資料，僅保留為歷史結果，不作為本輪驗收數字。

@@ -1,5 +1,7 @@
 # NI 參數組態 Regression 結果
 
+> 歷史紀錄：本頁保留首輪含 direct-link 的結果及當時的 Router 失敗。後續已修正並完成四組整合驗證，請以 [整合驗證總報告](verification-integration-results.md) 作為目前驗收結果；本頁 97.02% 不沿用。
+
 2026-10-03。NMU／NSU RTL 的四組參數驗證；AXI／NoC 維持同頻 1 GHz。
 Production RTL、C++ source 與 repository generated contracts 均未修改。
 組態定義見 [參數驗證規劃](verification-parameter-plan.md)。

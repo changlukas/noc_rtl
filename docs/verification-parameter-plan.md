@@ -2,13 +2,13 @@
 
 採用現有 baseline 加 3 組代表性組態，沿用目前 test cases。所有容量／深度設定僅使用 2^n；context depth＝1 為 2^0。不規劃非 2 次方容量測試。REG_TYPE 與 mode 是功能選擇，不屬於容量限制。
 
-本文件記錄核准的測試組態；同頻 regression 已執行，結果與 Split VC 整合限制見文末連結。RTL 預設值未修改；未列出的參數維持 baseline。
+本文件記錄核准的測試組態；四組同頻整合 regression 已通過，結果見文末連結。RTL 預設值未修改；未列出的參數維持 baseline。
 
 ## 硬體組態
 
 | 組態 | 參數設定 | 主要驗證 |
 |---|---|---|
-| 0. Baseline | Source／NoC／Device ID width＝3／3／3；MAX_OUTSTANDING_PER_ID＝32；CONTEXT_DEPTH＝32；IO_FIFO_DEPTH＝32；B_ROB_DEPTH＝128；R_ROB_DEPTH＝128；R_ROB_EN＝1；REG_TYPE＝0；NUM_DAT_VC＝2；SHARED；CREDIT_DEPTH＝8 | 同寬 ID、一般容量、register bypass、SHARED 多 VC；沿用既有結果 |
+| 0. Baseline | Source／NoC／Device ID width＝3／3／3；MAX_OUTSTANDING_PER_ID＝32；CONTEXT_DEPTH＝32；IO_FIFO_DEPTH＝32；B_ROB_DEPTH＝128；R_ROB_DEPTH＝128；R_ROB_EN＝1；REG_TYPE＝0；NUM_DAT_VC＝2；SHARED；CREDIT_DEPTH＝8 | 同寬 ID、一般容量、register bypass、SHARED 多 VC；本輪重跑既有 29 筆驗收紀錄 |
 | 1. 窄 ID／小容量／Split VC | DEVICE_ID_WIDTH＝1；CONTEXT_DEPTH＝4；MAX_OUTSTANDING_PER_ID＝4；IO_FIFO_DEPTH＝4；REG_TYPE＝2；NUM_DAT_VC＝4；READ_WRITE_SPLIT；CREDIT_DEPTH＝2 | ID collision、context reuse、per-ID admission limit、spill register、read/write VC 分流與仲裁 |
 | 2. 寬 ID／單筆 Context／關閉 Read ROB | DEVICE_ID_WIDTH＝8；CONTEXT_DEPTH＝1；IO_FIFO_DEPTH＝4；REG_TYPE＝1；R_ROB_EN＝0 | 寬 ID 還原、depth＝1 邊界、simple register、無 Read ROB 時的 ordering |
 | 3. 小 ROB／單 VC | B_ROB_DEPTH＝4；R_ROB_DEPTH＝8；NUM_DAT_VC＝1；SHARED；CREDIT_DEPTH＝2；CONTEXT_DEPTH／MAX_OUTSTANDING_PER_ID 維持 32 | ROB full/reuse、R burst 空間不足、單 VC 仲裁與 credit backpressure |
@@ -36,7 +36,7 @@
 
 ## 執行條件
 
-1. Stress stimulus 依組態調整。目前 reorder＋backpressure 固定 31 筆 prefill，對應原本 32-depth response FIFO；小 FIFO 不直接照搬。
+1. Stress stimulus 依組態調整。reorder＋backpressure 的 prefill 使用 response FIFO depth−1；預設深度 32 對應 31 筆，小 FIFO 隨深度調整。
 2. 小 R ROB 的需重排 burst 不超過可容納的 beats；以多筆合法交易觸發剩餘空間不足與恢復。一般 bypass burst 不以 ROB 容量一律限縮。
 3. R_ROB_EN＝0 時確認同 ID read 順序、必要的 request admission stall 與恢復，不要求不存在的 R storage full 或同 ID R response inversion。
 4. 組態 2 要實際形成同 ID 跨 destination pending requests，避免 context＝1 遮蔽 NMU ordering 等待條件。
@@ -51,4 +51,6 @@
 
 ## Regression status
 
-The same-clock campaign is complete. Split-VC Router integration failed; the same NI profile passed direct-link tests. Independent-clock tests remain pending. See [results](verification-parameter-results.md).
+四組整合環境 56/56 PASS；Router Split VC allocation 已修正。驗收僅使用整合環境，各組 code coverage 分開保存，functional GROUP union 為 97.17%。獨立 clock／phase 仍待驗證。見 [整合驗證總報告](verification-integration-results.md)。
+
+首輪包含 direct-link 的結果保留於 [歷史參數結果](verification-parameter-results.md)，不作為本輪 coverage 數據。
