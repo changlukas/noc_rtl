@@ -1,0 +1,85 @@
+{
+  "cases": [
+    {
+      "name": "multi_id_outstanding",
+      "count": 16,
+      "ids": "multiple",
+      "response_delay": 12,
+      "startup_delay": 80,
+      "min_outstanding": 2,
+      "min_unique": 2,
+      "num_ids": 8,
+      "id_values": [
+        0,
+        1,
+        2,
+        3,
+        128,
+        129,
+        254,
+        255
+      ]
+    },
+    {
+      "name": "multi_id_out_of_order",
+      "count": 16,
+      "ids": "multiple",
+      "response_order": 2,
+      "response_delay": 12,
+      "startup_delay": 80,
+      "min_outstanding": 2,
+      "min_unique": 2,
+      "require_ooo": 1,
+      "num_ids": 8,
+      "id_values": [
+        0,
+        1,
+        2,
+        3,
+        128,
+        129,
+        254,
+        255
+      ]
+    },
+    {
+      "name": "single_id_reorder",
+      "count": 16,
+      "destinations": "alternate",
+      "response_order": 1,
+      "response_delay": 12,
+      "startup_delay": 80,
+      "min_outstanding": 2,
+      "require_buffered": 1,
+      "num_ids": 1,
+      "id_values": [
+        255
+      ]
+    },
+    {
+      "name": "request_rand",
+      "mode": "rand",
+      "random": true,
+      "count": 64,
+      "ids": "multiple",
+      "destinations": "random",
+      "response_order": 1,
+      "response_delay": 12,
+      "startup_delay": 80,
+      "stall_enable": 1,
+      "min_outstanding": 2,
+      "min_unique": 2,
+      "num_ids": 8,
+      "id_values": [
+        0,
+        1,
+        2,
+        3,
+        128,
+        129,
+        254,
+        255
+      ]
+    }
+  ]
+}

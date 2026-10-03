@@ -124,10 +124,24 @@ module axi_reorder_compare #(
   endfunction
 
   typedef struct packed {
-    int unsigned slv_id;
+    int unsigned region_id;
     int unsigned num_rsp;
     ar_chan_t ar;
   } out_rsp_t;
+
+  typedef struct packed {
+    id_t id;
+    int unsigned region_id;
+  } rsp_id_t;
+
+  function automatic int unsigned addr_region(input addr_t addr);
+    for (int j = 0; j < NumAddrRegions; j++) begin
+      if (addr >= AddrRegions[j].start_addr && addr < AddrRegions[j].end_addr)
+        return j;
+    end
+    $fatal(1, "Checker address outside configured regions: %h", addr);
+    return 0;
+  endfunction
 
   aw_chan_t aw_queue [NumSlaves][$];
   w_chan_t  w_queue  [int unsigned][$];
@@ -137,14 +151,14 @@ module axi_reorder_compare #(
   int unsigned write_seq = 0;
   w_chan_t  w_pending[$];
   ar_chan_t ar_queue [NumSlaves][$];
-  b_chan_t  b_queue  [NumSlaves][NumAxiIds][$];
-  r_chan_t  r_queue  [NumSlaves][NumAxiIds][$];
+  b_chan_t  b_queue  [NumAddrRegions][NumAxiIds][$];
+  r_chan_t  r_queue  [NumAddrRegions][NumAxiIds][$];
 
   out_rsp_t r_out_rsp_queue[NumAxiIds][$];
   out_rsp_t b_out_rsp_queue[NumAxiIds][$];
 
-  id_t aw_id_queue [NumSlaves][NumAxiIds][$];
-  id_t ar_id_queue [NumSlaves][NumAxiIds][$];
+  rsp_id_t aw_id_queue [NumSlaves][NumAxiIds][$];
+  rsp_id_t ar_id_queue [NumSlaves][NumAxiIds][$];
 
   // Local adaptation: reset abandons all pre-reset transactions.
   always @(negedge rst_ni) begin
@@ -158,10 +172,14 @@ module axi_reorder_compare #(
       w_output_queue[i].delete();
       ar_queue[i].delete();
       for (int id = 0; id < NumAxiIds; id++) begin
-        b_queue[i][id].delete();
-        r_queue[i][id].delete();
         aw_id_queue[i][id].delete();
         ar_id_queue[i][id].delete();
+      end
+    end
+    for (int region = 0; region < NumAddrRegions; region++) begin
+      for (int id = 0; id < NumAxiIds; id++) begin
+        b_queue[region][id].delete();
+        r_queue[region][id].delete();
       end
     end
     for (int id = 0; id < NumAxiIds; id++) begin
@@ -210,7 +228,7 @@ module axi_reorder_compare #(
       aw_seq_queue[aw_slv_idx].push_back(write_seq);
       w_input_queue.push_back(write_seq);
       write_seq++;
-      b_out_rsp_queue[mon_mst_req_i.aw.id].push_back('{slv_id: aw_slv_idx, num_rsp: 0, ar: '0});
+      b_out_rsp_queue[mon_mst_req_i.aw.id].push_back('{region_id: addr_region(mon_mst_req_i.aw.addr), num_rsp: 0, ar: '0});
       if (Verbose) $info("Issued AW: id=%0d, len=%0d", mon_mst_req_i.aw.id, mon_mst_req_i.aw.len+1);
     end
     if (mon_mst_req_i.w_valid && mon_mst_rsp_i.w_ready) begin
@@ -225,7 +243,7 @@ module axi_reorder_compare #(
     if (mon_mst_req_i.ar_valid && mon_mst_rsp_i.ar_ready) begin
       ar_queue[ar_slv_idx].push_back(mon_mst_req_i.ar);
       r_out_rsp_queue[mon_mst_req_i.ar.id].push_back(
-        '{slv_id: ar_slv_idx, num_rsp: mon_mst_req_i.ar.len, ar: mon_mst_req_i.ar});
+        '{region_id: addr_region(mon_mst_req_i.ar.addr), num_rsp: mon_mst_req_i.ar.len, ar: mon_mst_req_i.ar});
       if (Verbose) $info("Issued AR: id=%0d, len=%0d",
                          mon_mst_req_i.ar.id, mon_mst_req_i.ar.len+1);
     end
@@ -241,16 +259,16 @@ module axi_reorder_compare #(
         aw_act = mon_slv_req_i[i].aw;
         if (aw_queue[i].size() == 0) $error("AW queue empty");
         begin
-          automatic bit [NumAxiIds-1:0] seen = '0;
+          automatic bit [NumAddrRegions-1:0][NumAxiIds-1:0] seen = '0;
           automatic int match_idx = -1;
           aw_chan_t expected, received;
           received = aw_act;
           received.id = '0;
-          // Only the oldest request of each source ID may be selected.
+          // Requests remain ordered per source ID and address region.
           for (int j = 0; j < aw_queue[i].size(); j++) begin
             expected = aw_queue[i][j];
-            if (!seen[expected.id]) begin
-              seen[expected.id] = 1'b1;
+            if (!seen[addr_region(expected.addr)][expected.id]) begin
+              seen[addr_region(expected.addr)][expected.id] = 1'b1;
               expected.id = '0;
               if (match_idx < 0 && expected === received) match_idx = j;
             end
@@ -264,7 +282,7 @@ module axi_reorder_compare #(
             w_output_queue[i].push_back(aw_seq_queue[i][match_idx]);
             aw_queue[i].delete(match_idx);
             aw_seq_queue[i].delete(match_idx);
-            aw_id_queue[i][aw_act.id].push_back(aw_id);
+            aw_id_queue[i][aw_act.id].push_back('{id: aw_id, region_id: addr_region(aw_exp.addr)});
             if (Verbose) $info("Slave[%0d] Received AW: id=%0d, len=%0d", i, aw_id, aw_exp.len+1);
           end
         end
@@ -299,15 +317,15 @@ module axi_reorder_compare #(
         ar_act = mon_slv_req_i[i].ar;
         if (ar_queue[i].size() == 0) $error("AR queue is empty!");
         begin
-          automatic bit [NumAxiIds-1:0] seen = '0;
+          automatic bit [NumAddrRegions-1:0][NumAxiIds-1:0] seen = '0;
           automatic int match_idx = -1;
           ar_chan_t expected, received;
           received = ar_act;
           received.id = '0;
           for (int j = 0; j < ar_queue[i].size(); j++) begin
             expected = ar_queue[i][j];
-            if (!seen[expected.id]) begin
-              seen[expected.id] = 1'b1;
+            if (!seen[addr_region(expected.addr)][expected.id]) begin
+              seen[addr_region(expected.addr)][expected.id] = 1'b1;
               expected.id = '0;
               if (match_idx < 0 && expected === received) match_idx = j;
             end
@@ -319,7 +337,7 @@ module axi_reorder_compare #(
             ar_exp = ar_queue[i][match_idx];
             ar_id = ar_exp.id;
             ar_queue[i].delete(match_idx);
-            ar_id_queue[i][ar_act.id].push_back(ar_id);
+            ar_id_queue[i][ar_act.id].push_back('{id: ar_id, region_id: addr_region(ar_exp.addr)});
             if (Verbose) $info("Slave[%0d] Received AR: id=%0d, len=%0d", i, ar_id, ar_exp.len+1);
           end
         end
@@ -336,8 +354,11 @@ module axi_reorder_compare #(
         automatic b_chan_t b;
         b = mon_slv_rsp_i[i].b;
         if (aw_id_queue[i][b.id].size() == 0) $fatal(1, "B has no accepted AW");
-        b.id = aw_id_queue[i][b.id].pop_front();
-        b_queue[i][b.id].push_back(b);
+        begin
+          automatic rsp_id_t response_id = aw_id_queue[i][b.id].pop_front();
+          b.id = response_id.id;
+          b_queue[response_id.region_id][b.id].push_back(b);
+        end
         if (Verbose) $info("Slave[%0d] Issued B: id=%0d", i, b.id);
       end
       if (mon_slv_rsp_i[i].r_valid && mon_slv_req_i[i].r_ready) begin
@@ -345,11 +366,11 @@ module axi_reorder_compare #(
         r = mon_slv_rsp_i[i].r;
         if (ar_id_queue[i][r.id].size() == 0) $fatal(1, "R has no accepted AR");
         begin
-          automatic id_t source_id = ar_id_queue[i][r.id][0];
+          automatic rsp_id_t response_id = ar_id_queue[i][r.id][0];
           if (r.last) void'(ar_id_queue[i][r.id].pop_front());
-          r.id = source_id;
+          r.id = response_id.id;
+          r_queue[response_id.region_id][r.id].push_back(r);
         end
-        r_queue[i][r.id].push_back(r);
         if (Verbose) $info("Slave[%0d] Issued R: id=%0d, data=%0x, last=%0b",
                            i, r.id, r.data, r.last);
       end
@@ -363,14 +384,14 @@ module axi_reorder_compare #(
     if (mon_mst_rsp_i.b_valid && mon_mst_req_i.b_ready) begin
       automatic b_chan_t b_exp, b_act;
       automatic id_t b_id;
-      automatic int unsigned slv_id;
+      automatic int unsigned region_id;
       b_act = mon_mst_rsp_i.b;
       b_id = b_act.id;
       if (Verbose) $info("Received B: id=%0d", b_id);
       if (b_out_rsp_queue[b_id].size() == 0) $error("B: id=%0d out rsp queue is empty!", b_id);
-      slv_id = b_out_rsp_queue[b_id][0].slv_id;
-      if (b_queue[slv_id][b_id].size() == 0) $error("Slave [%0d] B queue is empty!", slv_id);
-      b_exp = b_queue[slv_id][b_id].pop_front();
+      region_id = b_out_rsp_queue[b_id][0].region_id;
+      if (b_queue[region_id][b_id].size() == 0) $error("Region [%0d] B queue is empty!", region_id);
+      b_exp = b_queue[region_id][b_id].pop_front();
       if (b_exp !== b_act) begin
         $error("B mismatch");
         print_b(b_exp, b_act);
@@ -388,14 +409,14 @@ module axi_reorder_compare #(
     if (mon_mst_rsp_i.r_valid && mon_mst_req_i.r_ready) begin
       automatic r_chan_t r_exp, r_act;
       automatic id_t r_id;
-      automatic int unsigned slv_id;
+      automatic int unsigned region_id;
       r_act = mon_mst_rsp_i.r;
       r_id = r_act.id;
       if (Verbose) $info("Received R: id=%0d, data=%0x, last=%0b", r_id, r_act.data, r_act.last);
       if (r_out_rsp_queue[r_id].size() == 0) $error("R: id=%0d out rsp queue is empty!", r_id);
-      slv_id = r_out_rsp_queue[r_id][0].slv_id;
-      if (r_queue[slv_id][r_id].size() == 0) $error("Slave [%0d] R queue is empty!", slv_id);
-      r_exp = r_queue[slv_id][r_id].pop_front();
+      region_id = r_out_rsp_queue[r_id][0].region_id;
+      if (r_queue[region_id][r_id].size() == 0) $error("Region [%0d] R queue is empty!", region_id);
+      r_exp = r_queue[region_id][r_id].pop_front();
       begin
         automatic ar_chan_t ar = r_out_rsp_queue[r_id][0].ar;
         automatic int beat = int'(ar.len) - r_out_rsp_queue[r_id][0].num_rsp;
@@ -417,7 +438,7 @@ module axi_reorder_compare #(
         if (r_out_rsp_queue[r_id][0].num_rsp == 0) begin
           if (r_out_rsp_queue[r_id].size() == 0) $error("R: id=%0d queue is empty!", r_id);
           void'(r_out_rsp_queue[r_id].pop_front());
-          if (Verbose) $info("R: id=%0d slv_id=%0d r_out_rsp_queue popped", r_id, slv_id);
+          if (Verbose) $info("R: id=%0d region_id=%0d r_out_rsp_queue popped", r_id, region_id);
         end else begin
           r_out_rsp_queue[r_id][0].num_rsp--;
         end
@@ -429,8 +450,8 @@ module axi_reorder_compare #(
   logic [NumSlaves-1:0] aw_queue_empty;
   logic [NumSlaves-1:0] w_queue_empty;
   logic [NumSlaves-1:0] ar_queue_empty;
-  logic [NumSlaves-1:0][NumAxiIds-1:0] b_queue_empty;
-  logic [NumSlaves-1:0][NumAxiIds-1:0] r_queue_empty;
+  logic [NumAddrRegions-1:0][NumAxiIds-1:0] b_queue_empty;
+  logic [NumAddrRegions-1:0][NumAxiIds-1:0] r_queue_empty;
 
   logic [NumAxiIds-1:0] r_out_rsp_queue_empty;
   logic [NumAxiIds-1:0] b_out_rsp_queue_empty;
@@ -438,8 +459,8 @@ module axi_reorder_compare #(
   logic [NumSlaves-1:0][31:0] aw_queue_state;
   logic [NumSlaves-1:0][31:0] w_queue_state;
   logic [NumSlaves-1:0][31:0] ar_queue_state;
-  logic [NumSlaves-1:0][NumAxiIds-1:0][31:0] b_queue_state;
-  logic [NumSlaves-1:0][NumAxiIds-1:0][31:0] r_queue_state;
+  logic [NumAddrRegions-1:0][NumAxiIds-1:0][31:0] b_queue_state;
+  logic [NumAddrRegions-1:0][NumAxiIds-1:0][31:0] r_queue_state;
 
   always @(negedge clk_i) begin
     for (int i = 0; i < NumSlaves; i++) begin : gen_b_queue_state
@@ -452,6 +473,8 @@ module axi_reorder_compare #(
         if (w_queue.exists(w_output_queue[i][j]))
           w_queue_state[i] += w_queue[w_output_queue[i][j]].size();
       ar_queue_state[i] = ar_queue[i].size();
+    end
+    for (int i = 0; i < NumAddrRegions; i++) begin
       for (int j = 0; j < NumAxiIds; j++) begin : gen_b_queue_state
         b_queue_state[i][j] = b_queue[i][j].size();
         r_queue_state[i][j] = r_queue[i][j].size();
@@ -464,6 +487,8 @@ module axi_reorder_compare #(
       aw_queue_empty[i] = (aw_queue[i].size() == 0);
       w_queue_empty[i] = (w_output_queue[i].size() == 0);
       ar_queue_empty[i] = (ar_queue[i].size() == 0);
+    end
+    for (int i = 0; i < NumAddrRegions; i++) begin
       for (int j = 0; j < NumAxiIds; j++) begin
         b_queue_empty[i][j] = (b_queue[i][j].size() == 0);
         r_queue_empty[i][j] = (r_queue[i][j].size() == 0);

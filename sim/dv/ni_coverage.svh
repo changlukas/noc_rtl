@@ -11,6 +11,24 @@
     int cov_wr_live[NUM_IDS] = '{default:0};
     int cov_rd_live[NUM_IDS] = '{default:0};
 
+    covergroup response_cg with function sample(bit read, logic [1:0] resp);
+        option.per_instance = 1;
+        cp_read: coverpoint read;
+        cp_resp: coverpoint resp {
+            bins okay = {0};
+            bins slverr = {2};
+            bins decerr = {3};
+        }
+        response_type: cross cp_read, cp_resp;
+    endgroup
+    response_cg response_coverage = new();
+    always @(posedge clk) begin
+        if (axi_rst_n) begin
+            if (vip.b_valid && vip.b_ready) response_coverage.sample(0, vip.b_resp);
+            if (vip.r_valid && vip.r_ready) response_coverage.sample(1, vip.r_resp);
+        end
+    end
+
     covergroup transaction_cg with function sample(
             bit is_read, bit is_data, int id, int beats, int size, int burst, int dst);
         option.per_instance = 1;
@@ -185,25 +203,15 @@
     endtask
 
     always @(posedge clk) begin : sample_ni_coverage
-        cov_request_t request;
         int wr_total, rd_total;
         mon_aw_chan_t aw;
         mon_w_chan_t w;
         mon_strb_t mask;
         int lo, hi;
         if (!axi_rst_n) begin
-            reset_coverage.sample(cov_wr_pending.size() != 0 || cov_rd_pending.size() != 0);
-            cov_wr_pending.delete();
-            cov_rd_pending.delete();
             cov_aw_queue.delete();
             cov_w_queue.delete();
             cov_w_beat = 0;
-            cov_b_stall_inversion = 0;
-            cov_r_stall_inversion = 0;
-            foreach (cov_b_inverted[tag]) begin
-                cov_b_inverted[tag] = 0;
-                cov_r_inverted[tag] = 0;
-            end
             foreach (cov_wr_live[id]) begin
                 cov_wr_live[id] = 0;
                 cov_rd_live[id] = 0;
@@ -255,6 +263,23 @@
                 rd_total += cov_rd_live[id];
             end
             outstanding_coverage.sample(wr_total, rd_total);
+
+        end
+    end
+
+    always @(posedge noc_clk) begin : sample_noc_coverage
+        cov_request_t request;
+        if (!noc_rst_n) begin
+            reset_coverage.sample(cov_wr_pending.size() != 0 || cov_rd_pending.size() != 0);
+            cov_wr_pending.delete();
+            cov_rd_pending.delete();
+            cov_b_stall_inversion = 0;
+            cov_r_stall_inversion = 0;
+            foreach (cov_b_inverted[tag]) begin
+                cov_b_inverted[tag] = 0;
+                cov_r_inverted[tag] = 0;
+            end
+        end else begin
             if (`COV_ORDER.aw_accept) begin
                 request = '{int'(`COV_ORDER.s_aw_i.axi.awid),
                     int'(`COV_ORDER.aw_tag), `COV_ORDER.aw_reorder};

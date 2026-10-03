@@ -1,0 +1,4 @@
+credit_depth: 8
+input_id_width: 1
+output_id_width: 1
+device_id_width: 1

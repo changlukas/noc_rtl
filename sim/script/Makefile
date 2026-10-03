@@ -14,6 +14,9 @@ MODE ?= auto
 BACKPRESSURE ?= 0
 TARGET ?= per_id
 SEED ?= 1
+AXI_CLK_PERIOD_PS ?= 1000
+NOC_CLK_PERIOD_PS ?= 1000
+NOC_CLK_PHASE_PS ?= 0
 RSP_DELAY ?= 2
 REG_TYPE ?= 0
 B_ROB_DEPTH ?= $(shell python3 -c 'import re; print(re.search(r"NMU_ROB_B_DEPTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
@@ -45,7 +48,7 @@ YAML_HEADERS := $(if $(wildcard deps/yaml-cpp/include),$(shell find deps/yaml-cp
 ifeq ($(WAVE),1)
 WAVE_FLAGS := +define+DUMP_WAVE -P $(PLI_DIR)/novas.tab $(PLI_DIR)/pli.a
 endif
-VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_top -pvalue+tb_top.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_top.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_top.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_top.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_top.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_top.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_top.RTL_NSU=$(RTL_NSU) -pvalue+tb_top.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_top.CONTEXT_DEPTH=$(CONTEXT_DEPTH) -pvalue+tb_top.B_ROB_DEPTH=$(B_ROB_DEPTH) -pvalue+tb_top.R_ROB_DEPTH=$(R_ROB_DEPTH) -pvalue+tb_top.R_ROB_EN=$(R_ROB_EN)
+VCS_FLAGS := -pvalue+tb_top.AXI_CLK_PERIOD_PS=$(AXI_CLK_PERIOD_PS) -pvalue+tb_top.NOC_CLK_PERIOD_PS=$(NOC_CLK_PERIOD_PS) -pvalue+tb_top.NOC_CLK_PHASE_PS=$(NOC_CLK_PHASE_PS) -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_top -pvalue+tb_top.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_top.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_top.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_top.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_top.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_top.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_top.RTL_NSU=$(RTL_NSU) -pvalue+tb_top.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_top.CONTEXT_DEPTH=$(CONTEXT_DEPTH) -pvalue+tb_top.B_ROB_DEPTH=$(B_ROB_DEPTH) -pvalue+tb_top.R_ROB_DEPTH=$(R_ROB_DEPTH) -pvalue+tb_top.R_ROB_EN=$(R_ROB_EN)
 ifeq ($(COVERAGE),1)
 VCS_FLAGS += +define+NI_COVERAGE -cm $(COVERAGE_METRICS) -cm_hier coverage.hier
 endif

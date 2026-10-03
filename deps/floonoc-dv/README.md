@@ -5,7 +5,7 @@ Source: `pulp-platform/FlooNoC`, revision `6ea0648407e7d989b7ec3a1ce6eaa2045b7cd
 Local adaptations:
 - Buffer observed W beats until their AW destination is known; do not change DUT stimulus timing.
 - Compare W data only on asserted WSTRB lanes; use existing axi_pkg byte-lane functions for narrow R transfers.
-- Match only the oldest pending request per source ID at each destination; allow different IDs to overtake. Associate W bursts with the matched AW and map responses by downstream ID.
+- Match only the oldest pending request per source ID and address region. Different regions at the same destination may overtake. Associate W bursts with the matched AW and track each downstream response back to its source ID and region. Source same-ID response order remains global across regions.
 - Clear pending records on reset and suppress channel sampling during reset; comparisons are unchanged.
 - Sample dynamic queue status on the falling clock edge for VCS 2017 compatibility.
 

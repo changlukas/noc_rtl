@@ -15,6 +15,7 @@ p.add_argument("--mode", choices=("auto", "control", "data", "rand"), default="a
 p.add_argument("--wave", action="store_true")
 p.add_argument("--corrupt", action="store_true")
 p.add_argument("--coverage", action="store_true")
+p.add_argument("--coverage-name", help="Unique native coverage test name")
 p.add_argument("--backpressure", action="store_true")
 p.add_argument("--target", choices=("per_id", "context", "rob"), default="per_id")
 p.add_argument("--seed", type=int, default=1)
@@ -38,7 +39,9 @@ if not 0 <= a.seed <= 0xffffffff:
     p.error("SEED must be an unsigned 32-bit integer")
 if a.case != "reset_recovery" and a.seed != json.loads((stim / "manifest.json").read_text())["seed"]:
     p.error("SEED changes reset timing only; regenerate patterns to change transaction seed")
-run_name = pattern + "_" + a.mode + "_s" + str(a.seed)
+run_name = a.coverage_name or (pattern + "_" + a.mode + "_s" + str(a.seed))
+if not re.fullmatch(r"[A-Za-z0-9_]+", run_name):
+    p.error("coverage name must contain only letters, digits and underscores")
 for name in ("schedule.txt", "read.txt", "write.txt"):
     if not (stim / name).is_file():
         p.error("Incomplete co-simulation pattern '{}': missing {}. "
@@ -78,13 +81,24 @@ if passed:
 log_path.write_text(log)
 print(log)
 if a.coverage:
+    # The binary may be shared by several stimulus directories.
+    build_source = next((parent for parent in Path(a.binary).resolve().parents
+                         if (parent / "files.f").is_file() and
+                            (parent / "SHA256SUMS").is_file()), Path.cwd())
     # Run provenance only. Functional coverage bins/results belong to VCS/URG.
     result = dict(case=a.case, mode=a.mode, target=a.target, backpressure=a.backpressure, seed=a.seed, passed=passed, command=args,
                   vdb=str(Path(a.binary).resolve()) + ".vdb",
-                  source_manifest_sha256=hashlib.sha256(Path("SHA256SUMS").read_bytes()).hexdigest(),
+                  source_manifest_sha256=hashlib.sha256((build_source / "SHA256SUMS").read_bytes()).hexdigest(),
+                  source_directory=str(build_source),
                   profile=Path("profile.yml").read_text(),
                   stimulus_sha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                                    for p in sorted(stim.iterdir()) if p.is_file()})
+    result["binary_sha256"] = hashlib.sha256(Path(a.binary).read_bytes()).hexdigest()
+    clock = re.search(r"CLOCK_CONFIG axi_period_ps=(\d+) noc_period_ps=(\d+)", log)
+    phase = re.search(r"CLOCK_PHASE noc_phase_ps=(\d+)", log)
+    if clock:
+        result["clock"] = dict(axi_period_ps=int(clock.group(1)), noc_period_ps=int(clock.group(2)),
+                               noc_phase_ps=int(phase.group(1)) if phase else 0)
     (report / (a.case + ".run.json")).write_text(json.dumps(result, indent=2) + "\n")
 if not passed:
     raise SystemExit("Co-simulation acceptance failed")

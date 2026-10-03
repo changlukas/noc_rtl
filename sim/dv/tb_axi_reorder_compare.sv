@@ -70,15 +70,15 @@ module tb_axi_reorder_compare;
         @(negedge clk);
         clear_bus();
     endtask
-    task automatic b(input bit target, input id_t id);
+    task automatic b(input bit target, input id_t id, input axi_pkg::resp_t resp = axi_pkg::RESP_OKAY);
         @(negedge clk);
         clear_bus();
         if (target) begin
-            target_rsp[0].b = '{id:id, default:'0};
+            target_rsp[0].b = '{id:id, resp:resp, default:'0};
             target_rsp[0].b_valid = 1;
             target_req[0].b_ready = 1;
         end else begin
-            source_rsp.b = '{id:id, default:'0};
+            source_rsp.b = '{id:id, resp:resp, default:'0};
             source_rsp.b_valid = 1;
             source_req.b_ready = 1;
         end
@@ -116,8 +116,42 @@ module tb_axi_reorder_compare;
         clear_bus();
     endtask
     initial begin
+        #10000;
+        $fatal(1, "Checker test timed out");
+    end
+    initial begin
         clear_bus();
         void'($value$plusargs("fault=%d", fault));
+        if ($test$plusargs("trace")) begin
+            $display("CHECKER_START fault=%0d time=%0t", fault, $time);
+            $fflush();
+        end
+        if (fault >= 7 && fault <= 9) begin
+            aw(0, 0, 32'h100);
+            w(0, 64'h1111);
+            aw(0, 0, 32'h900);
+            w(0, 64'h2222);
+            aw(1, 3, 32'h900);
+            w(1, 64'h2222);
+            aw(1, 2, 32'h100);
+            w(1, 64'h1111);
+            b(1, 3, axi_pkg::RESP_DECERR);
+            b(1, 2, axi_pkg::RESP_SLVERR);
+            b(0, 0, fault == 8 ? axi_pkg::RESP_DECERR : axi_pkg::RESP_SLVERR);
+            b(0, 0, axi_pkg::RESP_DECERR);
+            ar(0, 0, 32'h100);
+            ar(0, 0, 32'h900);
+            ar(1, 3, 32'h900);
+            ar(1, 2, 32'h100);
+            r(1, 3, 64'h2222);
+            r(1, 2, 64'h1111);
+            r(0, 0, fault == 9 ? 64'h2222 : 64'h1111);
+            r(0, 0, 64'h2222);
+            repeat (3) @(posedge clk);
+            if (!done) $fatal(1, "Checker did not drain");
+            $display("CHECKER_TEST_DONE");
+            $finish;
+        end
         if (fault == 5 || fault == 6) begin
             w(0, 64'hdead);
             aw(0, 0, 32'h300);

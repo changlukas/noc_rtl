@@ -22,8 +22,8 @@
         assign r_storage_full = 1'b0;
     end
 
-    always @(posedge clk) begin
-        if (!axi_rst_n) begin
+    always @(posedge noc_clk) begin
+        if (!noc_rst_n) begin
             wr_limit_seen = 0; rd_limit_seen = 0;
             read_order_wait_seen = 0; read_order_resumed = 0;
             wr_limit_reused = 0; rd_limit_reused = 0;
@@ -31,7 +31,6 @@
             b_storage_reused = 0; r_storage_reused = 0;
             aw_context_full_seen = '0; ar_context_full_seen = '0;
             aw_context_reused = '0; ar_context_reused = '0;
-            hol_wr_progress = 0; hol_rd_progress = 0;
             b_output_stalled = 0; r_output_stalled = 0;
         end else begin
             if (!R_ROB_EN && `STRESS_ORDER.s_ar_valid_i &&
@@ -54,6 +53,15 @@
             ar_context_reused |= ar_context_full_seen & ar_context_accept;
             if (`STRESS_ORDER.m_b_valid_o && !`STRESS_ORDER.m_b_ready_i) b_output_stalled = 1;
             if (`STRESS_ORDER.m_r_valid_o && !`STRESS_ORDER.m_r_ready_i) r_output_stalled = 1;
+
+        end
+    end
+
+    always @(posedge clk) begin
+        if (!axi_rst_n) begin
+            hol_wr_progress = 0;
+            hol_rd_progress = 0;
+        end else begin
             if (stress_test == 2) begin
                 if (vip.aw_valid && vip.aw_ready) stress_wr_dst[vip.aw_id] = int'(decode_destination(vip.aw_addr));
                 if (vip.ar_valid && vip.ar_ready) stress_rd_dst[vip.ar_id] = int'(decode_destination(vip.ar_addr));

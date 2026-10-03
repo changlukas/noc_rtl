@@ -1,0 +1,5 @@
+credit_depth: 8
+input_id_width: 3
+output_id_width: 3
+num_dat_vc: 1
+r_rob_en: 0

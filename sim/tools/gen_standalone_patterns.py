@@ -52,10 +52,26 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         num_ids = case.get("num_ids", min(8, 1 << id_width))
         if type(num_ids) is not int or not 1 <= num_ids <= (1 << id_width):
             raise ValueError("num_ids must fit the selected AXI ID space")
+        id_values = case.get("id_values")
+        if id_values is not None and (len(id_values) != num_ids or len(set(id_values)) != num_ids or
+                any(type(value) is not int or not 0 <= value < (1 << id_width) for value in id_values)):
+            raise ValueError("id_values must contain num_ids distinct legal IDs")
         names.append(name)
         selected = case.get("mode", "control" if mode == "auto" else mode)
         if case_name is not None and "mode" in case and mode not in ("auto", selected):
             raise ValueError(name + " requires MODE=" + selected)
+        lane_sweep = case.get("lane_sweep")
+        lane_points = []
+        if lane_sweep:
+            if selected not in ("control", "data") or lane_sweep not in ("full", "partial", "zero", "onehot"):
+                raise ValueError("lane_sweep requires control/data and full/partial/zero/onehot")
+            lane_points = [(size, lane) for size in range(7 if selected == "data" else 4)
+                           for lane in range(0, 64, 1 << size)]
+            if lane_sweep == "onehot":
+                size = 6 if selected == "data" else 3
+                lane_points = [(size, lane // (1 << size) * (1 << size)) for lane in range(64)]
+            if case["count"] != len(lane_points):
+                raise ValueError("lane_sweep count must match legal size/lane pairs")
         random_fields = case.get("random", False) or selected == "rand"
         if case.get("stress_test") or case.get("response_backpressure"):
             random_fields = False
@@ -103,6 +119,9 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 size = rng.randrange(7 if is_data else 4)
                 length = (0, 1, 3, 7)[txn % 4]
                 burst = rng.randrange(3)
+            if lane_sweep:
+                size, lane = lane_points[txn]
+                length, burst = 0, 1
             if burst == 2 and length == 0:
                 if capacity:
                     length = 1
@@ -159,6 +178,10 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 route_slots[dest] = route_slots.get(dest, 0) + 1
             if case.get("stress_test") in (1, 2):
                 offset = txn * step
+            if lane_sweep:
+                offset += lane
+            if id_values is not None:
+                axi_id = id_values[axi_id % num_ids]
             address = route["base"] + offset
             operation = case.get("operation", "both")
             if case.get("random"):
@@ -209,6 +232,10 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                         full_strobe = int(strobe, 16)
                         mask = (0, (1 << 64)-1, 0x5555555555555555,
                                 rng.getrandbits(64))[(txn + beat) % 4]
+                        if lane_sweep:
+                            mask = {"full": full_strobe, "zero": 0,
+                                    "partial": full_strobe if size == 0 else 0x5555555555555555,
+                                    "onehot": 1 << txn}[lane_sweep]
                         strobe = hex(full_strobe & mask)
                     writes.append(f"{data} {strobe} {user}")
             if profile == "cosim" and (operation == "read" or random_memory or case.get("stress_test") == 3):
@@ -218,8 +245,10 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 for base in bases:
                     if base + (length+1)*step > route["base"] + route["size"]:
                         raise ValueError("preload crosses SAM window")
-                    preload.append(f"@{base:x}")
-                    preload.append(" ".join(f"{(base + b) & 255:02x}" for b in range((length+1)*step)))
+                    preload_base = base & ~63 if lane_sweep else base
+                    preload_bytes = 64 if lane_sweep else (length+1)*step
+                    preload.append(f"@{preload_base:x}")
+                    preload.append(" ".join(f"{(preload_base + b) & 255:02x}" for b in range(preload_bytes)))
             if operation in ("read", "both"):
                 fields = _ax_fields(axi_id, address, length, size, False)
                 fields[4] = str(burst)
@@ -252,6 +281,19 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     f"+capacity_test={int(bool(case.get('capacity_test')))}",
                     f"+data_case={int(selected == 'data')}",
                     f"+reorder_test={2 if case.get('require_buffered') else int(bool(case.get('require_ooo')))}"]
+        response_error = case.get("response_error", 0)
+        if response_error:
+            if profile != "cosim" or response_error not in (2, 3) or init_writes or verify_reads:
+                raise ValueError("response_error requires a direct read/write case and SLVERR/DECERR")
+            from axi_file_parser import _parse_read, _parse_write
+            for filename, parser, error_file in (("read.txt", _parse_read, "rerr.mem"),
+                                                  ("write.txt", _parse_write, "werr.mem")):
+                errors = []
+                for txn in parser(target / filename):
+                    for offset in range((txn["len"] + 1) << txn["size"]):
+                        errors.append(f"@{txn['addr'] + offset:x} {response_error:x}")
+                (target / error_file).write_text("\n".join(errors or ["@0 0"]) + "\n")
+            args.append(f"+response_error={response_error}")
         if case.get("capacity_target"):
             args.append("+capacity_target=" + case["capacity_target"])
         if case.get("response_backpressure"):

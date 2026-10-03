@@ -1,0 +1,18 @@
+{
+  "cases": [
+    {
+      "name": "data_rand",
+      "mode": "data",
+      "random": true,
+      "count": 128,
+      "ids": "multiple",
+      "destinations": "random",
+      "response_order": 1,
+      "response_delay": 12,
+      "startup_delay": 80,
+      "stall_enable": 1,
+      "min_outstanding": 2,
+      "min_unique": 2
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {
+      "name": "multi_id_outstanding",
+      "mode": "data",
+      "count": 256,
+      "num_ids": 256,
+      "ids": "multiple",
+      "min_outstanding": 2,
+      "min_unique": 2
+    }
+  ]
+}

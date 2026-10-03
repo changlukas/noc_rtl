@@ -1,0 +1,120 @@
+{
+  "cases": [
+    {
+      "name": "ctrl_write_single",
+      "operation": "write",
+      "count": 1,
+      "mode": "control",
+      "response_error": 2
+    },
+    {
+      "name": "ctrl_read_single",
+      "operation": "read",
+      "count": 1,
+      "mode": "control",
+      "response_error": 2
+    },
+    {
+      "name": "ctrl_write_burst",
+      "operation": "write",
+      "count": 15,
+      "mode": "control",
+      "burst_lengths": [
+        2,
+        3,
+        4,
+        7,
+        8,
+        15,
+        16,
+        31,
+        32,
+        63,
+        64,
+        127,
+        128,
+        255,
+        256
+      ],
+      "response_error": 2
+    },
+    {
+      "name": "ctrl_read_burst",
+      "operation": "read",
+      "count": 15,
+      "mode": "control",
+      "burst_lengths": [
+        2,
+        3,
+        4,
+        7,
+        8,
+        15,
+        16,
+        31,
+        32,
+        63,
+        64,
+        127,
+        128,
+        255,
+        256
+      ],
+      "response_error": 2
+    },
+    {
+      "name": "data_write_single",
+      "mode": "data",
+      "operation": "write",
+      "count": 1,
+      "response_error": 2
+    },
+    {
+      "name": "data_write_burst",
+      "mode": "data",
+      "operation": "write",
+      "count": 11,
+      "burst_lengths": [
+        2,
+        3,
+        4,
+        7,
+        8,
+        15,
+        16,
+        31,
+        32,
+        63,
+        64
+      ],
+      "response_error": 2
+    },
+    {
+      "name": "data_read_single",
+      "mode": "data",
+      "operation": "read",
+      "count": 1,
+      "response_error": 2
+    },
+    {
+      "name": "data_read_burst",
+      "mode": "data",
+      "operation": "read",
+      "count": 11,
+      "burst_lengths": [
+        2,
+        3,
+        4,
+        7,
+        8,
+        15,
+        16,
+        31,
+        32,
+        63,
+        64
+      ],
+      "response_error": 2
+    }
+  ]
+}

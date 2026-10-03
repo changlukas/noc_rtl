@@ -9,6 +9,7 @@ activeDirFile "" "@FSDB@"
 
 addGroup "Clock / Reset"
 addSignal -h 15 -UNSIGNED -HEX /tb_top/clk
+addSignal -h 15 -UNSIGNED -HEX /tb_top/noc_clk
 addSignal -h 15 -UNSIGNED -HEX /tb_top/axi_rst_n
 addSignal -h 15 -UNSIGNED -HEX /tb_top/noc_rst_n
 addGroup "Master AXI"

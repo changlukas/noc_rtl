@@ -419,3 +419,82 @@ def test_reorder_backpressure_prefill(tmp_path, mode, depth):
     assert all(t["addr"] >> 32 == 2 for t in txns[:depth-1])
     assert [t["addr"] >> 32 for t in txns[depth-1:depth+3]] == [1, 2, 3, 0]
     assert len({t["id"] for t in txns}) == 1
+
+
+@pytest.mark.parametrize("mode,count", [("control", 120), ("data", 127)])
+@pytest.mark.parametrize("mask", ["full", "partial", "zero"])
+def test_lane_sweep_legal_disjoint_readback(tmp_path, mode, count, mask):
+    import json
+    catalog = tmp_path / "catalog.json"
+    case = dict(name="request_rand", mode=mode, count=count, random=True,
+                destinations="random", lane_sweep=mask)
+    catalog.write_text(json.dumps(dict(cases=[case])))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog,
+             profile="cosim")
+    path = tmp_path / "out/request_rand"
+    writes = _parse_write(path / "write.txt")
+    reads = _parse_read(path / "read.txt")
+    verify = _parse_read(path / "verify_read.txt")
+    expected = {(size, lane) for size in range(4 if mode == "control" else 7)
+                for lane in range(0, 64, 1 << size)}
+    assert {(t["size"], t["addr"] % 64) for t in writes} == expected
+    assert len(writes) == len(reads) == len(verify) == count
+    used = set()
+    for w, rd, vr in zip(writes, reads, verify):
+        assert w["len"] == rd["len"] == vr["len"] == 0
+        assert w["addr"] == vr["addr"]
+        assert rd["addr"] != w["addr"]
+        size = 1 << w["size"]
+        span = set(range(w["addr"], w["addr"]+size))
+        assert not used.intersection(span)
+        used.update(span)
+        actual = int(w["beats"][0].split()[1], 16)
+        full = ((1 << size)-1) << (w["addr"] % 64)
+        assert actual == (0 if mask == "zero" else full if mask == "full" or size == 1
+                          else full & 0x5555555555555555)
+    preload = (path / "preload.mem").read_text().splitlines()
+    words = {int(preload[i][1:], 16): preload[i+1].split()
+             for i in range(0, len(preload), 2)}
+    for txn in writes + reads:
+        assert len(words[txn["addr"] & ~63]) == 64
+
+
+def test_high_source_ids(tmp_path):
+    import json
+    ids = [0, 1, 2, 3, 128, 129, 254, 255]
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps(dict(cases=[dict(name="multi_id_outstanding",
+        count=16, ids="multiple", num_ids=8, id_values=ids)])))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 8, catalog, profile="cosim")
+    assert {t["id"] for t in _parse_write(tmp_path / "out/multi_id_outstanding/write.txt")} == set(ids)
+    assert {t["id"] for t in _parse_read(tmp_path / "out/multi_id_outstanding/read.txt")} == set(ids)
+
+
+@pytest.mark.parametrize("mode", ["control", "data"])
+def test_each_write_strobe_bit(tmp_path, mode):
+    import json
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps(dict(cases=[dict(name="request_rand", mode=mode,
+        count=64, random=True, destinations="random", lane_sweep="onehot")])))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog, profile="cosim")
+    writes = _parse_write(tmp_path / "out/request_rand/write.txt")
+    assert [int(t["beats"][0].split()[1], 16) for t in writes] == [1 << i for i in range(64)]
+    for t in writes:
+        assert t["size"] == (3 if mode == "control" else 6)
+        assert t["addr"] % (1 << t["size"]) == 0
+
+@pytest.mark.parametrize("response", [2, 3])
+@pytest.mark.parametrize("operation", ["read", "write"])
+def test_response_error_maps(tmp_path, response, operation):
+    import json
+    case = dict(name="data_" + operation + "_burst", operation=operation,
+                mode="data", count=1, burst_lengths=[64], response_error=response)
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps(dict(cases=[case])))
+    generate(tmp_path / "patterns", REPO / "sim/topology.yml", 3, catalog=catalog, profile="cosim")
+    output = tmp_path / "patterns" / case["name"]
+    errors = (output / ("rerr.mem" if operation == "read" else "werr.mem")).read_text().splitlines()
+    assert len(errors) == 4096
+    assert len({line.split()[0] for line in errors}) == 4096
+    assert all(int(line.split()[1], 16) == response for line in errors)
+    assert "+response_error=" + str(response) in (output / "schedule.txt").read_text()

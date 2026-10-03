@@ -84,6 +84,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
                      "deps/common_cells-1.37.0/src/delta_counter.sv",
                      "deps/common_cells-1.37.0/src/counter.sv",
                      "deps/common_cells-1.37.0/src/stream_delay.sv",
+                     "deps/common_cells-1.37.0/src/lfsr_16bit.sv",
                      "deps/axi-0.39.7/src/axi_delayer.sv",
                      "deps/axi-0.39.7/src/axi_sim_mem.sv",
                      "deps/floonoc-dv/axi_reorder_compare.sv",
@@ -95,6 +96,8 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     copy(ROOT / "sim/dv/ni_stress.svh", "repo/sim/dv/ni_stress.svh")
     copy(ROOT / "sim/dv/ni_coverage.svh", "repo/sim/dv/ni_coverage.svh")
     copy(ROOT / "sim/dv/ni_resource_coverage.sv", "repo/sim/dv/ni_resource_coverage.sv")
+    copy(ROOT / "sim/dv/ni_arbiter_checks.sv", "repo/sim/dv/ni_arbiter_checks.sv")
+    source_list.append("repo/sim/dv/ni_arbiter_checks.sv")
     source_list += ["+incdir+repo/sim/dv", "repo/sim/dv/ni_resource_coverage.sv"]
     copy(ROOT / "sim/script/coverage.hier", "coverage.hier")
     if direct:
