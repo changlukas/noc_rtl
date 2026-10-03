@@ -1,0 +1,6 @@
+input_id_width: 3
+output_id_width: 3
+credit_depth: 2
+num_dat_vc: 1
+b_rob_depth: 4
+r_rob_depth: 8

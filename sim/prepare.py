@@ -11,7 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "sim/tools"))
 from gen_tb_top import emit_sam_pkg, num_vc
-from gen_standalone_patterns import generate
+from gen_standalone_patterns import generate as generate_patterns
 
 
 def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False):
@@ -30,6 +30,19 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         raise ValueError("device_id_width must be in [1, 8]")
     if pattern_id_width > noc_id_width:
         raise ValueError("NoC output_id_width must preserve input_id_width")
+    vc_count = profile.get("num_dat_vc", num_vc())
+    vc_mode = profile.get("dat_vc_mode", 0)
+    if vc_count not in (1, 2, 4, 8) or vc_mode not in (0, 1) or (vc_mode == 1 and vc_count < 2):
+        raise ValueError("invalid DAT VC count/mode")
+    for key in ("context_depth", "io_fifo_depth", "max_outstanding_per_id", "b_rob_depth", "r_rob_depth"):
+        if key in profile:
+            value = profile[key]
+            if type(value) is not int or value < 1 or value & (value - 1):
+                raise ValueError(key + " must be a positive power of two")
+    if profile.get("io_fifo_depth", 32) < 2:
+        raise ValueError("io_fifo_depth must be at least 2 for CDC")
+    if profile.get("reg_type", 0) not in (0, 1, 2) or profile.get("r_rob_en", 1) not in (0, 1):
+        raise ValueError("invalid register or read ROB mode")
     source_list = []
     def copy(source, relative):
         target = out / relative
@@ -66,7 +79,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         relative = str(source.relative_to(ROOT))
         copy(source, "repo/" + relative)
         source_list.append("repo/" + relative)
-    for relative in (f"specgen/generated/sv/noc_types_pkg_vc{num_vc()}.sv",
+    for relative in (f"specgen/generated/sv/noc_types_pkg_vc{vc_count}.sv",
                      "ref_model/top/router_wrap.sv", "ref_model/top/nsu_wrap.sv",
                      "deps/common_cells-1.37.0/src/delta_counter.sv",
                      "deps/common_cells-1.37.0/src/counter.sv",
@@ -107,7 +120,10 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     topo = ROOT / "sim/topology.yml"
     (out / "topology_pkg.sv").write_text(emit_sam_pkg(yaml.safe_load(topo.read_text())))
     (out / "files.f").write_text("\n".join(source_list) + "\n")
-    patterns = ROOT / f"sim/test_patterns/cosim/generated/i{pattern_id_width}"
+    patterns = (out / "generated_patterns") if profile_path else ROOT / f"sim/test_patterns/cosim/generated/i{pattern_id_width}"
+    hardware = dict(response_fifo_depth=profile.get("io_fifo_depth", 32))
+    def generate(*args, **kwargs):
+        return generate_patterns(*args, hardware=hardware, **kwargs)
     cases = generate(patterns, topo, id_width=pattern_id_width, profile="cosim")
     cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim",
                       catalog=ROOT / "sim/test_patterns/cosim/cases.json")
@@ -147,7 +163,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     for path in patterns.rglob("*"):
         if path.is_file():
             copy(path, str(Path("patterns") / path.relative_to(patterns)))
-    for name in ("signals.rc", "topology.yml", "README.md"):
+    for name in ("signals.rc", "topology.yml", "README.md", "pattern_list.txt"):
         copy(ROOT / "sim" / name, name)
     if not direct:
         for directory in ("ref_model/dpi", "ref_model/c_model/include", "ref_model/c_model/tests/common",
@@ -169,13 +185,24 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     if not isinstance(depth, int) or depth < 2 or depth & (depth - 1):
         raise ValueError("DAT credit depth must be a power of two and at least 2")
     constants["noc"]["CREDIT_DEPTH"]["default"] = depth
+    constants["noc"]["DAT_NUM_VC"]["default"] = vc_count
+    constants["noc"]["DAT_VC_MODE"]["default"] = vc_mode
     constants["axi"]["AXI_ID_WIDTH"]["default"] = noc_id_width
-    constants["nsu"]["AXI_ID_WIDTH"]["default"] = device_id_width
+    # The active RTL NSU selects device width through profile.mk; the Router uses NoC IDs.
+    constants["nsu"]["AXI_ID_WIDTH"]["default"] = noc_id_width
     constants["nsu"]["MAX_ACTIVE_IDS"]["default"] = 1 << constants["nsu"]["AXI_ID_WIDTH"]["default"]
     from tools.elaborate.profile import emit as emit_profile
     emit_profile(ROOT, out, constants, noc_id_width)
     (out / "profile.yml").write_text(yaml.safe_dump(profile, sort_keys=False))
     (out / "profile.mk").write_text(f"INPUT_ID_WIDTH ?= {pattern_id_width}\nOUTPUT_ID_WIDTH ?= {noc_id_width}\n")
+    with (out / "profile.mk").open("a") as stream:
+        for key, symbol in (("device_id_width", "DEVICE_ID_WIDTH"),
+                            ("context_depth", "CONTEXT_DEPTH"), ("io_fifo_depth", "IO_FIFO_DEPTH"),
+                            ("reg_type", "REG_TYPE"), ("max_outstanding_per_id", "MAX_OUTSTANDING_PER_ID"),
+                            ("b_rob_depth", "B_ROB_DEPTH"), ("r_rob_depth", "R_ROB_DEPTH"),
+                            ("r_rob_en", "R_ROB_EN")):
+            if key in profile:
+                stream.write(f"{symbol} ?= {profile[key]}\n")
     (out / "environment.mk").write_text("DIRECT_LINK := %d\n" % int(direct))
     if direct:
         (out / "signals.rc").write_text((out / "signals.rc").read_text().replace("Router Links", "Direct Links"))

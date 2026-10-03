@@ -1,0 +1,90 @@
+目前 `sim/` 與 `nsu-standalone/` 共 **18 個 test cases**：原本 15 組，加上 3 組 coverage 補強測試。
+
+| # | CASE | 測試內容 |
+|---:|---|---|
+| 1 | `ctrl_write_single` | 1 筆 control write，確認 B response，不做 readback |
+| 2 | `ctrl_read_single` | 1 筆 control read，讀取預載資料 |
+| 3 | `ctrl_write_burst` | 15 筆 control burst write，涵蓋 2～256 beats |
+| 4 | `ctrl_read_burst` | 15 筆 control burst read，涵蓋 2～256 beats |
+| 5 | `single_id_outstanding` | 同一 ID、同一 destination，連續發送多筆 outstanding |
+| 6 | `multi_id_outstanding` | 多個 ID、同一 destination，連續發送多筆 outstanding |
+| 7 | `multi_id_out_of_order` | 多個 ID、不同 destination，允許跨 ID 亂序完成 |
+| 8 | `single_id_reorder` | 同一 ID、不同 destination，確認亂序 response 恢復發送順序 |
+| 9 | `data_write_single` | 1 筆 data write，確認 B response，不做 readback |
+| 10 | `data_write_burst` | 11 筆 data burst write，涵蓋 2～64 beats |
+| 11 | `data_read_single` | 1 筆 data read，讀取預載資料 |
+| 12 | `data_read_burst` | 11 筆 data burst read，涵蓋 2～64 beats |
+| 13 | `ctrl_rand` | 隨機 control request：ID、destination、burst length、size、write strobe |
+| 14 | `data_rand` | 隨機 data request：ID、destination、burst length、size、write strobe |
+| 15 | `request_rand` | 混合 control／data 的隨機 read／write |
+| 16 | `capacity_reuse` | 填滿指定資源，確認 backpressure、釋放與重新使用 |
+| 17 | `hol_blocking` | 阻塞一個 destination，確認另一個 destination 仍可完成 response |
+| 18 | `reset_recovery` | 有 pending transactions 時隨機 reset，確認清除舊交易並恢復新交易 |
+
+Burst length 實際測試點：
+
+- **Control：** 2、3、4、7、8、15、16、31、32、63、64、127、128、255、256。
+- **Data：** 2、3、4、7、8、15、16、31、32、63、64。
+
+以下是同一 case 的選項，不另外計入 case 數量：
+
+| CASE | 選項 | 用途 |
+|---|---|---|
+| `capacity_reuse` | `TARGET=per_id` | Per-ID outstanding 滿載與恢復 |
+| `capacity_reuse` | `TARGET=context` | NSU AW／AR context buffer 滿載與恢復 |
+| `capacity_reuse` | `TARGET=rob` | B／R ROB 滿載與重新配置 |
+| `multi_id_out_of_order`、`single_id_reorder` | `BACKPRESSURE=1` | 亂序 response 搭配 AXI response backpressure |
+| `reset_recovery` | `SEED=<n>` | 改變 reset 發生時機 |
+
+`nmu-standalone/` 目前仍維持原本 **15 組**。
+
+## Make 指令
+
+在工作站選擇其中一個環境，再執行下列指令：
+
+```sh
+# NMU + C++ router + NSU RTL
+cd /home/mingwei/noc_project/sim
+
+# NMU + NSU RTL direct-link
+cd /home/mingwei/noc_project/nsu-standalone
+```
+
+```sh
+# 顯示完整 pattern list
+make list
+
+# 編譯並執行；CASE 可替換為上表名稱
+make run CASE=ctrl_write_single
+
+# 產生 FSDB，再開啟 nWave 與 signals.rc
+make run_wave CASE=single_id_reorder MODE=data
+make view CASE=single_id_reorder MODE=data
+
+# 收集 functional / code / assertion coverage
+make run CASE=request_rand COVERAGE=1
+
+# 執行全部 18 個 case 的預設組態，不包含所有選項組合
+make regress COVERAGE=1
+
+# 清除目前環境的模擬與 GUI 輸出
+make clean
+```
+
+變體指令（適用 sim/ 與 nsu-standalone/）：
+
+```sh
+make run CASE=capacity_reuse TARGET=per_id MODE=control COVERAGE=1
+make run CASE=capacity_reuse TARGET=context MODE=control COVERAGE=1
+make run CASE=capacity_reuse TARGET=rob MODE=data COVERAGE=1
+make run CASE=single_id_reorder BACKPRESSURE=1 MODE=control COVERAGE=1
+make run CASE=multi_id_out_of_order BACKPRESSURE=1 MODE=data COVERAGE=1
+make run CASE=hol_blocking MODE=data COVERAGE=1
+make run CASE=reset_recovery MODE=control SEED=17 COVERAGE=1
+```
+
+需要波型時，將 `run` 換成 `run_wave`；之後執行 `view`，保留相同的
+`CASE / MODE / TARGET / BACKPRESSURE / SEED / COVERAGE` 選項。
+
+`pattern.txt` 保留純 case 名稱，供 regression 讀取；
+`pattern_list.txt` 提供本說明與指令。

@@ -2,6 +2,7 @@
 SHELL := /bin/bash
 .NOTPARALLEL:
 ROOT := $(CURDIR)
+-include profile.mk
 CASE ?= ctrl_write_single
 WAVE ?= 0
 COVERAGE ?= 0
@@ -15,13 +16,15 @@ TARGET ?= per_id
 SEED ?= 1
 RSP_DELAY ?= 2
 REG_TYPE ?= 0
+B_ROB_DEPTH ?= $(shell python3 -c 'import re; print(re.search(r"NMU_ROB_B_DEPTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
+R_ROB_DEPTH ?= $(shell python3 -c 'import re; print(re.search(r"NMU_ROB_R_DEPTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
+R_ROB_EN ?= $(shell python3 -c 'import re; print(re.search(r"NMU_R_ROB_EN\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 IO_FIFO_DEPTH ?= 32
 -include environment.mk
 DIRECT_LINK ?= 0
 RTL_NSU ?= 1
 DEVICE_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NSU_AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 CONTEXT_DEPTH ?= 32
--include profile.mk
 INPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 OUTPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NOC_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 MAX_OUTSTANDING_PER_ID ?= 32
@@ -42,7 +45,7 @@ YAML_HEADERS := $(if $(wildcard deps/yaml-cpp/include),$(shell find deps/yaml-cp
 ifeq ($(WAVE),1)
 WAVE_FLAGS := +define+DUMP_WAVE -P $(PLI_DIR)/novas.tab $(PLI_DIR)/pli.a
 endif
-VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_top -pvalue+tb_top.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_top.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_top.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_top.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_top.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_top.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_top.RTL_NSU=$(RTL_NSU) -pvalue+tb_top.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_top.CONTEXT_DEPTH=$(CONTEXT_DEPTH)
+VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ps/1ps -debug_access+all -f files.f -top tb_top -pvalue+tb_top.RSP_DELAY_CYCLES=$(RSP_DELAY) -pvalue+tb_top.OUTPUT_REG_TYPE=$(REG_TYPE) -pvalue+tb_top.IO_FIFO_DEPTH=$(IO_FIFO_DEPTH) -pvalue+tb_top.INPUT_ID_WIDTH=$(INPUT_ID_WIDTH) -pvalue+tb_top.OUTPUT_ID_WIDTH=$(OUTPUT_ID_WIDTH) -pvalue+tb_top.MAX_OUTSTANDING_PER_ID=$(MAX_OUTSTANDING_PER_ID) -pvalue+tb_top.RTL_NSU=$(RTL_NSU) -pvalue+tb_top.DEVICE_ID_WIDTH=$(DEVICE_ID_WIDTH) -pvalue+tb_top.CONTEXT_DEPTH=$(CONTEXT_DEPTH) -pvalue+tb_top.B_ROB_DEPTH=$(B_ROB_DEPTH) -pvalue+tb_top.R_ROB_DEPTH=$(R_ROB_DEPTH) -pvalue+tb_top.R_ROB_EN=$(R_ROB_EN)
 ifeq ($(COVERAGE),1)
 VCS_FLAGS += +define+NI_COVERAGE -cm $(COVERAGE_METRICS) -cm_hier coverage.hier
 endif
@@ -67,7 +70,7 @@ help:
 	 'make clean                 Remove simulation and GUI output' \
 	 'make list                  List the 18 test cases'
 list:
-	@cat pattern.txt
+	@cat pattern_list.txt
 ifeq ($(DIRECT_LINK),0)
 $(YAML_BUILD)/%.o: deps/yaml-cpp/src/%.cpp $(YAML_HEADERS)
 	@mkdir -p $(dir $@)

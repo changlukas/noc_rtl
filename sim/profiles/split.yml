@@ -1,0 +1,10 @@
+input_id_width: 3
+output_id_width: 3
+credit_depth: 2
+num_dat_vc: 4
+dat_vc_mode: 1
+device_id_width: 1
+context_depth: 4
+max_outstanding_per_id: 4
+io_fifo_depth: 4
+reg_type: 2

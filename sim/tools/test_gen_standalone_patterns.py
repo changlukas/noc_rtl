@@ -404,16 +404,18 @@ def test_stress_patterns_legal_and_distinct(tmp_path, mode):
         assert len({t["addr"] >> 32 for t in txns}) == (1 if target == "per_id" else 4)
 
 
+@pytest.mark.parametrize("depth", [4, 32])
 @pytest.mark.parametrize("mode", ["control", "data", "rand"])
-def test_reorder_backpressure_prefill(tmp_path, mode):
+def test_reorder_backpressure_prefill(tmp_path, mode, depth):
     import json
     original = json.loads((REPO / "sim/test_patterns/standalone/cases.json").read_text())
     case = next(c for c in original["cases"] if c["name"] == "single_id_reorder")
     catalog = tmp_path / "catalog.json"
     catalog.write_text(json.dumps(dict(cases=[dict(case, count=64, response_backpressure=True)])))
-    generate(tmp_path, REPO / "sim/topology.yml", 3, profile="cosim", mode=mode, catalog=catalog)
+    generate(tmp_path, REPO / "sim/topology.yml", 3, profile="cosim", mode=mode, catalog=catalog,
+             hardware={"response_fifo_depth": depth})
     txns = _parse_write(tmp_path / "single_id_reorder/write.txt")
     assert len(txns) == 64 and all(t["len"] == 0 for t in txns)
-    assert all(t["addr"] >> 32 == 2 for t in txns[:31])
-    assert [t["addr"] >> 32 for t in txns[31:35]] == [1, 2, 3, 0]
+    assert all(t["addr"] >> 32 == 2 for t in txns[:depth-1])
+    assert [t["addr"] >> 32 for t in txns[depth-1:depth+3]] == [1, 2, 3, 0]
     assert len({t["id"] for t in txns}) == 1

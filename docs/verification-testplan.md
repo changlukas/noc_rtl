@@ -112,3 +112,7 @@ Run log 與 .run.json 保留 command、profile、source manifest digest、stimul
 ## Latest full native baseline
 
 15/15 cases PASS; coverage gaps and the proposed follow-up plan are in [Coverage review](verification-coverage-review.md). The approved stress extension is implemented; see [Stress acceptance](verification-stress-results.md) for the 29-run native merge and remaining gaps.
+
+## Parameter regression follow-up (2026-10-03)
+
+Four approved power-of-two configurations were evaluated at the existing synchronous clocks. Baseline retained; read-ROB-disabled and small-ROB Router runs pass. Split-VC Router integration fails VC validation, while the identical NI configuration passes direct-link tests. Native functional union is 97.02%; code coverage remains per elaboration because cross-configuration merging drops incompatible data. See [parameter results](verification-parameter-results.md) for evidence and remaining scope. Independent clocks and additional source/NoC ID profiles remain pending.

@@ -1,0 +1,8 @@
+input_id_width: 3
+output_id_width: 3
+credit_depth: 8
+device_id_width: 8
+context_depth: 1
+io_fifo_depth: 4
+reg_type: 1
+r_rob_en: 0

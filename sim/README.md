@@ -89,3 +89,30 @@ SEED changes reset timing only; transaction stimulus keeps its manifest seed.
 
 Run variants retain separate report directories and native coverage test names.
 The three new stress cases are not added to the NMU-only response-loopback TB.
+
+## Parameter profiles
+
+`sim/profiles/` holds the three approved parameter variants; `sim/profile.yml`
+retains the baseline. Pass a profile to `sim/prepare.py --profile <file> --out <stage>`
+and synchronize that isolated stage. Prepared `profile.mk` supplies the existing
+Make variables; `make run CASE=... COVERAGE=1` stays unchanged.
+
+Profiles select device ID width, context and per-ID capacity, IO FIFO depth,
+REG_TYPE, B/R ROB depths and read ROB enable. DAT VC count/mode and credit depth
+are emitted together into SV/C++ sources and the matching credit interface package.
+The RTL device width is selected at the TB; the Router transports unchanged NoC IDs.
+IO_FIFO_DEPTH controls both NI AXI CDC FIFOs and NMU REQ/RSP FIFOs; NSU REQ/RSP
+FIFOs retain their defaults. REG_TYPE controls packetize/depacketize outputs; SAM
+register settings retain their defaults.
+All capacity values in this campaign are powers of two. Production defaults are
+unchanged. Parameterized response-prefill patterns are generated in the profile
+stage, preserving the baseline patterns.
+
+Use separate report/VDB directories per profile. A read-ROB-disabled same-ID
+reorder run requires admission wait and recovery, while ordinary data/order checks
+remain enabled. See `docs/verification-parameter-plan.md` for scope and case selection.
+
+The Split VC profile currently fails Router integration because Router VC reassignment
+does not preserve the NI read/write VC pools. The identical NI profile passes the
+existing direct-link environment. See `docs/verification-parameter-results.md`;
+this is an open integration issue, not a waived check.

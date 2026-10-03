@@ -12,5 +12,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--rtl-stage", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--profile")
     args = parser.parse_args()
-    prepare(args.rtl_stage, args.out, direct=True)
+    prepare(args.rtl_stage, args.out, args.profile, direct=True)

@@ -8,6 +8,9 @@ module tb_top #(
     parameter int unsigned RSP_DELAY_CYCLES = 0,
     parameter int unsigned OUTPUT_REG_TYPE = 0,
     parameter int unsigned IO_FIFO_DEPTH = 32,
+    parameter int unsigned B_ROB_DEPTH = ni_params_pkg::NMU_ROB_B_DEPTH,
+    parameter int unsigned R_ROB_DEPTH = ni_params_pkg::NMU_ROB_R_DEPTH,
+    parameter bit R_ROB_EN = bit'(ni_params_pkg::NMU_R_ROB_EN),
     parameter bit RTL_NSU = 0,
     parameter int unsigned DEVICE_ID_WIDTH = ni_params_pkg::NSU_AXI_ID_WIDTH,
     parameter int unsigned CONTEXT_DEPTH = ni_params_pkg::NSU_MAX_OUTSTANDING
@@ -26,6 +29,9 @@ module tb_top #(
     localparam int NMU_ID   = (ROUTER_Y << ni_flit_pkg::X_WIDTH) | ROUTER_X;
     localparam int NUM_WR_VC = NOC_DAT_VC_MODE == 1 ? NUM_DAT_VC/2 : NUM_DAT_VC;
     initial begin
+        $display("PARAM_CONFIG device_id=%0d context=%0d per_id=%0d io_fifo=%0d reg_type=%0d b_rob=%0d r_rob=%0d r_rob_en=%0d vc=%0d vc_mode=%0d credit=%0d",
+            DEVICE_ID_WIDTH, CONTEXT_DEPTH, MAX_OUTSTANDING_PER_ID, IO_FIFO_DEPTH,
+            OUTPUT_REG_TYPE, B_ROB_DEPTH, R_ROB_DEPTH, R_ROB_EN, NUM_DAT_VC, NOC_DAT_VC_MODE, CREDIT_DEPTH);
         $display("CLOCK_CONFIG axi_period_ps=%0d noc_period_ps=%0d apply_delay_ps=%0d sample_delay_ps=%0d",
             CLK_PERIOD, CLK_PERIOD, APPL_DELAY, ACQ_DELAY);
         $display("TX_STORAGE req_bits=%0d dat_bits=%0d context_bits=%0d",
@@ -213,6 +219,9 @@ module tb_top #(
         .INPUT_ID_WIDTH (INPUT_ID_WIDTH),
         .OUTPUT_ID_WIDTH (OUTPUT_ID_WIDTH),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
+        .B_ROB_DEPTH (B_ROB_DEPTH),
+        .R_ROB_DEPTH (R_ROB_DEPTH),
+        .R_ROB_EN (R_ROB_EN),
         .AXI_FIFO_DEPTH (IO_FIFO_DEPTH),
         .REQ_FIFO_DEPTH (IO_FIFO_DEPTH),
         .CREDIT_DEPTH (ni_params_pkg::CREDIT_DEPTH),

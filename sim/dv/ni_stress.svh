@@ -10,6 +10,7 @@
     bit [NUM_NSUS-1:0] aw_context_reused = '0, ar_context_reused = '0;
     bit hol_wr_progress = 0, hol_rd_progress = 0;
     bit b_output_stalled = 0, r_output_stalled = 0;
+    bit read_order_wait_seen = 0, read_order_resumed = 0;
     bit reset_pending_seen = 0, reset_complete = 0;
     int stress_wr_dst[NUM_IDS] = '{default:0};
     int stress_rd_dst[NUM_IDS] = '{default:0};
@@ -24,6 +25,7 @@
     always @(posedge clk) begin
         if (!axi_rst_n) begin
             wr_limit_seen = 0; rd_limit_seen = 0;
+            read_order_wait_seen = 0; read_order_resumed = 0;
             wr_limit_reused = 0; rd_limit_reused = 0;
             b_storage_full_seen = 0; r_storage_full_seen = 0;
             b_storage_reused = 0; r_storage_reused = 0;
@@ -32,6 +34,10 @@
             hol_wr_progress = 0; hol_rd_progress = 0;
             b_output_stalled = 0; r_output_stalled = 0;
         end else begin
+            if (!R_ROB_EN && `STRESS_ORDER.s_ar_valid_i &&
+                    `STRESS_ORDER.ar_reorder_required && !`STRESS_ORDER.s_ar_ready_o)
+                read_order_wait_seen = 1;
+            if (read_order_wait_seen && `STRESS_ORDER.ar_accept) read_order_resumed = 1;
             if (wr_order_full) wr_limit_seen = 1;
             if (rd_order_full) rd_limit_seen = 1;
             if (wr_limit_seen && `STRESS_ORDER.aw_accept) wr_limit_reused = 1;
@@ -205,6 +211,11 @@
     endtask
 
     task automatic check_stress();
+        if (!R_ROB_EN && reorder_test == 2) begin
+            $display("READ_ORDER_RECOVERY wait=%0d resumed=%0d", read_order_wait_seen, read_order_resumed);
+            if (!read_order_wait_seen || !read_order_resumed)
+                $fatal(1, "Read ordering admission wait/recovery not exercised");
+        end
     `ifdef NI_COVERAGE
         if (response_backpressure)
             $display("REORDER_BACKPRESSURE write=%0d read=%0d", cov_b_stall_inversion, cov_r_stall_inversion);

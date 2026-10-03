@@ -13,7 +13,8 @@ SCHEDULE = ("response_order", "response_delay", "startup_delay",
             "require_ooo", "require_buffered", "require_capacity", "require_stall")
 
 
-def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, case_name=None, profile="standalone"):
+def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, case_name=None, profile="standalone", hardware=None):
+    response_prefill = (hardware or {}).get("response_fifo_depth", 32) - 1
     out = Path(out)
     topology = Path(topology)
     if topology.suffix == ".json":
@@ -128,7 +129,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 dest = (txn // num_ids) % len(routes[classes[txn]])
             if case.get("response_backpressure") and case.get("require_buffered"):
                 # Leave one response FIFO entry for the delayed head transaction.
-                dest = 2 if txn < 31 else (1, 2, 3, 0)[(txn-31) % 4]
+                dest = 2 if txn < response_prefill else (1, 2, 3, 0)[(txn-response_prefill) % 4]
             if case.get("capacity_target") in ("per_id", "context"):
                 dest = 0 if case["capacity_target"] == "per_id" else txn % len(routes[classes[txn]])
                 if case["capacity_target"] == "per_id":
