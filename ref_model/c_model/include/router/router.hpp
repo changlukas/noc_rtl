@@ -178,6 +178,16 @@ class Router {
             assert(false && "Router: own coordinate outside mesh");
             std::abort();
         }
+        if (cfg_.dat_vc_mode != NOC_DAT_VC_MODE_SHARED &&
+            cfg_.dat_vc_mode != NOC_DAT_VC_MODE_READ_WRITE_SPLIT) {
+            assert(false && "Router: invalid DAT VC mode");
+            std::abort();
+        }
+        if (cfg_.dat_vc_mode == NOC_DAT_VC_MODE_READ_WRITE_SPLIT &&
+            (cfg_.num_vc < 2 || cfg_.num_vc % 2 != 0)) {
+            assert(false && "Router: split DAT requires an even num_vc >= 2");
+            std::abort();
+        }
         for (std::size_t p = 0; p < ROUTER_PORT_COUNT; ++p) {
             input_fifo_[p].resize(cfg_.num_vc);
             credit_[p].assign(cfg_.num_vc, out_credit_seed(p));
@@ -323,13 +333,12 @@ class Router {
                     requested = static_cast<uint8_t>(flit.get_header_field("vc_id"));
                     if (wormhole_[out_port][requested].locked_input.has_value()) continue;
                 } else {
-                    const auto dst = static_cast<uint8_t>(flit.get_header_field("dst_id"));
-                    const auto dst_port = static_cast<uint8_t>(flit.get_header_field("dst_port_id"));
-                    requested = preferred_out_vc(out_port, dst, dst_port);
+                    const auto range = vc_range(flit);
+                    requested = preferred_out_vc(out_port, flit);
                     if (wormhole_[out_port][requested].locked_input.has_value()) {
                         if (flit.get_header_field("flit_tail") == 0) continue;
                         bool found = false;
-                        for (uint8_t candidate = 0; candidate < cfg_.num_vc; ++candidate) {
+                        for (uint8_t candidate = range.first; candidate < range.second; ++candidate) {
                             if (candidate != requested &&
                                 !wormhole_[out_port][candidate].locked_input.has_value()) {
                                 requested = candidate;
@@ -414,6 +423,25 @@ class Router {
         return preferred_vc(o, next_hop_route(out, dst, dst_port), cfg_.num_vc);
     }
 
+    std::pair<uint8_t, uint8_t> vc_range(const Flit& flit) const {
+        if (cfg_.dat_vc_mode == NOC_DAT_VC_MODE_SHARED) return {0, cfg_.num_vc};
+        const auto channel = flit.get_header_field("axi_ch");
+        const uint8_t half = cfg_.num_vc / 2;
+        if (channel == ::ni::AXI_CH_DataAw || channel == ::ni::AXI_CH_DataW) {
+            return {0, half};
+        }
+        if (channel == ::ni::AXI_CH_DataR) return {half, cfg_.num_vc};
+        assert(false && "Router: invalid channel on split DAT network");
+        std::abort();
+    }
+
+    uint8_t preferred_out_vc(std::size_t out, const Flit& flit) const {
+        const auto range = vc_range(flit);
+        const auto dst = static_cast<uint8_t>(flit.get_header_field("dst_id"));
+        const auto port = static_cast<uint8_t>(flit.get_header_field("dst_port_id"));
+        return range.first + preferred_out_vc(out, dst, port) % (range.second - range.first);
+    }
+
     // The stage-2 VA rule: floo_vc_assignment + floo_vc_selection translate
     // (floo_vc_router.sv:277-302, SingleStage wiring :413-421), run on the head
     // flit parked at an input FIFO front. Returns the output VC to hold, or
@@ -426,8 +454,10 @@ class Router {
     // block every other packet that prefers it for the whole starvation window.
     std::optional<uint8_t> vc_assignment(std::size_t out, const Flit& f,
                                          bool require_credit = true) const {
+        const auto range = vc_range(f);
         const auto eligible = [&](uint8_t v) {
-            return !wormhole_[out][v].locked_input.has_value() &&
+            return v >= range.first && v < range.second &&
+                   !wormhole_[out][v].locked_input.has_value() &&
                    (!require_credit || credit_[out][v] > 0);
         };
         // fixed_vc=1 bypass (D8): the NI-pinned VC is kept verbatim, still
@@ -437,9 +467,7 @@ class Router {
             if (eligible(vcid)) return vcid;
             return std::nullopt;
         }
-        const auto dst = static_cast<uint8_t>(f.get_header_field("dst_id"));
-        const auto dst_port = static_cast<uint8_t>(f.get_header_field("dst_port_id"));
-        const uint8_t pref = preferred_out_vc(out, dst, dst_port);
+        const uint8_t pref = preferred_out_vc(out, f);
         // FVADA: preferred VC available -> take it (floo_vc_selection.sv:32-34).
         if (eligible(pref)) return pref;
         // Wormhole head (flit_tail=0): preferred VC only, no overflow, so the
@@ -453,7 +481,7 @@ class Router {
         // faithful to the overwrite order, do not "fix"
         // (floo_vc_selection.sv:37-45).
         std::optional<uint8_t> sel;
-        for (uint8_t v = 0; v < cfg_.num_vc; ++v) {
+        for (uint8_t v = range.first; v < range.second; ++v) {
             if (v != pref && eligible(v)) sel = v;
         }
         return sel;
@@ -705,7 +733,7 @@ inline void Router::tick() {
                 // does a single-flit packet's FVADA overflow VC — but that flit
                 // is its own head, which is what the `head` term excludes.
                 if (!head && lq.front().get_header_field("fixed_vc") == 0 &&
-                    v != preferred_out_vc(out, dst, dst_port)) {
+                    v != preferred_out_vc(out, lq.front())) {
                     assert(false &&
                            "Router: locked wormhole output VC diverges from the recomputed "
                            "preferred VC (fixed_vc=0)");

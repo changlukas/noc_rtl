@@ -1743,3 +1743,80 @@ TEST(RouterDatapathDeath, BadVcIdAborts) {
 }
 
 }  // namespace
+
+TEST(RouterSplitVc, WormholePreservesWritePoolAndInputCredit) {
+    for (uint8_t count : {2, 4, 8}) {
+        for (uint8_t fixed : {0, 1}) {
+            auto cfg = center_cfg();
+            cfg.num_vc = count;
+            cfg.dat_vc_mode = ni::NOC_DAT_VC_MODE_READ_WRITE_SPLIT;
+            Router r(cfg);
+            FlitSink sink;
+            CreditCounter credits;
+            const auto west = static_cast<std::size_t>(RouterPort::WEST);
+            r.set_downstream(west, sink);
+            r.set_upstream_credit(0, credits);
+            const uint8_t input_vc = 0;
+            for (int tick = 0; tick < 8; ++tick) {
+                if (tick < 3) {
+                    auto f = make_flit(make_dst(0, 1), input_vc, tick == 2);
+                    f.set_header_field("axi_ch", tick == 0 ? ni::AXI_CH_DataAw : ni::AXI_CH_DataW);
+                    f.set_header_field("fixed_vc", fixed);
+                    r.input(0).push_flit(f);
+                }
+                r.tick();
+            }
+            ASSERT_EQ(sink.received.size(), 3u);
+            const auto vc = sink.received.front().get_header_field("vc_id");
+            EXPECT_LT(vc, count / 2);
+            if (fixed) EXPECT_EQ(vc, input_vc);
+            for (const auto& f : sink.received) EXPECT_EQ(f.get_header_field("vc_id"), vc);
+            EXPECT_EQ(credits.pulses, (std::vector<uint8_t>{input_vc, input_vc, input_vc}));
+        }
+    }
+}
+
+TEST(RouterSplitVc, ReadFallbackStaysInPoolAndWaitsForCredit) {
+    auto cfg = center_cfg();
+    cfg.num_vc = 4;
+    cfg.dat_vc_mode = ni::NOC_DAT_VC_MODE_READ_WRITE_SPLIT;
+    cfg.vc_depth = 2;
+    Router r(cfg);
+    FlitSink sink;
+    const auto west = static_cast<std::size_t>(RouterPort::WEST);
+    r.set_downstream(west, sink);
+    auto send = [&]() {
+        auto f = make_flit(make_dst(0, 1), 2, 1);
+        f.set_header_field("axi_ch", ni::AXI_CH_DataR);
+        r.input(0).push_flit(f);
+        for (int i = 0; i < 5; ++i) r.tick();
+    };
+    for (int i = 0; i < 5; ++i) send();
+    ASSERT_EQ(sink.received.size(), 4u);
+    EXPECT_EQ(r.credit(west, 0), 2u);
+    EXPECT_EQ(r.credit(west, 1), 2u);
+    for (const auto& f : sink.received) EXPECT_GE(f.get_header_field("vc_id"), 2u);
+    EXPECT_TRUE(r.output_vc_credit_blocked(west, 3));
+    r.receive_credit(west, 2);
+    for (int i = 0; i < 5; ++i) r.tick();
+    ASSERT_EQ(sink.received.size(), 5u);
+    EXPECT_EQ(sink.received.back().get_header_field("vc_id"), 2u);
+}
+
+TEST(RouterSplitVc, ReadLocalEjectionAndFixedVcUseUpperPool) {
+    for (uint8_t fixed : {0, 1}) {
+        auto cfg = center_cfg();
+        cfg.num_vc = 4;
+        cfg.dat_vc_mode = ni::NOC_DAT_VC_MODE_READ_WRITE_SPLIT;
+        Router r(cfg);
+        FlitSink sink;
+        r.set_downstream(0, sink);
+        auto f = make_flit(make_dst(1, 1), 3, 1);
+        f.set_header_field("axi_ch", ni::AXI_CH_DataR);
+        f.set_header_field("fixed_vc", fixed);
+        r.input(1).push_flit(f);
+        for (int i = 0; i < 4; ++i) r.tick();
+        ASSERT_EQ(sink.received.size(), 1u);
+        EXPECT_EQ(sink.received[0].get_header_field("vc_id"), fixed ? 3u : 2u);
+    }
+}

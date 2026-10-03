@@ -23,6 +23,7 @@ struct RouterConfig {
     uint8_t mesh_x_dim = NOC_MESH_X_DIM;
     uint8_t mesh_y_dim = NOC_MESH_Y_DIM;
     uint8_t num_vc = NOC_DAT_NUM_VC;
+    uint8_t dat_vc_mode = NOC_DAT_VC_MODE;
     std::size_t vc_depth = CREDIT_DEPTH;
     // Depth of the receive-VC FIFO behind the LOCAL output -- the attached NI's,
     // not this router's -- so the LOCAL sender-credit seed is independent of
