@@ -10,7 +10,7 @@
 
 本目錄其他 verification 文件為歷史紀錄。現行範圍與結果以上述三份文件為準。Logs、VDB、URG reports、manifests 放在 `build/`，逐筆執行與輸入條件放在 `docs/data/`。
 
-Plan 採 Feature → Sub-feature → Item，每項保留 Requirement Location、Feature Description、Verification Goals、Pass/Fail Criteria、Test Type、Coverage Method、Applicable Configurations、Link to Coverage。參考 [OpenHW planning guide](https://github.com/openhwfoundation/core-v-verif/blob/master/docs/VerifPlans/VerificationPlanning101.md) 與 [AXI verification plan](https://github.com/openhwfoundation/cva6/blob/master/verif/docs/VerifPlans/source/dvplan_AXI.md) 的欄位。其他設計的 AXI 限制不沿用。
+Plan 分開列出功能、驗證目標、測試條件與 coverage。Report 使用相同 Item ID 對照證據與限制。功能定義須核對協定、核准規格與 RTL，參考資料不取代專案的支援範圍。
 
 ## 功能分類與用語
 
@@ -25,15 +25,20 @@ NI 的功能依 address decoding/translation、packetization/depacketization、I
 | Arbitration | 多個 requests 共用輸出時選誰。區分 packet lock、backpressure 與實際可仲裁的 cycle |
 | Throughput / latency | 列出量測起訖、clock、traffic 與 stall 條件。總執行 cycles 不等於單筆 latency 或仲裁公平性 |
 
-Flow control 與 arbitration 的分類參考 *On-Chip Networks, Second Edition* 第 5、6 章。Ordering 分析使用本機 `noc-ordering` 知識整理。這些資料提供概念，專案行為仍以核准規格與現行 RTL 逐項核對。
+## 功能與測試分開撰寫
 
-## 每個 Item 必須說清楚的內容
+| 欄位 | 內容 |
+|---|---|
+| Feature Description | 設計必須遵守的行為與適用條件。使用 interface signals 描述，例如 same-ID read responses 按 AR 接受次序返回 |
+| Verification Goals | 要確認的行為，例如 RID 配對正確且 same-ID responses 保序 |
+| Stimulus／test conditions | 如何觸發情境，例如先接受 A、再接受 B，延遲 A 的 Device response |
+| Pass/Fail Criteria | 比較哪些 signals、transaction fields 或先後次序，以及通過條件 |
+| Existing Coverage | 實際 covergroup、coverpoint、cross、assertion 或 checker，並列出 sample boundary |
+| Report | 已執行條件、結果與未驗證範圍 |
 
-- **Feature Description**：功能與適用條件，例如「same-ID read responses 按 AR 接受次序返回」。不放 script、monitor 作法或歷次修改紀錄。
-- **Verification Goals**：如何觸發情境，以及要看哪些 top-level signals。必要條件如 different IDs、哪端 stall、是否存在較早 pending request，必須列出。
-- **Pass/Fail Criteria**：具體比較什麼。使用 ID、address、data、beat count、response code、先後次序，避免只寫「正確完成」或「checker PASS」。
-- **Link to Coverage**：實際物件與觀察位置。沒有專用 bin 時記錄目前證據，另由 report 說明不足，不自動將每個可能 cross 列為必做。
-- **Requirement Location**：規格或 implementation reference。兩者不一致時列為待確認事項，不能自行選一份當規格。
+延遲 destination response、降低 READY、填滿 buffer 是測試條件，不另外列為功能。Different-ID OoO 是允許的 response 行為，必須實際觀察次序反轉才能記為已測 OoO。
+
+合併功能項目時保留歷史 ID 對照，不重新編號已有證據。規格與 implementation 不一致時列為待確認事項，不自行選定規格。
 
 Generic AXI 包含輸入與輸出的 transaction fields、handshake、responses、outstanding、ordering。NI-specific 補上 AXI 與 NoC 之間的轉換和 flow control。先檢查功能是否列全，再檢查 coverage model 是否量到。
 
@@ -69,7 +74,7 @@ Address-derived destination 只代表預期 routing。要證明實際 destinatio
 
 ## 文件與 coverage model 對齊
 
-1. Plan 的 Link to Coverage 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「未實作」，不得填預期存在的物件。是否需要新增，由功能目標與現有證據決定。
+1. Plan 的 Existing Coverage 與 Coverage Source Index 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「未實作」，不得填預期存在的物件。是否需要新增，由功能目標與現有證據決定。
 2. 對照 sample code，確認訊號來源、clock、reset、bin 範圍、ignore bins 與 cross。列出外部與內部觀察的差異。
 3. Report 使用相同 Item ID，記錄已驗證條件與剩餘範圍。區分 case PASS、coverage hit、checker self-test 與 input records。
 4. 每次 coverage model 修改後，重新核對 model version 與 VDB 來源。不同模型分母不得直接比較。URG merge 無 warning 仍須人工確認語意一致。

@@ -31,18 +31,17 @@ Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每�
 | AXI-04 | Source B/R backpressure，四 NSU AW/W/AR stall→recovery 12/12 cover properties 命中 | 尚無完整五 channel／AW-W 相對時序 bins。12 個 covers 的 recovery window 為 1～64 cycles | 部分驗證 |
 | AXI-05 | OKAY traffic PASS。SLVERR/DECERR 共 16/16 variants，56 B responses、2,516 R beats 比對 PASS | 驗證 Device error 傳回 Source。未驗證 SAM miss 自行產生 DECERR，EXOKAY／exclusive 待確認 | 所列 responses 已驗證 |
 | AXI-06 | Single/multi-ID outstanding、read/write pending cross 命中，random seeds 1/17/29 PASS | multiple bin 為 depth≥2，未分每 ID 深度與 ID 數交叉 | 部分驗證 |
-| AXI-07 | Ordering cases 與 mixed seeds PASS，checker 正反向 self-test 10/10 | Inversion covergroup 觀察內部 ordering ingress。Top-level arrival／retirement cross 待補，R beat interleaving 未驗 | 部分驗證 |
+| AXI-07 | Ordering cases 與 mixed seeds PASS，checker 正反向 self-test 10/10。hol_blocking 補充不同 ID／destination 的 response 完成情境 | Inversion covergroup 觀察內部 ordering ingress。Top-level arrival／retirement cross 待補，R beat interleaving 未驗。hol_blocking 不證明 OoO 或 HoL bypass | 部分驗證 |
 
 ### NI-specific
 
 | Item | 已有證據 | 尚缺／限制 | 判定 |
 |---|---|---|---|
-| NI-01 | 四 destinations、SAM 起點／尾端，端到端 checker 與 boundary bins 通過 | Destination coverpoint 由 Source address 推導，實際 AXI／NoC route cross 待補 | 部分驗證 |
+| NI-01 | 四 destinations、SAM 起點／尾端，端到端 checker 與 boundary bins 通過 | Destination coverpoint 由 Source address 推導，實際 AXI／NoC route cross 待補。本平台未啟用 NSU address rebasing，非零 address translation 未驗證 | 部分驗證 |
 | NI-02 | Control/data read/write、single/burst、random 的端到端 checks PASS | 未獨立計量 channel mapping、packet VC 保持與 REQ/DAT 同時傳輸 | 部分驗證 |
 | NI-03 | C1/C0/C2 Device ID width 1/3/8，C5/C6 Source width 1/8。C6 全部 256 IDs 各一筆 read/write PASS | Source × Device ID mapping cross 缺少，multi-source 未驗 | 部分驗證 |
 | NI-04 | Per-ID/context/ROB capacity tests PASS，內部 full/reuse 命中 | Interface-only limit/recovery model 待補。C0 W context depth=32 full 未命中 | 部分驗證 |
 | NI-05 | Shared/split、單／多 VC PASS，internal credit crosses 命中，credit assertions failure=0 | 外部 credit-balance monitor 與 VC × direction cross 待補 | 部分驗證 |
-| NI-06 | North 延遲 B/R 時，west 的不同 ID response 仍可返回，恢復後全部完成 | West request 先發送，north requests 在後。未測 blocked head 後面的 packet 通過同一 queue。Coverage 另含 context full 前提 | 所列 backpressure 情境已驗證 |
 | NI-07 | Same-ID request 按 destination/region 檢查。Mixed seeds 及 C2/C4 無 read reordering 的選定 cases PASS | Request 的 destination/region/order 組合未完整計量，不能用 response inversion bins 代替 | 所列條件已驗證 |
 | NI-08 | C0 T0/T1/T2 共 12 項 PASS | 未交叉全部 C0～C6。不是 physical CDC/RDC | 所列 clock sweep 已驗證 |
 | NI-09 | Pending reset、quiet interval、fresh traffic checks PASS | Pending bin 從內部取樣。僅全平台 reset，非獨立 domain／局部 reset | 部分驗證 |
@@ -54,7 +53,7 @@ Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每�
 |---|---|---|
 | Source AXI | transaction_cg、write_strobe_cg、boundary_cg、response_cg、outstanding_cg | AXI-01/02/03/05/06，NI-01/02/03 |
 | Device AXI | aw_stall_recover、w_stall_recover、ar_stall_recover | AXI-04 |
-| Internal／mixed | ordering_cg、rob_cg、stress_cg、reset_cg | AXI-07，NI-04/06/07/09 |
+| Internal／mixed | ordering_cg、rob_cg、stress_cg、reset_cg | AXI-07，NI-04/07/09 |
 | Internal primitives | fifo_cg、credit_cg、arbiter／credit-forward assertions | NI-04/05/10 |
 
 完整 source links 與 sample 條件見 [Coverage Source Index](verification-testplan.md#coverage-source-index)。Report 保留內部證據，但不以其取代尚未實作的 interface coverpoints。
@@ -152,6 +151,7 @@ Union 的分母是實際 VDB 中已定義的模型，含內部 resource bins。M
 
 - Requests 按 Source ID 與 control/data address region 保序。同 Source ID、同 NSU、不同 region 可超車。Source same-ID B/R responses 仍按原次序返回。
 - `axi_reorder_compare` 以 10 個正反向 self-tests 驗證 ordering、W 配對與 reset 行為。預期失敗的 self-tests 不納入 DUT coverage。
+- Ordering checker 無法區分已可返回且 payload 完全相同的 same-ID B responses。ID mapping 後若不同 Source IDs 的 request headers 完全相同，外部配對有歧義。目前 generated cases 使用不同 addresses。
 - Error response 比對每個 B 與 R beat。Error read 不宣稱 RDATA 有正常 memory read 語意。
 - Router split VC 修正為 `76634b7`，preferred VC 與 single-flit fallback 限於 read/write pool。C0 原 29 筆 cycles 不變。
 - 最後 backpressure 補測沿用 `axi_delayer`，只在 BACKPRESSURE=1 啟用。無 stall 的 request_rand 仍為 653 cycles。
@@ -161,7 +161,7 @@ Union 的分母是實際 VDB 中已定義的模型，含內部 resource bins。M
 
 | 項目 | 所需處置 |
 |---|---|
-| NI requirement baseline | 固定規格版本與章節。interface_handshake.json 的通用 req/rsp credit 描述與現行 REQ/RSP ready-valid、DAT credit ports 不一致，需另行確認來源定義。此次未修改該檔 |
+| NI requirement baseline | interface_handshake.json 的通用 req/rsp credit 描述與現行 REQ/RSP ready-valid、DAT credit ports 不一致，需另行確認來源定義。此次未修改該檔 |
 | Interface coverage | 依 Plan Item Results review 待補項目，優先確認外部 arrival/order、packet/VC、credit、stall/recovery 的觀察方式 |
 | AXI／address support | 確認 FIXED/WRAP、unaligned、exclusive、sideband、SAM miss 的行為與必要驗證範圍 |
 | Code／assertion closure | 逐組處理未覆蓋 condition／toggle 與未觸發 properties。Module／statement 分類完成，完整 bin review 未完成 |
@@ -192,7 +192,7 @@ make run CASE=single_id_reorder MODE=data BACKPRESSURE=1 COVERAGE=1
 urg -full64 -dir <run-record中的VDB路徑> -report build/coverage -format both
 ```
 
-## Backpressure Case Scope
+## hol_blocking Test Scope
 
 `hol_blocking` 的實際 stimulus 與驗收條件如下。
 
@@ -201,11 +201,11 @@ urg -full64 -dir <run-record中的VDB路徑> -report build/coverage -format both
 3. 在 north 恢復前，west response 必須返回 Source。既有檢查另要求 north context full。
 4. 恢復 north responses，確認全部 transactions 完成。
 
-這份證據確認不同 ID／destination 在選定阻塞條件下仍可返回 response。它沒有把一筆可前進的 request 放在 blocked head 後方來驗證 HoL，也沒有驗證任意 VC／destination 的隔離。本輪只修正描述，保留原 case 名稱與測試結果。
+這份證據確認不同 ID／destination 在選定阻塞條件下仍可返回 response。West request 先接受，不能由 west 先完成推定 OoO。它也沒有把一筆可前進的 request 放在 blocked head 後方來驗證 HoL bypass，或驗證任意 VC／destination 的隔離。本輪只修正描述，保留原 case 名稱與測試結果。
 
 ## Documentation Audit
 
-本輪另依 NoC flow control／ordering 概念核對 NI 功能分類，檢查 channel mapping、packet lock、ID mapping、request/response ordering 與 backpressure 的必要條件。NMU／NSU ports、covergroup 名稱、sample code、Device AXI cover properties、CSV counts 與原生結果摘要保留原核對結果。所有 plan items 均有本報告對應列。未新增 covergroups，未將待補項目標成已命中。
+本輪另依 NoC flow control／ordering 概念核對 NI 功能分類，檢查 channel mapping、packet lock、ID mapping、request/response ordering 與 backpressure 的必要條件。NMU／NSU ports、covergroup 名稱、sample code、Device AXI cover properties、CSV counts 與原生結果摘要保留原核對結果。16 個功能 items 均有本報告對應列。原 NI-06 併入 AXI-07 的測試對照。未新增 covergroups，未將待補項目標成已命中。
 
 | 原 objective | 現行對應 |
 |---|---|
@@ -213,7 +213,8 @@ urg -full64 -dir <run-record中的VDB路徑> -report build/coverage -format both
 | V03 | AXI-06 |
 | V04/V05 | AXI-07、NI-07 |
 | V06/V07/V08/V09 | NI-03/04 |
-| V10/V11 | NI-05/06 |
+| V10 | NI-05 |
+| V11 | AXI-07 的 hol_blocking 補充情境，不作為 OoO 證據 |
 | V12/V14 | NI-08/09 |
 | V13/V17 | 驗證組態、NI-03/07/08 |
 | V15/V16 | AXI-05、NI-10 |
