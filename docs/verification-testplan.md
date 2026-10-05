@@ -4,9 +4,9 @@
 
 驗證對象為 NMU／NSU RTL。正式平台為一個 NMU、單個 C++ Router、四個 NSU 與 AXI memories。Standalone／direct-link 供 debug，未列入本報告的 accepted coverage。
 
-本 plan 供 review，沿用 [OpenHW AXI plan](https://github.com/openhwfoundation/cva6/blob/master/verif/docs/VerifPlans/source/dvplan_AXI.md) 的欄位與訊號式描述。Item 的 Coverage Method 是驗證需求，Link to Coverage 記錄現有實作與缺口。[Report](verification-integration-results.md) 列出逐項證據。[Guidelines](verification-guidelines.md) 定義維護規則。
+本 plan 沿用 [OpenHW AXI plan](https://github.com/openhwfoundation/cva6/blob/master/verif/docs/VerifPlans/source/dvplan_AXI.md) 的欄位與訊號式描述。Item 的 Coverage Method 是驗證需求，Link to Coverage 記錄現有實作與缺口。[Report](verification-integration-results.md) 列出逐項證據。[Guidelines](verification-guidelines.md) 定義維護規則。
 
-Generic AXI 使用 [AMBA AXI specification](https://developer.arm.com/documentation/ihi0022/hc) 的 channel、burst、response 與 ordering 定義。NI 介面參考 [NMU top](../rtl/nmu/top/nmu.sv)、[NSU top](../rtl/nsu/top/nsu.sv)、[packet contract](../specgen/generated/json/ni_packet.json) 與 [handshake contract](../specgen/source/interface_handshake.json)。NI release specification 的固定版本／章節定位為 `[TBD]`，RTL reference 不代替正式 requirement。
+Generic AXI 使用 [AMBA AXI specification](https://developer.arm.com/documentation/ihi0022/hc) 的 channel、burst、response 與 ordering 定義。NI 介面參考 [NMU top](../rtl/nmu/top/nmu.sv)、[NSU top](../rtl/nsu/top/nsu.sv)、[packet contract](../specgen/generated/json/ni_packet.json)。NI release specification 的版本／章節定位為 `[TBD]`。以下依現行 RTL 記錄行為，尚未將 RTL reference 視為已核准的 release specification。
 
 ## Interface Notation
 
@@ -21,230 +21,269 @@ Generic AXI 使用 [AMBA AXI specification](https://developer.arm.com/documentat
 
 `Ax` 表示 AW 或 AR。所有 transaction counts 以 handshake 計算。DAT 使用 `*_dat_valid_*`、flit VC 與 `*_dat_crdvalid_*`，沒有 ready port。下列 goals 均以這些 top-level interfaces 為觀察邊界。
 
+## NI Verification Functions
+
+| 功能 | 要驗證的行為 | Item |
+|---|---|---|
+| Address decoding / translation | Request 送到正確 NSU，local address 正確 | NI-01 |
+| Packetization / depacketization | AXI 與 NoC 轉換後，欄位、資料與 beat 配對正確 | NI-02 |
+| ID mapping / ordering | ID 還原、request 次序與 response 次序符合規則 | NI-03/07、AXI-07 |
+| Flow control | Buffer 不足、無 credit 或下游等待時不遺失資料，解除後繼續傳輸 | NI-04/05/06 |
+| Arbitration | 競爭時依規則送出，不破壞 packet 與 ordering | NI-10 |
+| Clock / reset | 不同 clock 下交易正確，reset 後可恢復運作 | NI-08/09 |
+
+功能分類參考 *On-Chip Networks, Second Edition* 第 5 章 Flow Control、第 6 章 Router Microarchitecture，及本機 ordering 知識整理。實際 channel、VC 與 ordering 規則依本專案 RTL 核對，沒有套用書中的 router 架構。
+
 ## Feature: Generic AXI Functional Coverage
 
-### Sub-feature: Burst
+### Sub-feature: Burst Transfers
 
 #### Item: AXI-01
 
-- **Requirement Location:** AXI specification 的對應 channel／transaction 規則，支援的 stimulus 範圍見本 plan。
-- **Feature Description:** 本階段 stimulus 使用 `AxBURST=2'b01`。Single 為 `AxLEN=0`。
-- **Verification Goals:** 於 AW／AR handshake 覆蓋 single 與 INCR burst。Control full-width 掃 `AxLEN=1..255`，data full-width 掃 `AxLEN=1..63`。
-- **Pass/Fail Criteria:** 每筆 AW 對應 `AWLEN+1` 個 W transfers 與一個 B。每筆 AR 對應 `ARLEN+1` 個 R transfers。僅末 beat 的 LAST 為 1。
+- **Requirement Location:** AXI4：Burst type、length、LAST。
+- **Feature Description:** INCR 使用 `AxBURST=2'b01`，每筆 transaction 有 `AxLEN+1` beats。
+- **Verification Goals:** 測 single、最小／最大 burst 與中間 lengths。Control full-width 為 1～256 beats，data full-width 為 1～64 beats。
+- **Pass/Fail Criteria:** 每筆 AW 有 AWLEN+1 個 W handshakes 與一個 B response。每筆 AR 有 ARLEN+1 個 R handshakes。WLAST／RLAST 只出現在最後一拍。
 - **Test Type:** Directed SelfChk
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0 完整 length sweep，其他組態為選定 lengths
-- **Link to Coverage:** `transaction_cg.cp_burst/cp_beats`、`direction_length`。只含代表性 length bins，完整 length 清單見 run／transaction records。
+- **Link to Coverage:** `transaction_cg.cp_burst`、`cp_beats`、`direction_length`。完整 length sweep 另有 transaction／completion records。
 
-### Sub-feature: Size and Address
+### Sub-feature: Transfer Size and Address
 
 #### Item: AXI-02
 
-- **Requirement Location:** AXI specification 的對應 channel／transaction 規則，支援的 stimulus 範圍見本 plan。
-- **Feature Description:** `2**AxSIZE` 為每 beat bytes，不得超過 AXI data bus。Burst 不跨 4 KB。
-- **Verification Goals:** 覆蓋 control `AxSIZE=0..3`、data `AxSIZE=0..6` 的合法對齊 `AxADDR`。覆蓋各 byte lane 與 4 KB 尾端。
-- **Pass/Fail Criteria:** Device AXI address／size／length 符合轉換後 request，RDATA 符合 preload／write data。
+- **Requirement Location:** AXI4：Transfer size、byte lanes、4 KB boundary。
+- **Feature Description:** `2**AxSIZE` 為每 beat bytes。此次測試使用 aligned address，INCR burst 不跨 4 KB。
+- **Verification Goals:** Control 掃 AxSIZE=0～3，data 掃 AxSIZE=0～6。測合法起始 byte lanes、4 KB 起點及尾端。
+- **Pass/Fail Criteria:** Device AxADDR／AxSIZE／AxLEN 符合預期 request，read data 與預載資料一致。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0 lane sweep，C0～C6 選定 traffic
-- **Link to Coverage:** `transaction_cg.cp_size`、`boundary_cg.page_boundary`。Read lane 與 size × lane 專用 cross 待補。
+- **Link to Coverage:** `transaction_cg.cp_size`、`boundary_cg.page_boundary`。Read lane 與完整 size × lane 組合未獨立計量。
 
-### Sub-feature: Write Strobe
+### Sub-feature: Write Strobes
 
 #### Item: AXI-03
 
-- **Requirement Location:** AXI specification 的對應 channel／transaction 規則，支援的 stimulus 範圍見本 plan。
-- **Feature Description:** `WSTRB[b]=1` 的 byte 寫入，`WSTRB[b]=0` 的 byte 保留。
-- **Verification Goals:** 於 W handshake 覆蓋 zero／partial／full WSTRB 與 one-hot byte selection，依接受的 AW 取得 active lanes。
-- **Pass/Fail Criteria:** Device WDATA／WSTRB 與 request 相符，readback 包含更新與保留的 bytes。
+- **Requirement Location:** AXI4：Write strobes。
+- **Feature Description:** `WSTRB[b]=1` 更新 byte b，`WSTRB[b]=0` 保留原值。
+- **Verification Goals:** 測 full、partial、zero 與 one-hot WSTRB，涵蓋合法 byte lanes。
+- **Pass/Fail Criteria:** Device WDATA／WSTRB 與 Source 相符。Readback 逐 byte 比對，包含 WSTRB=0 的 bytes。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0 strobe sweep，其他組態 random
-- **Link to Coverage:** `write_strobe_cg.cp_strobe/cp_lane/cp_size`、`strobe_size`。1-byte partial 被排除，該組合不存在。One-hot sweep 無獨立 bin。
+- **Link to Coverage:** `write_strobe_cg.cp_strobe`、`cp_lane`、`cp_size`、`strobe_size`。1-byte transfer 無 partial strobe。
 
-### Sub-feature: Channel Handshake
+### Sub-feature: Handshake and Backpressure
 
 #### Item: AXI-04
 
-- **Requirement Location:** AXI specification 的對應 channel／transaction 規則，支援的 stimulus 範圍見本 plan。
-- **Feature Description:** AW、W、B、AR、R 以 `VALID && READY` transfer。等待期間 VALID 與 payload 保持穩定。
-- **Verification Goals:** 兩端各 channel 覆蓋立即接受、stall、恢復。AW／W 覆蓋 AW-first、W-first、同 cycle 接受。
-- **Pass/Fail Criteria:** Protocol assertions 無違規，解除 stall 後無重複或遺失 transfer。
+- **Requirement Location:** AXI4：Channel handshake、VALID stability、AW/W independence。
+- **Feature Description:** AW/W/B/AR/R 以 VALID && READY 傳送。VALID=1、READY=0 時，VALID 與 payload 保持不變。AW、W 獨立握手。
+- **Verification Goals:** 各 channel 測無 stall、stall、解除 stall。AW/W 測 AW-first、W-first、同 cycle handshake。
+- **Pass/Fail Criteria:** 等待期間訊號穩定。解除 stall 後，每筆資料只被接受一次，transaction 能完成。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Assertion Coverage / Functional Coverage。
 - **Applicable Configurations:** C0/C1 ordering + BACKPRESSURE=1，其他組態依 records
-- **Link to Coverage:** 既有 AXI protocol checks。`tb_top.sv` 的 `aw_stall_recover/w_stall_recover/ar_stall_recover` 觀察 Device AXI。AW/W relative timing bins 與完整五 channel coverage 待補。
+- **Link to Coverage:** AXI protocol checks。Device AXI 的 `aw_stall_recover`、`w_stall_recover`、`ar_stall_recover` 見 tb_top.sv。AW/W 相對時序尚無 bins。
 
-### Sub-feature: Responses
+### Sub-feature: Response Codes
 
 #### Item: AXI-05
 
-- **Requirement Location:** AXI specification 的對應 channel／transaction 規則，支援的 stimulus 範圍見本 plan。
-- **Feature Description:** BID／RID 對應已接受的 AWID／ARID，BRESP／RRESP 傳遞 Device response。
-- **Verification Goals:** B handshake 與每個 R handshake 覆蓋 OKAY、SLVERR、DECERR。Error read 的每 beat response 分別檢查。
-- **Pass/Fail Criteria:** Source BID／RID 及 BRESP／RRESP 符合 pending transaction。正常存取另比對 RDATA。
+- **Requirement Location:** AXI4：Write/read response codes。
+- **Feature Description:** Device BRESP／RRESP 必須隨對應 transaction 傳回 Source。
+- **Verification Goals:** Read/write 各測 OKAY、SLVERR、DECERR，包含 single 與 burst。每個 R beat 都檢查 RRESP。
+- **Pass/Fail Criteria:** Source BRESP／RRESP 等於 Device 回覆，BID／RID 對應正確 request。
 - **Test Type:** Directed SelfChk
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0 error variants，C0～C6 OKAY
-- **Link to Coverage:** `response_cg.cp_resp`、`response_type`。沒有 EXOKAY bin。
+- **Link to Coverage:** `response_cg.cp_resp`、`response_type`。EXOKAY 尚未納入。
 
-### Sub-feature: Outstanding
+### Sub-feature: Outstanding Transactions
 
 #### Item: AXI-06
 
-- **Requirement Location:** AXI specification 的對應 channel／transaction 規則，支援的 stimulus 範圍見本 plan。
-- **Feature Description:** Write pending 由 AW handshake 增加、B handshake 減少。Read pending 由 AR 增加、RLAST handshake 減少。
-- **Verification Goals:** 覆蓋單筆、多筆、read/write 同時 pending、same-ID 與 multi-ID。
-- **Pass/Fail Criteria:** 完成數與接受數相符，drain 後無 pending。
+- **Requirement Location:** AXI4：Transaction IDs、outstanding requests。
+- **Feature Description:** AW 到 B 之間為一筆 pending write。AR 到最後一拍 R 之間為一筆 pending read。Read/write 分別計數。
+- **Verification Goals:** 測單筆與多筆 outstanding、same-ID 與 multi-ID，以及 read/write 同時 pending。
+- **Pass/Fail Criteria:** 每個已接受的 write 收到一次 B，每個 read 收到完整 R beats。全部完成後 pending count=0。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0～C6 選定 outstanding／random cases
-- **Link to Coverage:** `outstanding_cg.cp_write/cp_read`、`read_write` 與 `transaction_cg.cp_id`。ID count × per-ID depth cross 待補。
+- **Link to Coverage:** `outstanding_cg.cp_write`、`cp_read`、`read_write`，以及 `transaction_cg.cp_id`。
 
 ### Sub-feature: Response Ordering
 
 #### Item: AXI-07
 
-- **Requirement Location:** AXI specification 的對應 channel／transaction 規則，支援的 stimulus 範圍見本 plan。
-- **Feature Description:** Source same-ID B 與 same-ID read transactions 依 request 接受次序完成。不同 IDs 可亂序完成。
-- **Verification Goals:** 在 Device responses 亂序及 Source BREADY／RREADY stall 下，檢查 Source BID／RID、response data 與先後次序。
-- **Pass/Fail Criteria:** `axi_reorder_compare` 比對通過，所有 pending transactions drain。
+- **Requirement Location:** AXI4：Same-ID response ordering、ordering across IDs。
+- **Feature Description:** Same-ID write responses 依 AW 次序返回。Same-ID read transactions 依 AR 次序返回。不同 IDs 允許亂序。Read/write 各自保序。
+- **Verification Goals:** 讓較晚的 request 先收到 Device response。測 same-ID／different-ID，並加入 Source BREADY／RREADY stall。
+- **Pass/Fail Criteria:** Source same-ID responses 與原 request 順序一致，資料與 response code 屬於正確 transaction。不同 ID 不強制全域排序。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0～C6 選定 ordering cases
-- **Link to Coverage:** 端到端 ordering checker 已有。`ordering_cg` 使用內部 arrival，不符合本項 top-level sampling 邊界，interface inversion coverage 待補。
+- **Link to Coverage:** `axi_reorder_compare`。`ordering_cg` 的到達次序取自內部 ordering ingress，外部到達次序的 coverage 尚未建立。
 
 ## Feature: NI-Specific Functional Coverage
 
-### Sub-feature: Address Translation
+### Sub-feature: Address Decoding and Translation
 
 #### Item: NI-01
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** Source AxADDR 依 SAM 選 destination、control/data region 與 Device local address。
-- **Verification Goals:** 配對 Source AW／AR、NoC packet 與實際 Device AW／AR。覆蓋四個 destinations、SAM 起點／尾端。
-- **Pass/Fail Criteria:** 只有預期 Device 接受 request，local address 與 transaction fields 符合 SAM。
+- **Requirement Location:** SAM 設定、NMU／NSU top-level AXI 與 NoC packet fields。
+- **Feature Description:** Source AxADDR 經 SAM 決定 destination、control/data path 與 Device local address。
+- **Verification Goals:** 測每個 SAM region 的起點、尾端及區間內位址，比對實際收到 request 的 NSU。
+- **Pass/Fail Criteria:** 只有目標 NSU 接受 request。Device AxADDR 等於 SAM 定義的 local address。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0 邊界 sweep，C0～C6 選定 traffic
-- **Link to Coverage:** `transaction_cg.cp_destination/direction_destination`、`boundary_cg.sam_first/sam_last` 與端到端 checker。Destination bins 從 Source address 推導，實際 route cross 待補。
+- **Link to Coverage:** `transaction_cg.cp_destination`、`direction_destination`、`boundary_cg.sam_first/sam_last` 與端到端 checker。
 
-### Sub-feature: Packet Transport
+### Sub-feature: Packetization and Depacketization
 
 #### Item: NI-02
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** AXI requests 經 REQ／DAT 傳出，responses 經 RSP／DAT 返回。
-- **Verification Goals:** 配對 AXI transfers 與 top-level flits，覆蓋 control/data read/write、single/burst、REQ 與 DAT 同時傳送。REQ／RSP 在 valid=1、ready=0 時保持 flit，恢復 ready 後 transfer。
-- **Pass/Fail Criteria:** 欄位、WDATA／WSTRB、RDATA、ID、LAST 及 transaction 數符合輸入，無遺失或重複。
+- **Requirement Location:** Packet format、channel mapping，見下方 AXI to NoC Mapping。
+- **Feature Description:** AXI AW/W/AR/B/R 依 control/data path 轉成 NoC packets，接收端還原 AXI transaction。
+- **Verification Goals:** 逐項測 mapping 表。比對 address、ID、length、size、burst、WDATA、WSTRB、RDATA、response code 與 LAST。
+- **Pass/Fail Criteria:** NoC channel 與 packet type 正確。Device W beats 對應其 AW，read beats 次序及總數符合 ARLEN，沒有跨 transaction 配錯資料。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0～C6
-- **Link to Coverage:** `transaction_cg.direction_traffic` 與端到端 checker。NoC packet-type／REQ × DAT concurrency covergroup 待補。
+- **Link to Coverage:** 端到端 checker、`transaction_cg.direction_traffic`。Packet-type／REQ-DAT 同時傳輸尚無專用 bins。
 
-### Sub-feature: ID Restoration
+### Sub-feature: ID Mapping
 
 #### Item: NI-03
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** NSU Device AWID／ARID 可與 Source ID 寬度不同。Source BID／RID 必須還原原 request ID。
-- **Verification Goals:** 配對 Source／Device requests 與 responses，覆蓋窄、等寬、寬 Device ID，以及只差高位元的 Source IDs。
-- **Pass/Fail Criteria:** 回覆歸屬正確，same-ID response ordering 保持。
+- **Requirement Location:** NSU Device ID mapping、Source response ID，implementation reference：nsu_context_buffer.map_id。
+- **Feature Description:** NSU 將 request ID 轉成 Device AXI ID，response 返回時還原 Source ID。
+- **Verification Goals:** 測窄、等寬、寬 Device ID。窄 ID 時讓不同 Source IDs 對應同一 Device ID，並同時保留多筆 pending。
+- **Pass/Fail Criteria:** 每筆 B/R 回到原 Source ID，資料與 request 一致。Device ID 重複使用不造成 response 配錯。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C1/C0/C2 Device width 1/3/8，C5/C6 Source width 1/8
-- **Link to Coverage:** `transaction_cg.cp_id` 與端到端 checker。Source ID × Device ID 專用 cross 待補。
+- **Link to Coverage:** `transaction_cg.cp_id` 與端到端 checker。ID mapping 組合目前由選定組態／transactions 留存。
 
-### Sub-feature: Capacity and Recovery
+### Sub-feature: Buffer Backpressure
 
 #### Item: NI-04
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** Pending requests 超過可接受容量時，以 interface backpressure 暫停，responses 完成後恢復接受。
-- **Verification Goals:** 保持 AWVALID／ARVALID，延遲 Device B/R，觀察 request stall。恢復 responses 後觀察新 request handshake。
-- **Pass/Fail Criteria:** 已接受 transactions 全部正確完成，解除阻塞後恢復前進。不得以 Source pending 數直接推定內部 occupancy。
+- **Requirement Location:** NMU outstanding／reorder capacity、NSU AW/AR context capacity。
+- **Feature Description:** 可用儲存空間不足時暫停 request，response 完成並釋放空間後恢復接受。
+- **Verification Goals:** 持續送出 request 並延遲 responses，形成 backpressure。分別測 write、read 與需要重排的 transactions，再恢復 responses。
+- **Pass/Fail Criteria:** 已接受的 requests 不遺失。恢復 responses 後能接受新 request，所有 transactions 最終完成。
 - **Test Type:** Directed SelfChk
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0～C3 capacity_reuse，C4～C6 選定變體
-- **Link to Coverage:** `stress_cg`、`rob_cg`、`fifo_cg` 是內部或混合證據。按介面統計的 limit／stall／recovery cross 待補。
+- **Link to Coverage:** `stress_cg`、`rob_cg`、`fifo_cg`。精確 full/reuse 證據來自內部觀察，不能僅由 AXI stall 判定哪個 buffer 滿載。
 
-### Sub-feature: VC and Credit
+### Sub-feature: Credit-Based Flow Control
 
 #### Item: NI-05
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** 每個 DAT VC 的 send 受 credit 限制。Tx 可使用當 cycle 回補的 credit。
-- **Verification Goals:** 以 top-level valid、flit VC 與 crdvalid 重建每 VC balance。覆蓋 available、exhausted、return、send+return，並核對 read/write VC pool。
-- **Pass/Fail Criteria:** 每次 send 有 stored 或同 cycle returned credit。Balance 不超出合法範圍，回補後 traffic 恢復。
+- **Requirement Location:** DAT link 的 per-VC credit，implementation reference：tx_credit_buffer／rx_credit_buffer。
+- **Feature Description:** DAT 每送出一個 flit 消耗該 VC 一個 credit。每個 crdvalid[v] 回補一個 credit。Reset 初始值為 CREDIT_DEPTH。
+- **Verification Goals:** 各 VC 測 credit 可用、耗盡、回補及 send/return 同 cycle。另核對 flit 的 VC 在允許的 read/write pool 內。
+- **Pass/Fail Criteria:** 無 credit 且當 cycle 無回補時，不得送出該 VC 的 flit。Credit 不超出 0～CREDIT_DEPTH，回補後可繼續傳輸。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0～C6，C1 split，C3/C4 單 VC
-- **Link to Coverage:** `credit_cg` 與 primitive assertions 使用內部 counter。Top-level credit balance／VC × direction coverage 待補。
+- **Link to Coverage:** 內部 `credit_cg` 與 credit assertions。Top-level valid／VC／crdvalid 的獨立 credit 計帳尚未實作。
 
-### Sub-feature: Destination Blocking
+### Sub-feature: Backpressure
 
 #### Item: NI-06
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** 指定 Device 暫停 response 時，獨立 destination 可返回 response。
-- **Verification Goals:** 阻擋 north Device B/R，觀察解除阻塞前 west 的 Source B/R completion。
-- **Pass/Fail Criteria:** west 有完成，恢復 north 後全部 transactions drain。
+- **Requirement Location:** 選定的不同 ID／destination 測試情境，case：hol_blocking。
+- **Feature Description:** 一個 destination 延遲 response 時，另一個 destination 的不同 ID transaction 仍可完成。
+- **Verification Goals:** Device A 暫不送出 B／R。Device B 使用不同 AXI ID 並正常回覆，Source BREADY／RREADY 允許接收。
+- **Pass/Fail Criteria:** 在 A 恢復回覆前，Source 收到 B 的 B response 與 R data。A 恢復後，所有 transactions 完成。
 - **Test Type:** Directed SelfChk
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0/C1/C4 hol_blocking
-- **Link to Coverage:** `stress_cg.direction_hol_progress` 含內部 full 前提。既有完成檢查保留，純 interface blocked-destination cross 待補。
+- **Link to Coverage:** `stress_cg.direction_hol_progress` 與 stress checks。現有 pattern 先發送 B 的 request，未驗證被阻塞 request 後方的流量能否通過同一 queue。
 
-### Sub-feature: Read Ordering Configuration
+### Sub-feature: Request Ordering
 
 #### Item: NI-07
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** `R_ROB_EN=0` 與 `R_ROB_EN=1` 均須維持 Source same-ID read ordering。
-- **Verification Goals:** 對同 RID 對應的 AR requests 發送到不同 destinations，延遲較早 response，觀察 Source R 次序。
-- **Pass/Fail Criteria:** 兩種組態皆正確完成。無 read reordering 組態允許 request 等待，不要求 Device same-ID response inversion。
+- **Requirement Location:** NI 同 Source ID／destination／control-data region 的 request ordering。
+- **Feature Description:** Same-ID、同 destination、同 control/data region 的 requests 保持次序。不同 region 可超車。Write 與 read 分別檢查。
+- **Verification Goals:** 測 same-ID 到相同／不同 destinations，以及同 destination 的 control/data requests。R_ROB_EN=0/1 都要測。
+- **Pass/Fail Criteria:** Device AW 與 AR 各自符合上述 request 次序。Source B/R 仍符合 AXI-07。R_ROB_EN=0 時允許延遲發出 request 以維持 read order。
 - **Test Type:** Directed SelfChk
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0/C1/C3/C5/C6 開啟，C2/C4 關閉
-- **Link to Coverage:** 端到端 checker 與組態 records。獨立 interface ordering-mode cross 待補，內部 `ordering_cg` 僅補充。
+- **Link to Coverage:** 端到端 `axi_reorder_compare` 與組態 records。既有 `ordering_cg` 量測 response 到達次序，未獨立量測所有 request-ordering 組合。
 
-### Sub-feature: CDC
+### Sub-feature: Clock Domain Crossing
 
 #### Item: NI-08
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** AXI transfer 使用 ACLK，NoC transfer 使用 noc_clk。兩者可不同頻率與 phase。
-- **Verification Goals:** T0/T1/T2 下執行 random、ordering + backpressure、reset recovery，於各自 clock 取樣。
-- **Pass/Fail Criteria:** 資料、計數與 ordering 正確，完成後無殘留 transaction。
+- **Requirement Location:** NI top-level：ACLK、noc_clk。
+- **Feature Description:** AXI 與 NoC 使用獨立 clock。資料跨 clock domain 後，transaction 內容與順序必須保持。
+- **Verification Goals:** 測同頻、AXI 較快、NoC 較快與 phase offset，加入 burst、outstanding、response stall。
+- **Pass/Fail Criteria:** 兩端接受／完成數相符，WDATA／RDATA 與 ordering checks 通過。
 - **Test Type:** Directed SelfChk / Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0 T0/T1/T2
-- **Link to Coverage:** Run clock 記錄與既有 checkers。無 clock-ratio covergroup，結果不代表 physical CDC/RDC signoff。
+- **Link to Coverage:** T0/T1/T2 run records 與既有 checkers。Functional simulation 不涵蓋 metastability／physical CDC。
 
 ### Sub-feature: Reset Recovery
 
 #### Item: NI-09
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** ARESETn／noc_rst_n 有效時中止本 epoch，解除 reset 後接受新 transactions。
-- **Verification Goals:** 有已接受且未完成的 AW／AR 時 reset。觀察 reset 後無舊 response，fresh B/R 正確完成。
-- **Pass/Fail Criteria:** Reset quiet interval 與 fresh-traffic data/order checks 通過。
+- **Requirement Location:** NI top-level：ARESETn、noc_rst_n。此次測試同時 reset 全平台。
+- **Feature Description:** Reset 清除未完成 transactions 的追蹤狀態，解除 reset 後可接受新 requests。
+- **Verification Goals:** 在 read/write pending 時 reset。解除後先確認沒有舊 response，再送新 requests。
+- **Pass/Fail Criteria:** 沒有 reset 前 transaction 的 B/R 殘留，新 requests 的 ID、資料、response 數與順序正確。
 - **Test Type:** Constrained Random
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Functional Coverage。
 - **Applicable Configurations:** C0 seeds 1/17/29，C0 T1/T2，其他組態選定 seed
-- **Link to Coverage:** `reset_cg` 使用內部 pending，`stress_cg.reset_recovery` 使用完成事件。Source pending × reset timing coverage 待補。範圍為全平台 reset，非單一 domain reset。
+- **Link to Coverage:** `reset_cg`、`stress_cg.reset_recovery` 與 reset checks。Pending 情境目前使用內部 records 取樣。
 
-### Sub-feature: Scheduling and Throughput
+### Sub-feature: Arbitration
 
 #### Item: NI-10
 
-- **Requirement Location:** NI top-level／packet／handshake contracts，見 Interface Notation。正式規格章節 `[TBD]`。
-- **Feature Description:** REQ／RSP 依 ready/valid，DAT 依 credit 傳送。下游可接受且有待送 traffic 時應持續前進。
-- **Verification Goals:** 以 top-level transfer sequence 檢查競爭流量的進展與可避免的 bubbles。需先固定 traffic、pipeline 及 buffer 條件。
-- **Pass/Fail Criteria:** 既定排程規則通過。介面 latency／throughput 數值門檻 `[TBD]`，不由總 cycles 推定 RR 公平性。
+- **Requirement Location:** 現行 REQ／TX／RX arbitration，見下方 Scheduling Rules。
+- **Feature Description:** 多個可傳送的 packets 共用輸出時，依仲裁規則選擇。Packet lock 與 downstream stall 期間保留選擇。
+- **Verification Goals:** 形成多 ID／VC read-write 競爭，核對 AW→W packet 順序、VC 使用及各流量的持續進展。
+- **Pass/Fail Criteria:** 沒有 packet 資料交錯或被永久餓死的流量。精確 RR grant bound 由補充的內部 assertions 檢查，不從 AXI 總 cycles 推定。
 - **Test Type:** Directed SelfChk
-- **Coverage Method:** Functional Coverage / checker，實作狀態如下。
+- **Coverage Method:** Assertion Coverage / Functional Coverage。
 - **Applicable Configurations:** C0～C6 選定 contention traffic
-- **Link to Coverage:** `ni_arbiter_checks.sv`、`ni_credit_forward_checks` 是內部 assertions。端口級 throughput invariant coverage 待補。
+- **Link to Coverage:** `ni_arbiter_checks`、`ni_credit_forward_checks` 與 cover properties。各 instance 的未觸發情境見 report。
+
+## AXI to NoC Mapping
+
+| AXI transaction | Request path | Response path |
+|---|---|---|
+| Control write | AW、W → REQ | B → RSP |
+| Control read | AR → REQ | R → RSP |
+| Data write | AW、W → DAT | B → RSP |
+| Data read | AR → REQ | R → DAT |
+
+NI-02 檢查 AXI fields 與 packet type。NI-05 檢查 DAT credit。REQ/RSP 使用 ready/valid，等待時 valid/flit 必須保持。這些機制分別驗證。
+
+## Scheduling Rules
+
+以下為現行行為，用來檢查 NI-02/07/10 的測試內容。
+
+| 項目 | 現行規則 | 對外檢查 |
+|---|---|---|
+| REQ arbitration | NMU AW/AR 使用 RR。AW 選定後送完該筆 W，才選下一個 AW/AR | REQ 上 AW 後的 W 對應正確 transaction，直到最後一拍 |
+| DAT VC allocation | NMU write packet 的 AW 與所有 W 使用同一 VC。需要維持順序的 traffic 依現行 fixed-VC 規則選 VC | 同一 packet 的 VC 不變，flits 依序送出。跨 router 不要求 VC 編號相同 |
+| TX arbitration | DAT 從有資料且有 credit（含同 cycle 回補）的 VC 做 RR | 送出 flit 的 VC 合法且有 credit，競爭流量可持續前進 |
+| RX arbitration | 接收端按可接受的 channel 選取 packet。NSU 的 W 按已接受 AW 的次序轉送 | Device W 配對正確 AW。Source B/R 符合 AXI ordering |
+
+Shared 模式使用允許的全部 VCs。Read/write split 模式將 write 與 read 分配到不同 VC pools。VC 限制以每條 NI link 為單位檢查。
+
+AXI／NoC top-level 可檢查 packet、VC 與完成次序。精確仲裁公平性需要知道當 cycle 可參與仲裁的 requests，因此內部 RR assertions 保留為補充證據。
 
 ## Coverage Source Index
 
@@ -267,6 +306,7 @@ Link to Coverage 所列名稱依目前 source 核對。標為待補的項目未�
 | Exclusive／EXOKAY、AxLOCK | 未建立完整 requirement／coverage 對照，待確認支援範圍 |
 | AxCACHE／AxPROT／AxQOS／AxREGION／USER | 不以目前固定值判定 unsupported。需確認各欄位的保留、轉換或固定值規則 |
 | R beat interleaving、multi-source、multicast | 本輪未完成，後續整合範圍由 issue #6 追蹤 |
+| SAM miss／非法跨界 | 現有 SAM／4 KB checks 會檢查輸入是否合法，未驗證這些條件的 DUT error response。處理規則待確認 |
 | Negative protocol stimulus | 不以合法 traffic 的 PASS 宣告 malformed packet／非法 AXI testing 完成 |
 | Router RTL、multihop、physical CDC/RDC、STA／synthesis | 本階段範圍外 |
 

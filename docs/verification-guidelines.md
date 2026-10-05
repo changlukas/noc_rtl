@@ -12,15 +12,34 @@
 
 Plan 採 Feature → Sub-feature → Item，每項保留 Requirement Location、Feature Description、Verification Goals、Pass/Fail Criteria、Test Type、Coverage Method、Applicable Configurations、Link to Coverage。參考 [OpenHW planning guide](https://github.com/openhwfoundation/core-v-verif/blob/master/docs/VerifPlans/VerificationPlanning101.md) 與 [AXI verification plan](https://github.com/openhwfoundation/cva6/blob/master/verif/docs/VerifPlans/source/dvplan_AXI.md) 的欄位。其他設計的 AXI 限制不沿用。
 
-## Requirement 與觀察介面
+## 功能分類與用語
 
-- Feature Description 使用規格訊號與條件，例如 `AxBURST = 2'b01`。Verification Goals 列出要觀察的 transfer 與行為。
-- Generic AXI 包含 transaction fields、channel handshake、response、outstanding 與 ordering。Input stimulus 清單只能證明產生了哪些交易，仍須觀察 DUT 接受與完成。
-- NI-specific 包含 address translation、packet transport、ID restoration、VC／credit、容量限制、CDC 與 reset recovery。
-- 功能目標使用 NMU／NSU top-level AXI、REQ、RSP、DAT、credit、clock、reset 訊號。允許 monitor 由已接受的 transactions 建立 pending queue 或 credit balance。
-- Internal FIFO、ROB、arbiter 的 covergroup／assertion 列為 implementation evidence。介面 stall 不足以判定某個內部 buffer 已滿，也不能直接量到內部 requester 的 RR 公平性。
-- Requirement Location 指向規格定義。若只有 RTL 或 generator 可供核對，註明 implementation reference，正式規格定位標 `[TBD]`。
-- 未測的功能不能直接標成 unsupported。FIXED／WRAP、exclusive、unaligned、sideband 等須先確認支援範圍，再訂 coverage 或不適用理由。
+NI 的功能依 address decoding/translation、packetization/depacketization、ID mapping/ordering、flow control、arbitration、clock/reset 整理。每類先列應有行為，再對照已測內容，避免由現有 cases 反推所有 requirements。
+
+| 用語 | 定義／撰寫重點 |
+|---|---|
+| Backpressure | 接收端暫停接受，或 credit 不足導致傳送端等待。寫出哪個 channel、哪一端、如何恢復 |
+| Head-of-line (HoL) blocking | Queue 最前面的 packet 無法前進，連帶擋住後面原本可以前進的 packet。只延遲某個 destination 不足以證明這個情境 |
+| Request ordering | 比較 requests 在接收端出現的次序。列出 source、ID、destination、control/data region 與 read/write 的範圍 |
+| Response ordering | 比較 responses 回到 Source 的次序。Same-ID 要保序，不同 IDs 可亂序，read/write 分別判定 |
+| Arbitration | 多個 requests 共用輸出時選誰。區分 packet lock、backpressure 與實際可仲裁的 cycle |
+| Throughput / latency | 列出量測起訖、clock、traffic 與 stall 條件。總執行 cycles 不等於單筆 latency 或仲裁公平性 |
+
+Flow control 與 arbitration 的分類參考 *On-Chip Networks, Second Edition* 第 5、6 章。Ordering 分析使用本機 `noc-ordering` 知識整理。這些資料提供概念，專案行為仍以核准規格與現行 RTL 逐項核對。
+
+## 每個 Item 必須說清楚的內容
+
+- **Feature Description**：功能與適用條件，例如「same-ID read responses 按 AR 接受次序返回」。不放 script、monitor 作法或歷次修改紀錄。
+- **Verification Goals**：如何觸發情境，以及要看哪些 top-level signals。必要條件如 different IDs、哪端 stall、是否存在較早 pending request，必須列出。
+- **Pass/Fail Criteria**：具體比較什麼。使用 ID、address、data、beat count、response code、先後次序，避免只寫「正確完成」或「checker PASS」。
+- **Link to Coverage**：實際物件與觀察位置。沒有專用 bin 時記錄目前證據，另由 report 說明不足，不自動將每個可能 cross 列為必做。
+- **Requirement Location**：規格或 implementation reference。兩者不一致時列為待確認事項，不能自行選一份當規格。
+
+Generic AXI 包含輸入與輸出的 transaction fields、handshake、responses、outstanding、ordering。NI-specific 補上 AXI 與 NoC 之間的轉換和 flow control。先檢查功能是否列全，再檢查 coverage model 是否量到。
+
+功能目標使用 NMU／NSU top-level interfaces。Internal FIFO、ROB、arbiter coverage 保留為補充證據。外部 stall 只能證明發生等待，不能直接判定哪個 buffer 已滿。內部公平性也不能只由端口輸出次序推定。
+
+未測功能不得直接標為 unsupported。FIXED/WRAP、exclusive、unaligned、sideband、SAM miss 等需先確認支援範圍。每個建議新增的 cross 必須指出它要檢查的功能交互作用，不要求所有欄位做 Cartesian product。
 
 ## 五項驗證原則
 
@@ -44,13 +63,13 @@ Plan 採 Feature → Sub-feature → Item，每項保留 Requirement Location、
 | REQ／RSP | 所屬 `noc_clk` 的 `valid && ready` |
 | DAT | `noc_clk` 的 `valid` 與 packet VC。DAT 沒有 ready port |
 | Credit | 每個 VC 的 credit-return pulse 與實際 DAT send，按核准初始容量重建 balance |
-| Reset recovery | Reset 前 pending、reset 期間 response、reset 後新 request／response，分開 transaction epoch |
+| Reset recovery | Reset 前 pending、reset 期間 response、reset 後新 request／response，分開記錄 reset 前後的 transactions |
 
-Address-derived destination 只代表預期 routing。要證明實際 destination 正確，需配對 NSU AXI 或 NoC top-level packet。Response inversion 與 source retirement order 也要分別觀察。
+Address-derived destination 只代表預期 routing。要證明實際 destination 正確，需配對 NSU AXI 或 NoC top-level packet。Response 到達 NI 的次序與返回 Source AXI 的次序分別觀察。
 
 ## 文件與 coverage model 對齊
 
-1. Plan 的 Link to Coverage 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「待補」，不得填預期存在的物件。
+1. Plan 的 Link to Coverage 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「未實作」，不得填預期存在的物件。是否需要新增，由功能目標與現有證據決定。
 2. 對照 sample code，確認訊號來源、clock、reset、bin 範圍、ignore bins 與 cross。列出外部與內部觀察的差異。
 3. Report 使用相同 Item ID，記錄已驗證條件與剩餘範圍。區分 case PASS、coverage hit、checker self-test 與 input records。
 4. 每次 coverage model 修改後，重新核對 model version 與 VDB 來源。不同模型分母不得直接比較。URG merge 無 warning 仍須人工確認語意一致。

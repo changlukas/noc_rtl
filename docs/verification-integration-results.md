@@ -1,6 +1,6 @@
 # NI Verification Report
 
-文件 review：2026-10-05。沿用既有 **147 accepted VCS PASS**、**28,245 input transaction records**，本輪只整理文件，未新增模擬或修改 coverage model。
+文件與功能敘述 review：2026-10-05。沿用既有 **147 accepted VCS PASS**、**28,245 input transaction records**，本輪只整理文件，未新增模擬或修改 coverage model。
 
 現有原生 functional GROUP／instance coverage 均為 **100%**。模型包含 top-level 與 internal coverage，不能視為新版 [Verification Plan](verification-testplan.md) 全部 interface goals 已完成。Issue [#7](https://github.com/changlukas/noc_rtl/issues/7) 保持開啟。
 
@@ -29,7 +29,7 @@ Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每�
 | AXI-02 | Control 1/2/4/8 bytes，data 1/2/4/8/16/32/64 bytes，4 KB 與 SAM 邊界測試 PASS | 未完整交叉 size × lane × length，read lane 專用 coverage 缺少 | 部分驗證 |
 | AXI-03 | W lane 64/64、strobe × size 20/20，control/data one-hot 補測 PASS。Readback checker 通過 | One-hot 無獨立 bin，未掃所有合法 masks 與全部交叉 | 所列 strobe sweep 已驗證 |
 | AXI-04 | Source B/R backpressure，四 NSU AW/W/AR stall→recovery 12/12 cover properties 命中 | 尚無完整五 channel／AW-W 相對時序 bins。12 個 covers 的 recovery window 為 1～64 cycles | 部分驗證 |
-| AXI-05 | OKAY traffic PASS。SLVERR/DECERR 共 16/16 variants，56 B responses、2,516 R beats 比對 PASS | EXOKAY／exclusive 範圍待確認 | 所列 responses 已驗證 |
+| AXI-05 | OKAY traffic PASS。SLVERR/DECERR 共 16/16 variants，56 B responses、2,516 R beats 比對 PASS | 驗證 Device error 傳回 Source。未驗證 SAM miss 自行產生 DECERR，EXOKAY／exclusive 待確認 | 所列 responses 已驗證 |
 | AXI-06 | Single/multi-ID outstanding、read/write pending cross 命中，random seeds 1/17/29 PASS | multiple bin 為 depth≥2，未分每 ID 深度與 ID 數交叉 | 部分驗證 |
 | AXI-07 | Ordering cases 與 mixed seeds PASS，checker 正反向 self-test 10/10 | Inversion covergroup 觀察內部 ordering ingress。Top-level arrival／retirement cross 待補，R beat interleaving 未驗 | 部分驗證 |
 
@@ -38,15 +38,15 @@ Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每�
 | Item | 已有證據 | 尚缺／限制 | 判定 |
 |---|---|---|---|
 | NI-01 | 四 destinations、SAM 起點／尾端，端到端 checker 與 boundary bins 通過 | Destination coverpoint 由 Source address 推導，實際 AXI／NoC route cross 待補 | 部分驗證 |
-| NI-02 | Control/data read/write、single/burst、random 正確完成 | 無 top-level packet-type／REQ × DAT concurrency bins | 部分驗證 |
+| NI-02 | Control/data read/write、single/burst、random 的端到端 checks PASS | 未獨立計量 channel mapping、packet VC 保持與 REQ/DAT 同時傳輸 | 部分驗證 |
 | NI-03 | C1/C0/C2 Device ID width 1/3/8，C5/C6 Source width 1/8。C6 全部 256 IDs 各一筆 read/write PASS | Source × Device ID mapping cross 缺少，multi-source 未驗 | 部分驗證 |
 | NI-04 | Per-ID/context/ROB capacity tests PASS，內部 full/reuse 命中 | Interface-only limit/recovery model 待補。C0 W context depth=32 full 未命中 | 部分驗證 |
 | NI-05 | Shared/split、單／多 VC PASS，internal credit crosses 命中，credit assertions failure=0 | 外部 credit-balance monitor 與 VC × direction cross 待補 | 部分驗證 |
-| NI-06 | North 阻塞時 west response 先完成，恢復後 drain PASS | 只測選定 destination 組合。Coverage 含 internal full 前提，非所有 HoL 情境 | 所列 blocking 情境已驗證 |
-| NI-07 | C2/C4 無 read reordering 與其餘組態的選定 ordering tests PASS | 純 interface ordering-mode cross 待補 | 所列組態已驗證 |
+| NI-06 | North 延遲 B/R 時，west 的不同 ID response 仍可返回，恢復後全部完成 | West request 先發送，north requests 在後。未測 blocked head 後面的 packet 通過同一 queue。Coverage 另含 context full 前提 | 所列 backpressure 情境已驗證 |
+| NI-07 | Same-ID request 按 destination/region 檢查。Mixed seeds 及 C2/C4 無 read reordering 的選定 cases PASS | Request 的 destination/region/order 組合未完整計量，不能用 response inversion bins 代替 | 所列條件已驗證 |
 | NI-08 | C0 T0/T1/T2 共 12 項 PASS | 未交叉全部 C0～C6。不是 physical CDC/RDC | 所列 clock sweep 已驗證 |
 | NI-09 | Pending reset、quiet interval、fresh traffic checks PASS | Pending bin 從內部取樣。僅全平台 reset，非獨立 domain／局部 reset | 部分驗證 |
-| NI-10 | Internal eligible RR、no-bubble、credit-forward assertions failure=0 | 部分 instance contention／continuous-transfer 未命中。Top-level 性能條件與門檻待定 | 部分驗證 |
+| NI-10 | Internal RR、no-bubble、credit-forward assertions failure=0，端到端 packet/data checks PASS | 部分 instance contention／continuous-transfer 未命中。端口觀察不能辨識每次內部可仲裁機會 | 部分驗證 |
 
 ## Existing Coverage Model
 
@@ -161,9 +161,9 @@ Union 的分母是實際 VDB 中已定義的模型，含內部 resource bins。M
 
 | 項目 | 所需處置 |
 |---|---|
-| NI requirement baseline | 固定規格版本與章節，確認 plan 中 `[TBD]` 的對應 |
+| NI requirement baseline | 固定規格版本與章節。interface_handshake.json 的通用 req/rsp credit 描述與現行 REQ/RSP ready-valid、DAT credit ports 不一致，需另行確認來源定義。此次未修改該檔 |
 | Interface coverage | 依 Plan Item Results review 待補項目，優先確認外部 arrival/order、packet/VC、credit、stall/recovery 的觀察方式 |
-| AXI support profile | 確認 FIXED/WRAP、unaligned、exclusive、sideband 的支援與必要驗證範圍 |
+| AXI／address support | 確認 FIXED/WRAP、unaligned、exclusive、sideband、SAM miss 的行為與必要驗證範圍 |
 | Code／assertion closure | 逐組處理未覆蓋 condition／toggle 與未觸發 properties。Module／statement 分類完成，完整 bin review 未完成 |
 | C0 W context | Depth=32 pointer wrap 已命中，full 未命中。單 source AW→W 排程限制 occupancy 的分析尚未核准為 exclusion |
 | Out-of-scope | Multi-source、R interleave、multicast 後續整合仍由 issue #6 追蹤。Router RTL、multihop、physical CDC/RDC、STA／synthesis 另案 |
@@ -192,9 +192,20 @@ make run CASE=single_id_reorder MODE=data BACKPRESSURE=1 COVERAGE=1
 urg -full64 -dir <run-record中的VDB路徑> -report build/coverage -format both
 ```
 
+## Backpressure Case Scope
+
+`hol_blocking` 的實際 stimulus 與驗收條件如下。
+
+1. ID 0 的第一筆 request 送 west，後續其他 IDs 送 north。
+2. TB 延遲 north memory 的 B/R，讓 north 有未完成 transactions。
+3. 在 north 恢復前，west response 必須返回 Source。既有檢查另要求 north context full。
+4. 恢復 north responses，確認全部 transactions 完成。
+
+這份證據確認不同 ID／destination 在選定阻塞條件下仍可返回 response。它沒有把一筆可前進的 request 放在 blocked head 後方來驗證 HoL，也沒有驗證任意 VC／destination 的隔離。本輪只修正描述，保留原 case 名稱與測試結果。
+
 ## Documentation Audit
 
-本輪逐一核對 NMU／NSU ports、covergroup 名稱、sample code、Device AXI cover properties、CSV counts 與原生結果摘要。所有 plan items 均有本報告對應列。未新增 covergroups，未將待補項目標成已命中。
+本輪另依 NoC flow control／ordering 概念核對 NI 功能分類，檢查 channel mapping、packet lock、ID mapping、request/response ordering 與 backpressure 的必要條件。NMU／NSU ports、covergroup 名稱、sample code、Device AXI cover properties、CSV counts 與原生結果摘要保留原核對結果。所有 plan items 均有本報告對應列。未新增 covergroups，未將待補項目標成已命中。
 
 | 原 objective | 現行對應 |
 |---|---|
