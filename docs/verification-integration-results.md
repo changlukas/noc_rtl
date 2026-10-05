@@ -1,203 +1,211 @@
-# NI 整合驗證總報告
+# NI Verification Report
 
-2026-10-03。四組核准組態共 **56/56 PASS**。本輪僅使用整合環境，未納入 standalone、direct-link 或舊的 coverage 資料。
+文件 review：2026-10-05。沿用既有 **147 accepted VCS PASS**、**28,245 input transaction records**，本輪只整理文件，未新增模擬或修改 coverage model。
 
-## 驗證環境與變更
+現有原生 functional GROUP／instance coverage 均為 **100%**。模型包含 top-level 與 internal coverage，不能視為新版 [Verification Plan](verification-testplan.md) 全部 interface goals 已完成。Issue [#7](https://github.com/changlukas/noc_rtl/issues/7) 保持開啟。
+
+## Environment and Evidence
 
 `AXI file master → NMU RTL → C++ Router → 四個 NSU RTL → AXI Slave／Memory`
 
-- VCS M-2017.03-SP1；沿用 AXI file master、memory、scoreboard、axi_reorder_compare 與 protocol checks。
-- AXI／NoC 同頻 1 GHz；APPL_DELAY＝0、sample delay＝200 ps。
-- 修正 C++ Router 的 Split VC allocation：preferred VC 與 single-flit fallback 均限制於對應 read/write pool。固定 VC、wormhole lock、credit 計帳與路由規則保留。
-- 未新增 FIFO、pipeline 或儲存狀態；Split 模式不能借用另一方向的 VC。未進行 synthesis／STA，不宣稱 Fmax 或 area 改善。
-- NMU／NSU RTL、參數預設值、stimulus、coverage model 與 checkers 未修改。
-- Router 修正 commit：`76634b7`。原始失敗在 DataAw 經 Router 後由 VC0 變成 VC3；本輪相同 request_rand 通過。
+- Simulator：VCS M-2017.03-SP1。沿用 AXI file master、memory、scoreboard、axi_reorder_compare、protocol checks。
+- 組態定義見 [C0～C6](verification-testplan.md#驗證組態)。C0 包含全部 18 cases 及選定變體，其他組態為選定 cases。
+- 本批 code 最後整理於 `4babe4f`。歷史 runs 使用不同 build stages，個別版本以 source manifest digest 為準。
+- Accepted coverage 排除 failed/debug runs、standalone、direct-link 與 checker self-tests。
+- [Run records](data/verification-runs.csv)：147 筆，包含 case、組態、seed、clock、cycles、結果與證據路徑。
+- [Transaction records](data/verification-transactions.csv)：28,245 筆，包含 address、ID、size、length、WSTRB、destination、stimulus hash。
+
+Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每筆 record 視為獨立 coverage hit。Reset 中斷後會重送，因此 record 數不等於所有實際 handshakes。
+
+## Plan Item Results
+
+「已驗證」僅限表中所列條件。「部分驗證」仍缺觀察點、cross 或情境。完整 requirement／coverage closure 尚未宣告完成。
+
+### Generic AXI
+
+| Item | 已有證據 | 尚缺／限制 | 判定 |
+|---|---|---|---|
+| AXI-01 | C0 control read/write 各 2～256 beats，data 各 2～64 beats，single 各一筆。Checks 通過 | Full-width、aligned INCR。cp_beats 只有代表性 lengths，其他 lengths 用輸入與完成紀錄佐證 | 所列 sweep 已驗證 |
+| AXI-02 | Control 1/2/4/8 bytes，data 1/2/4/8/16/32/64 bytes，4 KB 與 SAM 邊界測試 PASS | 未完整交叉 size × lane × length，read lane 專用 coverage 缺少 | 部分驗證 |
+| AXI-03 | W lane 64/64、strobe × size 20/20，control/data one-hot 補測 PASS。Readback checker 通過 | One-hot 無獨立 bin，未掃所有合法 masks 與全部交叉 | 所列 strobe sweep 已驗證 |
+| AXI-04 | Source B/R backpressure，四 NSU AW/W/AR stall→recovery 12/12 cover properties 命中 | 尚無完整五 channel／AW-W 相對時序 bins。12 個 covers 的 recovery window 為 1～64 cycles | 部分驗證 |
+| AXI-05 | OKAY traffic PASS。SLVERR/DECERR 共 16/16 variants，56 B responses、2,516 R beats 比對 PASS | EXOKAY／exclusive 範圍待確認 | 所列 responses 已驗證 |
+| AXI-06 | Single/multi-ID outstanding、read/write pending cross 命中，random seeds 1/17/29 PASS | multiple bin 為 depth≥2，未分每 ID 深度與 ID 數交叉 | 部分驗證 |
+| AXI-07 | Ordering cases 與 mixed seeds PASS，checker 正反向 self-test 10/10 | Inversion covergroup 觀察內部 ordering ingress。Top-level arrival／retirement cross 待補，R beat interleaving 未驗 | 部分驗證 |
+
+### NI-specific
+
+| Item | 已有證據 | 尚缺／限制 | 判定 |
+|---|---|---|---|
+| NI-01 | 四 destinations、SAM 起點／尾端，端到端 checker 與 boundary bins 通過 | Destination coverpoint 由 Source address 推導，實際 AXI／NoC route cross 待補 | 部分驗證 |
+| NI-02 | Control/data read/write、single/burst、random 正確完成 | 無 top-level packet-type／REQ × DAT concurrency bins | 部分驗證 |
+| NI-03 | C1/C0/C2 Device ID width 1/3/8，C5/C6 Source width 1/8。C6 全部 256 IDs 各一筆 read/write PASS | Source × Device ID mapping cross 缺少，multi-source 未驗 | 部分驗證 |
+| NI-04 | Per-ID/context/ROB capacity tests PASS，內部 full/reuse 命中 | Interface-only limit/recovery model 待補。C0 W context depth=32 full 未命中 | 部分驗證 |
+| NI-05 | Shared/split、單／多 VC PASS，internal credit crosses 命中，credit assertions failure=0 | 外部 credit-balance monitor 與 VC × direction cross 待補 | 部分驗證 |
+| NI-06 | North 阻塞時 west response 先完成，恢復後 drain PASS | 只測選定 destination 組合。Coverage 含 internal full 前提，非所有 HoL 情境 | 所列 blocking 情境已驗證 |
+| NI-07 | C2/C4 無 read reordering 與其餘組態的選定 ordering tests PASS | 純 interface ordering-mode cross 待補 | 所列組態已驗證 |
+| NI-08 | C0 T0/T1/T2 共 12 項 PASS | 未交叉全部 C0～C6。不是 physical CDC/RDC | 所列 clock sweep 已驗證 |
+| NI-09 | Pending reset、quiet interval、fresh traffic checks PASS | Pending bin 從內部取樣。僅全平台 reset，非獨立 domain／局部 reset | 部分驗證 |
+| NI-10 | Internal eligible RR、no-bubble、credit-forward assertions failure=0 | 部分 instance contention／continuous-transfer 未命中。Top-level 性能條件與門檻待定 | 部分驗證 |
+
+## Existing Coverage Model
+
+| Sampling boundary | 已實作物件 | 對應 items |
+|---|---|---|
+| Source AXI | transaction_cg、write_strobe_cg、boundary_cg、response_cg、outstanding_cg | AXI-01/02/03/05/06，NI-01/02/03 |
+| Device AXI | aw_stall_recover、w_stall_recover、ar_stall_recover | AXI-04 |
+| Internal／mixed | ordering_cg、rob_cg、stress_cg、reset_cg | AXI-07，NI-04/06/07/09 |
+| Internal primitives | fifo_cg、credit_cg、arbiter／credit-forward assertions | NI-04/05/10 |
+
+完整 source links 與 sample 條件見 [Coverage Source Index](verification-testplan.md#coverage-source-index)。Report 保留內部證據，但不以其取代尚未實作的 interface coverpoints。
 
 ## 組態與結果
 
-所有容量採 2^n。完整定義見 [參數驗證規劃](verification-parameter-plan.md)。
+組態定義集中於 [testplan](verification-testplan.md#驗證組態)，本報告只引用編號。
 
-| 組態 | Source／NoC／Device ID width | Per-ID／Context depth | IO FIFO depth | B／R ROB depth；R enable | REG_TYPE | DAT VC；Credit depth | 結果 |
-|---|---|---|---:|---|---:|---|---|
-| 0. Baseline | 3／3／3 | 32／32 | 32 | 128／128；1 | 0 | 2，SHARED；8 | 29/29 PASS |
-| 1. Split VC | 3／3／1 | 4／4 | 4 | 128／128；1 | 2 | 4，READ_WRITE_SPLIT；2 | 11/11 PASS |
-| 2. Read ROB 關閉 | 3／3／8 | 32／1 | 4 | 128／128；0 | 1 | 2，SHARED；8 | 7/7 PASS |
-| 3. 小 ROB／單 VC | 3／3／3 | 32／32 | 32 | 4／8；1 | 0 | 1，SHARED；2 | 9/9 PASS |
+| 組態 | 結果 |
+|---|---|
+| C0 | 88/88 PASS |
+| C1 | 24/24 PASS |
+| C2 | 7/7 PASS |
+| C3 | 9/9 PASS |
+| C4 | 7/7 PASS |
+| C5 | 6/6 PASS |
+| C6 | 6/6 PASS |
 
-IO_FIFO_DEPTH 沿用現有接線：兩端 AXI CDC FIFOs 與 NMU REQ/RSP FIFOs；NSU REQ/RSP FIFOs 保留預設。REG_TYPE 涵蓋 packetize/depacketize，SAM pipeline 保留預設。
-
-Baseline 包含全部 18 個公開 case 及選定 mode／target／backpressure／seed 變體；其餘三組只跑核准的代表項目，不代表全部 18 cases × 4 組態均已驗證。
+C0 包含18個公開 case及選定變體，其他組執行testplan指定項目。未宣稱全部 cases × 全部組態皆已驗證。
 
 ## 性能紀錄
 
-Baseline **29 筆 cycles 全部與修正前一致**，原有 SHARED 行為未出現 cycle 差異。
+C0 **29 筆 cycles 全部與修正前一致**，原有 SHARED 行為未出現 cycle 差異。
 四組 request_rand 的 read.txt、write.txt、schedule.txt SHA256 相同：64 writes、64 concurrent reads，再做 64 readbacks。
 
 | 組態 | request_rand cycles | 結果 |
 |---|---:|---|
-| 0. Baseline | 653 | PASS |
-| 1. Split VC／窄 Device ID | 887 | PASS |
-| 2. Read ROB 關閉 | 1404 | PASS |
-| 3. 小 ROB／單 VC | 998 | PASS |
+| C0 | 653 | PASS |
+| C1 | 887 | PASS |
+| C2 | 1404 | PASS |
+| C3 | 998 | PASS |
 
-Cycles 使用 TB 的 CAPACITY_PERF 計數，包含該 case 的排程、等待與驗證階段；不是單筆 request latency。各組同時改變多個參數，差異不能歸因於單一參數。
+Cycles 使用 TB 的 CAPACITY_PERF 計數，包含該 case 的排程、等待與驗證階段。不是單筆 request latency。各組同時改變多個參數，差異不能歸因於單一參數。
 
 ## Code coverage 與 assertions
 
-以下直接取自各組原生 URG hierarchy report。Code coverage 範圍為 NMU 與四個 NSU RTL，包含其 primitives；不包含 C++ Router。
+以下取自最新原生 URG hierarchy report。範圍為 NMU 與四個 NSU RTL，包含 primitives，不包含 C++ Router。
 
 | 組態 | Line | Condition | Branch | Toggle | Assertion failures |
 |---|---:|---:|---:|---:|---:|
-| 0. Baseline | 85.22% | 81.07% | 82.44% | 78.95% | 0 |
-| 1. Split VC／窄 Device ID | 84.73% | 76.15% | 80.00% | 74.55% | 0 |
-| 2. Read ROB 關閉 | 83.60% | 73.30% | 79.87% | 71.77% | 0 |
-| 3. 小 ROB／單 VC | 84.86% | 71.57% | 77.80% | 77.05% | 0 |
+| C0 | 85.61% | 84.78% | 83.17% | 80.52% | 0 |
+| C1 | 84.97% | 77.09% | 80.25% | 77.34% | 0 |
+| C2 | 83.60% | 73.30% | 79.87% | 71.77% | 0 |
+| C3 | 84.86% | 71.57% | 77.80% | 77.05% | 0 |
+| C4 | 84.32% | 66.72% | 77.03% | 74.77% | 0 |
+| C5 | 84.34% | 68.46% | 76.88% | 67.42% | 0 |
+| C6 | 84.66% | 66.08% | 77.33% | 75.47% | 0 |
 
-- 各組 accepted VDB／report 分開保存，四組 URG 報告均無 merge warning。未產生跨組態的單一 code coverage 百分比。
-- 各組硬體結構及 case 集合不同，不能平均百分比，也不能以表中差值判定性能或功能退步。
-- FSM 未抽取；MDA toggle 未啟用。DUT 內的 SAM simulation checks／guards 仍包含在 code metrics。
-- Assertion report 包含部分 TB／interface／package，範圍與 code coverage 不同；四組均有 2 個 without-attempts 項目。零 failure 不等於所有 assertion 觸發情境皆已覆蓋。
+各組 code coverage 分開保存，不平均或合成單一百分比。FSM 未抽取，MDA toggle 未啟用。Assertion report 包含部分 TB/interface/package，與 code coverage 範圍不同。零 failure 不代表全部 assertion 情境已觸發。
 
-## Functional coverage
+## Functional Coverage
 
-只合併本輪四組、56 筆 PASS 的 functional covergroups：
+原生合併使用 `urg -metric group -flex_merge union`，精確 command 與 VDB 清單保留於 native reports／sources.json。
 
-```sh
-urg -full64 -metric group -flex_merge union -dir <四組 accepted.vdb> -report <report-dir> -format both
-```
-
-| 原生 URG metric | 本輪 Baseline | 四組整合環境 union |
+| Metric | C0 | C0～C6 union |
 |---|---:|---:|
-| GROUP score | 91.74% | 97.17% |
-| Instance score | 91.87% | 97.21% |
-| Group types | 60 | 78 |
+| GROUP score | 95.43% | 100.00% |
+| Instance score | 95.51% | 100.00% |
+| Group types | 61 | 79 |
+| Merge warnings | 0 | 0 |
 
-Merge 無 warning。GROUP 增加 5.43 個百分點；跨組態增加了 VC 等 instances，聯集範圍也擴大，因此不是預設組態的完成率或規格完成率。舊的 97.02% 含 direct-link 資料，不沿用為本輪結果。
+Union 的分母是實際 VDB 中已定義的模型，含內部 resource bins。Missing interface cross 不在分母中。C2/C3 沿用早期 evidence，未加入後續新 monitor，不可推定每個組態均驗到新增情境。
 
-### 已確認的情境
+### 最新 assertion activation
 
-- Per-ID limit/reuse、B/R ROB full/reuse、HoL progress、reset recovery、同筆 inversion/output stall 均有 read/write 命中。
-- Split VC：control/data capacity、reorder＋backpressure、HoL 均在 Router 整合環境通過；未放寬 DAT VC 檢查。
-- Read ROB 關閉：control/data same-ID read 均觀察到 admission wait 與恢復接受。
-- 四個 NSU AW/AR context 均觀察到 full/reuse；W context 的 full/recovery 也都在聯集中命中。W context 滿載包含 depth＝1 的結果，不代表預設 depth＝32 已滿載。
-- AXI scoreboard、ordering compare 與完成條件通過；沒有新增 checker、waiver 或關閉檢查來提高分數。
+| 組態 | Assertions | Uncovered | Without attempts | Failures | Cover properties matched/total |
+|---|---:|---:|---:|---:|---:|
+| C0 | 693 | 32 | 3 | 0 | 144/165 |
+| C1 | 696 | 84 | 2 | 0 | 135/193 |
+| C2 | 588 | 43 | 2 | 0 | 未加入新 monitor |
+| C3 | 488 | 60 | 2 | 0 | 未加入新 monitor |
+| C4 | 533 | 62 | 2 | 0 | 42/108 |
+| C5 | 648 | 92 | 2 | 0 | 18/153 |
+| C6 | 648 | 77 | 2 | 0 | 57/153 |
 
-### 剩餘 bins 與範圍
+取自各組 `asserts.txt`。Without attempts 包含在 uncovered 中。C2/C3 沿用既有已通過證據，不為新增觀察器重跑。Cover properties 與 covergroup 是不同指標，不能用 GROUP 100% 取代 assertion activation review。
 
-| 項目 | 尚未涵蓋 |
+- `flush_valid`：對應 primitive 的 flush 固定為0。
+- `wrap_boundary` 與 `check_byte`：本批 INCR traffic 不呼叫 WRAP helper，scoreboard 使用既有 transaction check 路徑。
+- W context `full_write`：C0 depth=32 未滿載，保留未觸發結果。Depth=1 full/recovery 與 depth=32 pointer wrap 分別驗證。
+- Split 模式未使用的 read/write VC inputs，不要求出現 grant／contention。
+- 其餘未命中的 contention 與 continuous-transfer properties 保留於各 instance report，不宣稱不可達。單 NMU 的 AW→W 排程限制可提供的 AW 競爭序列。
+
+## Clock Sweep
+
+| Timing | AXI／NoC period | NoC phase | request_rand | control reorder + BP | data reorder + BP | reset_recovery |
+|---|---|---|---:|---:|---:|---:|
+| T0 | 1000／1000 ps | 0 ps | 653 | 2227 | 2231 | 220 |
+| T1 | 1000／2000 ps | 250 ps | 1277 | 2265 | 2273 | 322 |
+| T2 | 2000／1000 ps | 250 ps | 516 | 2207 | 2209 | 191 |
+
+12/12 PASS，cycles 為各自 AXI clock 的計數，跨 timing 比較需換算時間。
+
+## Checker and Implementation Notes
+
+- Requests 按 Source ID 與 control/data address region 保序。同 Source ID、同 NSU、不同 region 可超車。Source same-ID B/R responses 仍按原次序返回。
+- `axi_reorder_compare` 以 10 個正反向 self-tests 驗證 ordering、W 配對與 reset 行為。預期失敗的 self-tests 不納入 DUT coverage。
+- Error response 比對每個 B 與 R beat。Error read 不宣稱 RDATA 有正常 memory read 語意。
+- Router split VC 修正為 `76634b7`，preferred VC 與 single-flit fallback 限於 read/write pool。C0 原 29 筆 cycles 不變。
+- 最後 backpressure 補測沿用 `axi_delayer`，只在 BACKPRESSURE=1 啟用。無 stall 的 request_rand 仍為 653 cycles。
+- 本輪文件更新未變更 RTL、參數、stimulus 或 covergroups，未重跑 regression。
+
+## Open Coverage and Release Items
+
+| 項目 | 所需處置 |
 |---|---|
-| Write strobe 起始 byte lane | 20/64 命中，仍缺 44 lanes |
-| FIFO full/recovery | NSU[0] TX DAT VC3、NSU[2] RX DAT VC0、NSU[2] TX DAT VC1 |
-| W context 同 cycle push/pop | NSU[3] 未命中 |
-| Credit cross | 部分 NSU read VC 的 available／give／take 組合未命中，詳見原生 grpinfo.txt |
-| CDC | 尚未執行獨立 clock／phase 的參數 regression；不替代 physical CDC/RDC 檢查 |
-| ID／random 組合 | Source／NoC ID 固定 3／3；transaction seed 固定 1，reset timing 使用 seed 1／17／29 |
-| 系統範圍 | 不包含多 source、Router RTL、multihop mesh 的整合驗收；不作為整個 NoC 的完整驗證結論 |
+| NI requirement baseline | 固定規格版本與章節，確認 plan 中 `[TBD]` 的對應 |
+| Interface coverage | 依 Plan Item Results review 待補項目，優先確認外部 arrival/order、packet/VC、credit、stall/recovery 的觀察方式 |
+| AXI support profile | 確認 FIXED/WRAP、unaligned、exclusive、sideband 的支援與必要驗證範圍 |
+| Code／assertion closure | 逐組處理未覆蓋 condition／toggle 與未觸發 properties。Module／statement 分類完成，完整 bin review 未完成 |
+| C0 W context | Depth=32 pointer wrap 已命中，full 未命中。單 source AW→W 排程限制 occupancy 的分析尚未核准為 exclusion |
+| Out-of-scope | Multi-source、R interleave、multicast 後續整合仍由 issue #6 追蹤。Router RTL、multihop、physical CDC/RDC、STA／synthesis 另案 |
+| Release | 確認 configuration、revision、已知限制、原生 evidence package 與核准 exclusions |
 
-未命中的 bins 仍須依各組態區分缺 stimulus、不可達或不支援；本輪未新增 exclusion。
-其他尚未結案項目包含 ID mapping table capacity、response-error 與 arbitration fairness，見 [testplan](verification-testplan.md) 的待補強清單。
+沒有新增 DUT exclusions。合法 traffic 未觸發 fatal guard 不能視為 negative testing 完成。固定接線、固定參數與未使用 API 的缺口保留理由，不自動當成 waived。
 
-## 測試明細
+## Evidence Locations and Reproduction
 
-以下共 56 筆。BP＝AXI response backpressure；TARGET 只對 capacity_reuse 有效。MODE=auto 使用該 pattern 的既定模式。
+| Artifact | 位置 |
+|---|---|
+| 本機最新 URG | `build/issue7-closure/final-r9-evidence/reports/`，包含 C0～C6、functional-urg |
+| 工作站最新 URG | `/home/mingwei/noc_project/sim/build/issue7-coverage-r9/` |
+| 本機新增 run evidence | `build/issue7-closure/run-evidence/reports/` |
+| 原始 run／stimulus | 逐筆 CSV 的 run_record、log、pattern_file、pattern_sha256 |
+| Build audit | 最新 report 目錄的 sources.json、build-audit.json 與 SHA256 記錄 |
 
-### 0. Baseline
+原生 report 共 1,335 檔、run evidence 共 109 檔已核對 SHA256。上述 build artifacts 未納入 Git，本 branch 提供 evidence indexes。Release 時需另攜對應 logs、manifests、VDB／URG，不能只交 CSV。
 
-| CASE | MODE | TARGET | BP | SEED | Cycles | 結果 |
-|---|---|---|---:|---:|---:|---|
-| ctrl_write_single | auto | — | 0 | 1 | 27 | PASS |
-| ctrl_read_single | auto | — | 0 | 1 | 26 | PASS |
-| ctrl_write_burst | auto | — | 0 | 1 | 1051 | PASS |
-| ctrl_read_burst | auto | — | 0 | 1 | 1036 | PASS |
-| single_id_outstanding | auto | — | 0 | 1 | 98 | PASS |
-| multi_id_outstanding | auto | — | 0 | 1 | 98 | PASS |
-| multi_id_out_of_order | auto | — | 0 | 1 | 99 | PASS |
-| multi_id_out_of_order | auto | — | 1 | 1 | 2230 | PASS |
-| single_id_reorder | auto | — | 0 | 1 | 102 | PASS |
-| single_id_reorder | auto | — | 1 | 1 | 2227 | PASS |
-| single_id_reorder | data | — | 1 | 1 | 2231 | PASS |
-| data_write_single | auto | — | 0 | 1 | 29 | PASS |
-| data_write_burst | auto | — | 0 | 1 | 283 | PASS |
-| data_read_single | auto | — | 0 | 1 | 28 | PASS |
-| data_read_burst | auto | — | 0 | 1 | 272 | PASS |
-| ctrl_rand | auto | — | 0 | 1 | 732 | PASS |
-| data_rand | auto | — | 0 | 1 | 659 | PASS |
-| request_rand | auto | — | 0 | 1 | 653 | PASS |
-| capacity_reuse | auto | context | 0 | 1 | 17048 | PASS |
-| capacity_reuse | auto | per_id | 0 | 1 | 9097 | PASS |
-| capacity_reuse | auto | rob | 0 | 1 | 17221 | PASS |
-| capacity_reuse | data | context | 0 | 1 | 17050 | PASS |
-| capacity_reuse | data | per_id | 0 | 1 | 9103 | PASS |
-| capacity_reuse | data | rob | 0 | 1 | 17230 | PASS |
-| hol_blocking | auto | — | 0 | 1 | 348 | PASS |
-| hol_blocking | data | — | 0 | 1 | 343 | PASS |
-| reset_recovery | auto | — | 0 | 1 | 216 | PASS |
-| reset_recovery | auto | — | 0 | 29 | 203 | PASS |
-| reset_recovery | data | — | 0 | 17 | 216 | PASS |
-
-### 1. Split VC／窄 Device ID
-
-| CASE | MODE | TARGET | BP | SEED | Cycles | 結果 |
-|---|---|---|---:|---:|---:|---|
-| multi_id_out_of_order | control | — | 1 | 1 | 2299 | PASS |
-| multi_id_out_of_order | data | — | 1 | 1 | 2303 | PASS |
-| single_id_reorder | control | — | 1 | 1 | 2854 | PASS |
-| single_id_reorder | data | — | 1 | 1 | 2953 | PASS |
-| request_rand | auto | — | 0 | 1 | 887 | PASS |
-| capacity_reuse | control | context | 0 | 1 | 17490 | PASS |
-| capacity_reuse | control | per_id | 0 | 1 | 11862 | PASS |
-| capacity_reuse | data | context | 0 | 1 | 17494 | PASS |
-| capacity_reuse | data | per_id | 0 | 1 | 12180 | PASS |
-| hol_blocking | control | — | 0 | 1 | 507 | PASS |
-| hol_blocking | data | — | 0 | 1 | 519 | PASS |
-
-### 2. Read ROB 關閉
-
-| CASE | MODE | TARGET | BP | SEED | Cycles | 結果 |
-|---|---|---|---:|---:|---:|---|
-| multi_id_out_of_order | data | — | 0 | 1 | 142 | PASS |
-| single_id_reorder | control | — | 0 | 1 | 444 | PASS |
-| single_id_reorder | data | — | 0 | 1 | 478 | PASS |
-| request_rand | auto | — | 0 | 1 | 1404 | PASS |
-| capacity_reuse | control | context | 0 | 1 | 17368 | PASS |
-| capacity_reuse | data | context | 0 | 1 | 17427 | PASS |
-| reset_recovery | data | — | 0 | 1 | 199 | PASS |
-
-### 3. 小 ROB／單 VC
-
-| CASE | MODE | TARGET | BP | SEED | Cycles | 結果 |
-|---|---|---|---:|---:|---:|---|
-| multi_id_out_of_order | control | — | 1 | 1 | 2230 | PASS |
-| multi_id_out_of_order | data | — | 1 | 1 | 2250 | PASS |
-| single_id_reorder | control | — | 1 | 1 | 2374 | PASS |
-| single_id_reorder | data | — | 1 | 1 | 2461 | PASS |
-| data_write_burst | auto | — | 0 | 1 | 543 | PASS |
-| data_read_burst | auto | — | 0 | 1 | 638 | PASS |
-| request_rand | auto | — | 0 | 1 | 998 | PASS |
-| capacity_reuse | control | rob | 0 | 1 | 17517 | PASS |
-| capacity_reuse | data | rob | 0 | 1 | 18698 | PASS |
-
-## 重現與證據
-
-工作站：`/home/mingwei/noc_project/sim/build/integration-regression/`。
-
-- `{baseline,split,robless,small_rob}/results/`：logs、commands、profile、source／stimulus digests。
-- 各組 `coverage/accepted.vdb`、`coverage/urg/`：獨立原始資料及 code／functional／assertion reports。
-- `functional-urg/`：56-run functional union；`functional-merge.log` 保留 merge 訊息。
-- `audit.json`：各組 1423 個 manifest entries、run digests 與 cycles 已核對；傳輸另包含 SHA256SUMS 本身。
-
-本機：[原生 reports](../build/integration-regression/reports/functional-urg/dashboard.html)、[完整來源及驗證紀錄](../build/integration-regression/)。共下載 977 個 report／log 檔案並逐檔核對 SHA256。
+一般執行方式如下。精確重現歷史 run 時，使用 CSV 對應的 source stage、profile、stimulus 與 seed。
 
 ```sh
-# 例：重現 Split VC 的 random 測試
-cd /home/mingwei/noc_project/sim/build/integration-regression/split
+cd /home/mingwei/noc_project/sim
 make run CASE=request_rand COVERAGE=1
-
-# 例：重現小 ROB 的 data capacity 測試
-cd /home/mingwei/noc_project/sim/build/integration-regression/small_rob
-make run CASE=capacity_reuse MODE=data TARGET=rob COVERAGE=1
+make run CASE=single_id_reorder MODE=data BACKPRESSURE=1 COVERAGE=1
+urg -full64 -dir <run-record中的VDB路徑> -report build/coverage -format both
 ```
 
-工作站主目錄 `sim/` 已同步修正後 source，保留既有 builds／waves／reports。共建立三種必要的 C++ model build；Read ROB 關閉組態共用 Baseline library，主目錄 compile dry-run 也確認不需重編 C++。
+## Documentation Audit
 
-Local codegen check、230 Python checks、728 C++ tests 全部通過。未推送遠端 Git。
+本輪逐一核對 NMU／NSU ports、covergroup 名稱、sample code、Device AXI cover properties、CSV counts 與原生結果摘要。所有 plan items 均有本報告對應列。未新增 covergroups，未將待補項目標成已命中。
+
+| 原 objective | 現行對應 |
+|---|---|
+| V01/V02 | AXI-01/02/03、NI-01 |
+| V03 | AXI-06 |
+| V04/V05 | AXI-07、NI-07 |
+| V06/V07/V08/V09 | NI-03/04 |
+| V10/V11 | NI-05/06 |
+| V12/V14 | NI-08/09 |
+| V13/V17 | 驗證組態、NI-03/07/08 |
+| V15/V16 | AXI-05、NI-10 |
+| V18 | Code coverage／assertion activation、Open Coverage and Release Items |
+| V19 | 現行固定 source-aware ID mapping 無 dynamic mapping table，NI-03/04 驗實際 ID/context 行為 |
+| V20 | Out-of-scope |

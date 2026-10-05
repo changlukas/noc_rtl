@@ -1,82 +1,67 @@
-# 驗證規劃與 Coverage 指引
+# NI Verification Guidelines
 
-有。成熟 DV 流程常見的做法是：**定義要驗到的情境、量測 DUT 是否真的遇到，再確認對應行為正確。** case PASS、functional coverage、code coverage 是不同的證據。[OpenTitan DV methodology](https://opentitan.org/book/doc/contributing/dv/methodology/index.html)
+## 文件與 review 範圍
 
-以目前 NI／Router 平台，我認為以下最有價值。
-
-**1. Functional coverage：確認情境真的發生**
-
-建議沿用現有 15 個 case，增加這些觀察點：
-
-| 項目 | 值得涵蓋的條件 |
+| 文件 | 內容 |
 |---|---|
-| AXI transaction | control／data、read／write、single／burst、支援的 size／burst type |
-| Burst／address | 最小、最大、非 2 次方 length；接近 4 KB 與 SAM region 邊界的合法存取 |
-| Write strobe | full、partial、zero strobe，以及不同 byte lane |
-| Outstanding | 1 筆、多筆、達容量上限、完成後重新接受 |
-| Ordering | same／different ID、same／different destination、實際發生亂序、ROB bypass／reorder |
-| Buffer／credit | empty、full、同 cycle enqueue/dequeue；credit 耗盡、回補、送出與回補同 cycle |
-| Arbitration／HoL | 多個 eligible request 同時競爭、一股流量阻塞而另一股仍可前進 |
-| Reset recovery | 有 pending transaction／buffer 非空時 reset，之後 fresh traffic 正常完成 |
+| [Verification Plan](verification-testplan.md) | Generic AXI、NI-specific 功能、驗證目標、coverage 對照、組態與 cases |
+| [Verification Report](verification-integration-results.md) | 各 plan item 的證據、未涵蓋項目、原生 coverage 與執行紀錄 |
+| 本文件 | 撰寫、取樣、證據維護與驗收規則 |
 
-涵蓋範圍以目前規格支援的功能為準。例如 unsupported AXI burst type 不應為了 coverage 而硬加進正向測試。
+本目錄其他 verification 文件為歷史紀錄。現行範圍與結果以上述三份文件為準。Logs、VDB、URG reports、manifests 放在 `build/`，逐筆執行與輸入條件放在 `docs/data/`。
 
-**重點是從 monitor 觀察實際 handshake 與內部事件。** pattern 檔案產生了 64 筆 request，只能證明「有準備 stimulus」，不能證明 64 筆都被接受、完成，也不能證明 ROB 或 credit full 曾經發生。
+Plan 採 Feature → Sub-feature → Item，每項保留 Requirement Location、Feature Description、Verification Goals、Pass/Fail Criteria、Test Type、Coverage Method、Applicable Configurations、Link to Coverage。參考 [OpenHW planning guide](https://github.com/openhwfoundation/core-v-verif/blob/master/docs/VerifPlans/VerificationPlanning101.md) 與 [AXI verification plan](https://github.com/openhwfoundation/cva6/blob/master/verif/docs/VerifPlans/source/dvplan_AXI.md) 的欄位。其他設計的 AXI 限制不沿用。
 
-**2. Cross coverage：確認功能組合有一起發生**
+## Requirement 與觀察介面
 
-單獨驗過兩個功能，不代表它們同時發生時也正確。例如：
+- Feature Description 使用規格訊號與條件，例如 `AxBURST = 2'b01`。Verification Goals 列出要觀察的 transfer 與行為。
+- Generic AXI 包含 transaction fields、channel handshake、response、outstanding 與 ordering。Input stimulus 清單只能證明產生了哪些交易，仍須觀察 DUT 接受與完成。
+- NI-specific 包含 address translation、packet transport、ID restoration、VC／credit、容量限制、CDC 與 reset recovery。
+- 功能目標使用 NMU／NSU top-level AXI、REQ、RSP、DAT、credit、clock、reset 訊號。允許 monitor 由已接受的 transactions 建立 pending queue 或 credit balance。
+- Internal FIFO、ROB、arbiter 的 covergroup／assertion 列為 implementation evidence。介面 stall 不足以判定某個內部 buffer 已滿，也不能直接量到內部 requester 的 RR 公平性。
+- Requirement Location 指向規格定義。若只有 RTL 或 generator 可供核對，註明 implementation reference，正式規格定位標 `[TBD]`。
+- 未測的功能不能直接標成 unsupported。FIXED／WRAP、exclusive、unaligned、sideband 等須先確認支援範圍，再訂 coverage 或不適用理由。
 
-| 組合 | 要回答的問題 |
+## 五項驗證原則
+
+| 項目 | 要求 |
 |---|---|
-| Reorder × backpressure | response 亂序且 AXI 暫停接收時，順序是否仍正確？ |
-| ID remap × capacity full | mapping 用滿後，釋放與重用是否正確？ |
-| Read × write 並行 | 兩個方向同時繁忙時，是否互相造成非預期阻塞？ |
-| VC contention × credit return | 多個 VC 競爭，且當 cycle 回補 credit 時，仲裁是否正確？ |
-| Reset × pending traffic | 有未完成 transaction 時 reset，是否殘留舊 response？ |
+| Functional coverage | 定義訊號、sample event、bins、適用組態。每項情境須有正確性檢查 |
+| Cross coverage | 選擇有功能交互作用的組合。列出已實作與待補的 cross，不以單項皆命中推定交叉已測 |
+| Code coverage | 分組態檢查 line、condition、branch、toggle、FSM。缺口分類後再決定 stimulus、修正或 exclusion |
+| Assertions | 檢查 handshake、stability、ordering、flow control。以 activation／cover property 確認前提曾發生 |
+| Random／parameter regression | 每組設定說明驗證目的。保存 seed、clock、profile、source／stimulus digest、log、VDB |
 
-先挑有硬體交互作用的組合即可，避免把所有參數做完整 Cartesian product。
+## Sampling
 
-**3. Code coverage：找出 RTL 沒有被走到的部分**
+| 觀察項目 | Sample condition |
+|---|---|
+| AXI AW／AR | 所屬 `ACLK` 的 `AxVALID && AxREADY` |
+| AXI W | `WVALID && WREADY`，依 AW 接受順序配對。W 可以先於 AW 到達 |
+| AXI B | `BVALID && BREADY`，一筆 write completion |
+| AXI R | `RVALID && RREADY`，每個 beat 取樣。只有 `RLAST=1` 才計一筆 read completion |
+| AXI stability | `VALID && !READY` 後至 handshake 的 VALID 與 payload，reset 期間依規格停用 |
+| REQ／RSP | 所屬 `noc_clk` 的 `valid && ready` |
+| DAT | `noc_clk` 的 `valid` 與 packet VC。DAT 沒有 ready port |
+| Credit | 每個 VC 的 credit-return pulse 與實際 DAT send，按核准初始容量重建 balance |
+| Reset recovery | Reset 前 pending、reset 期間 response、reset 後新 request／response，分開 transaction epoch |
 
-常見會看：
+Address-derived destination 只代表預期 routing。要證明實際 destination 正確，需配對 NSU AXI 或 NoC top-level packet。Response inversion 與 source retirement order 也要分別觀察。
 
-- **Branch／condition coverage：**控制判斷的不同結果是否發生。
-- **FSM state／transition coverage：**狀態與轉移是否被走到。
-- **Toggle coverage：**訊號是否發生切換。
-- **Line coverage：**程式碼是否執行過。
+## 文件與 coverage model 對齊
 
-漏掉的項目要分類：缺少 stimulus、目前組態不可達、規格不支援，或 RTL 有多餘邏輯。排除項目需留下理由；高 coverage 百分比本身不等於功能正確。[Coverage collection 與 exclusions](https://opentitan.org/book/doc/contributing/dv/methodology/index.html#coverage-collection)
+1. Plan 的 Link to Coverage 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「待補」，不得填預期存在的物件。
+2. 對照 sample code，確認訊號來源、clock、reset、bin 範圍、ignore bins 與 cross。列出外部與內部觀察的差異。
+3. Report 使用相同 Item ID，記錄已驗證條件與剩餘範圍。區分 case PASS、coverage hit、checker self-test 與 input records。
+4. 每次 coverage model 修改後，重新核對 model version 與 VDB 來源。不同模型分母不得直接比較。URG merge 無 warning 仍須人工確認語意一致。
+5. Git 保存 plan、model、checker 版本。每筆 run 另保留 build manifest 與 stimulus digest，不能把歷史 runs 全部標成目前 HEAD。
 
-**4. Assertions：檢查每個 cycle 的規則**
+以上是 review 流程。目前沒有自動證明 requirement 完整性或文件語意一致的工具。本輪核對紀錄見 report，尚未實作的 interface coverage 保留為缺口。
 
-端到端 scoreboard 適合檢查結果，assertions 適合抓第一個違反規則的位置。例如：
+## Coverage closure 與驗收
 
-- `valid && !ready` 時，valid／payload 保持穩定。
-- FIFO 不 overflow／underflow。
-- credit 不超出容量、不在無 credit 時送出。
-- 同一筆 transaction 不重複 allocate／retire。
-- packet lock、AXI ordering 遵守規格。
-
-目前已有部分 assertions，可以先盤點缺口。另加對應的 `cover property`，確認 assertion 的觸發條件真的發生，避免整場沒有遇到該情境卻看起來全部通過。
-
-**5. Random regression 與參數組態**
-
-常見方式是讓同一個 case 跑不同 seed、時序停頓與硬體組態。公開 AXI 測試也會掃 address offset、transfer length、idle／backpressure，以及不同 port／data width。[AXI crossbar tests](https://github.com/alexforencich/verilog-axi/blob/master/tb/axi_crossbar/test_axi_crossbar.py)
-
-我們可以挑代表性組態：
-
-- ID width：壓縮、相同、擴展。
-- FIFO／context／ROB：合法最小值、一般值、容易觸發 full 的組態。
-- 支援的 ROB mode、REG_TYPE。
-- AXI／NoC：同頻、不同頻率與 phase。
-
-每次失敗保留 **commit、參數、seed、實際 pattern、log**，才能重現；coverage 則彙整各次執行結果。
-
-**我建議目前先做三件事：**
-
-1. 建立「規格功能 → case → checker → coverage point」對照表。
-2. 補上 **實際乱序、容量 full/recovery、並行 read/write、HoL** 的事件覆蓋。
-3. 開啟一次目前 15-case regression 的 RTL code coverage，先看真正的缺口，再決定增加哪些 seed／組態。
-
-這樣可以向主管具體回答：「哪些功能已驗到、哪些條件未觸發、哪些範圍尚未驗證」，也能保留目前簡單的 TB 與操作方式。
+- 已驗證：明列條件有 checker 與執行證據。部分驗證：仍缺情境、觀察點或 cross。待驗證：尚無有效證據。不適用：有規格依據並經 review。
+- 同組態合併相容資料。跨組態 functional union 保留各 instance 結果。不同 elaboration 的 code coverage 各自報告，不平均百分比。
+- 忽略合法但未測的 bins 不能作為 closure。Illegal／ignore bins 需有規格依據。不可達與 exclusion 需 review，未核准前保留缺口。
+- 驗收需完成 plan review、checker 檢查、必要 regression、coverage gap 處置與未結 bug review。Functional 100% 僅代表該模型定義的 bins 全部命中。
+- Release 組態、revision、未驗證範圍與豁免需明列。Functional simulation 不替代 physical CDC/RDC、STA 或 synthesis。
