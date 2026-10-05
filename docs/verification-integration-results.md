@@ -33,16 +33,22 @@ Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每�
 | AXI-06 | Single/multi-ID outstanding、read/write pending cross 命中，random seeds 1/17/29 PASS | multiple bin 為 depth≥2，未分每 ID 深度與 ID 數交叉 | 部分驗證 |
 | AXI-07 | Ordering cases 與 mixed seeds PASS，checker 正反向 self-test 10/10。hol_blocking 補充不同 ID／destination 的 response 完成情境 | Inversion covergroup 觀察內部 ordering ingress。Top-level arrival／retirement cross 待補，R beat interleaving 未驗。hol_blocking 不證明 OoO 或 HoL bypass | 部分驗證 |
 
-### NI-specific
+### NI Functions
 
 | Item | 已有證據 | 尚缺／限制 | 判定 |
 |---|---|---|---|
 | NI-01 | 四 destinations、SAM 起點／尾端，端到端 checker 與 boundary bins 通過 | Destination coverpoint 由 Source address 推導，實際 AXI／NoC route cross 待補。本平台未啟用 NSU address rebasing，非零 address translation 未驗證 | 部分驗證 |
 | NI-02 | Control/data read/write、single/burst、random 的端到端 checks PASS | 未獨立計量 channel mapping、packet VC 保持與 REQ/DAT 同時傳輸 | 部分驗證 |
 | NI-03 | C1/C0/C2 Device ID width 1/3/8，C5/C6 Source width 1/8。C6 全部 256 IDs 各一筆 read/write PASS | Source × Device ID mapping cross 缺少，multi-source 未驗 | 部分驗證 |
+| NI-07 | Same-ID request 按 destination/region 檢查。Mixed seeds 及 C2/C4 無 read reordering 的選定 cases PASS | Request 的 destination/region/order 組合未完整計量，不能用 response inversion bins 代替 | 所列條件已驗證 |
+| NI-11 | 與 AXI-07 共用 ordering cases、checker 與 ordering_cg 證據 | 同 AXI-07，尚缺 top-level arrival／retirement cross。不另計 run 或 coverage hit | 部分驗證 |
+
+### Architecture and Interface Requirements
+
+| Item | 已有證據 | 尚缺／限制 | 判定 |
+|---|---|---|---|
 | NI-04 | Per-ID/context/ROB capacity tests PASS，內部 full/reuse 命中 | Interface-only limit/recovery model 待補。C0 W context depth=32 full 未命中 | 部分驗證 |
 | NI-05 | Shared/split、單／多 VC PASS，internal credit crosses 命中，credit assertions failure=0 | 外部 credit-balance monitor 與 VC × direction cross 待補 | 部分驗證 |
-| NI-07 | Same-ID request 按 destination/region 檢查。Mixed seeds 及 C2/C4 無 read reordering 的選定 cases PASS | Request 的 destination/region/order 組合未完整計量，不能用 response inversion bins 代替 | 所列條件已驗證 |
 | NI-08 | C0 T0/T1/T2 共 12 項 PASS | 未交叉全部 C0～C6。不是 physical CDC/RDC | 所列 clock sweep 已驗證 |
 | NI-09 | Pending reset、quiet interval、fresh traffic checks PASS | Pending bin 從內部取樣。僅全平台 reset，非獨立 domain／局部 reset | 部分驗證 |
 | NI-10 | Internal RR、no-bubble、credit-forward assertions failure=0，端到端 packet/data checks PASS | 部分 instance contention／continuous-transfer 未命中。端口觀察不能辨識每次內部可仲裁機會 | 部分驗證 |
@@ -53,10 +59,10 @@ Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每�
 |---|---|---|
 | Source AXI | transaction_cg、write_strobe_cg、boundary_cg、response_cg、outstanding_cg | AXI-01/02/03/05/06，NI-01/02/03 |
 | Device AXI | aw_stall_recover、w_stall_recover、ar_stall_recover | AXI-04 |
-| Internal／mixed | ordering_cg、rob_cg、stress_cg、reset_cg | AXI-07，NI-04/07/09 |
+| Internal／mixed | ordering_cg、rob_cg、stress_cg、reset_cg | AXI-07，NI-04/07/09/11 |
 | Internal primitives | fifo_cg、credit_cg、arbiter／credit-forward assertions | NI-04/05/10 |
 
-完整 source links 與 sample 條件見 [Coverage Source Index](verification-testplan.md#coverage-source-index)。Report 保留內部證據，但不以其取代尚未實作的 interface coverpoints。
+Bins、cross、sample condition 與 exclusions 見 [Functional Coverage Plan](verification-testplan.md#functional-coverage-plan)，source links 見 [Coverage Source Index](verification-testplan.md#coverage-source-index)。Report 保留內部證據，但不以其取代尚未實作的 interface coverpoints。
 
 ## 組態與結果
 
@@ -205,7 +211,7 @@ urg -full64 -dir <run-record中的VDB路徑> -report build/coverage -format both
 
 ## Documentation Audit
 
-本輪另依 NoC flow control／ordering 概念核對 NI 功能分類，檢查 channel mapping、packet lock、ID mapping、request/response ordering 與 backpressure 的必要條件。NMU／NSU ports、covergroup 名稱、sample code、Device AXI cover properties、CSV counts 與原生結果摘要保留原核對結果。16 個功能 items 均有本報告對應列。原 NI-06 併入 AXI-07 的測試對照。未新增 covergroups，未將待補項目標成已命中。
+本輪另依 NoC flow control／ordering 概念核對 NI 功能分類，檢查 channel mapping、packet lock、ID mapping、request/response ordering 與 backpressure 的必要條件。NMU／NSU ports、covergroup 名稱、sample code、Device AXI cover properties、CSV counts 與原生結果摘要保留原核對結果。17 個 verification items 均有本報告對應列，包含協定、NI 功能及架構與介面要求。NI-11 共用 AXI-07 證據。原 NI-06 併入 AXI-07 的測試對照。未新增 covergroups，未將待補項目標成已命中。
 
 | 原 objective | 現行對應 |
 |---|---|

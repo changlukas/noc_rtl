@@ -10,11 +10,11 @@
 
 本目錄其他 verification 文件為歷史紀錄。現行範圍與結果以上述三份文件為準。Logs、VDB、URG reports、manifests 放在 `build/`，逐筆執行與輸入條件放在 `docs/data/`。
 
-Plan 分開列出功能、驗證目標、測試條件與 coverage。Report 使用相同 Item ID 對照證據與限制。功能定義須核對協定、核准規格與 RTL，參考資料不取代專案的支援範圍。
+Plan 使用 Feature → Sub-feature → Item。每項分列 Feature Description、Verification Goals、Pass/Fail Criteria、Test Type、Coverage Method、Applicable Configurations、Link to Coverage。Test Conditions 獨立列出。Report 使用相同 Item ID 對照證據與限制。功能定義須核對協定、核准規格與 RTL，參考資料不取代專案的支援範圍。
 
 ## 功能分類與用語
 
-NI 的功能依 address decoding/translation、packetization/depacketization、ID mapping/ordering、flow control、arbitration、clock/reset 整理。每類先列應有行為，再對照已測內容，避免由現有 cases 反推所有 requirements。
+NI Functions 分為 Address Decoding / Translation、Packetization / Depacketization、ID Mapping、Response Reordering。Ready/valid、credit、容量限制、arbitration、CDC 與 reset 放在 Architecture and Interface Requirements。測試條件不列為功能。
 
 | 用語 | 定義／撰寫重點 |
 |---|---|
@@ -33,18 +33,20 @@ NI 的功能依 address decoding/translation、packetization/depacketization、I
 | Verification Goals | 要確認的行為，例如 RID 配對正確且 same-ID responses 保序 |
 | Stimulus／test conditions | 如何觸發情境，例如先接受 A、再接受 B，延遲 A 的 Device response |
 | Pass/Fail Criteria | 比較哪些 signals、transaction fields 或先後次序，以及通過條件 |
-| Existing Coverage | 實際 covergroup、coverpoint、cross、assertion 或 checker，並列出 sample boundary |
+| Link to Coverage | 實際 covergroup、coverpoint、cross、assertion 或 checker，並列出 sample boundary |
 | Report | 已執行條件、結果與未驗證範圍 |
 
 延遲 destination response、降低 READY、填滿 buffer 是測試條件，不另外列為功能。Different-ID OoO 是允許的 response 行為，必須實際觀察次序反轉才能記為已測 OoO。
 
 合併功能項目時保留歷史 ID 對照，不重新編號已有證據。規格與 implementation 不一致時列為待確認事項，不自行選定規格。
 
-Generic AXI 包含輸入與輸出的 transaction fields、handshake、responses、outstanding、ordering。NI-specific 補上 AXI 與 NoC 之間的轉換和 flow control。先檢查功能是否列全，再檢查 coverage model 是否量到。
+Generic AXI 包含輸入與輸出的 transaction fields、handshake、responses、outstanding、ordering。NI Functions 說明 AXI 與 NoC 之間的轉換及 response reordering。架構與介面要求另列。先檢查功能是否列全，再檢查 coverage model 是否量到。
 
 功能目標使用 NMU／NSU top-level interfaces。Internal FIFO、ROB、arbiter coverage 保留為補充證據。外部 stall 只能證明發生等待，不能直接判定哪個 buffer 已滿。內部公平性也不能只由端口輸出次序推定。
 
 未測功能不得直接標為 unsupported。FIXED/WRAP、exclusive、unaligned、sideband、SAM miss 等需先確認支援範圍。每個建議新增的 cross 必須指出它要檢查的功能交互作用，不要求所有欄位做 Cartesian product。
+
+Functional Coverage Plan 放在功能與驗證目標之後。每列對應 Item，列出 coverpoint、bins、cross、sample condition 與 ignore/illegal bins。現有模型與待補項目分開，不能以擬議 bins 解釋既有百分比。
 
 ## 五項驗證原則
 
@@ -74,7 +76,7 @@ Address-derived destination 只代表預期 routing。要證明實際 destinatio
 
 ## 文件與 coverage model 對齊
 
-1. Plan 的 Existing Coverage 與 Coverage Source Index 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「未實作」，不得填預期存在的物件。是否需要新增，由功能目標與現有證據決定。
+1. Plan 的 Link to Coverage 與 Coverage Source Index 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「未實作」，不得填預期存在的物件。是否需要新增，由功能目標與現有證據決定。
 2. 對照 sample code，確認訊號來源、clock、reset、bin 範圍、ignore bins 與 cross。列出外部與內部觀察的差異。
 3. Report 使用相同 Item ID，記錄已驗證條件與剩餘範圍。區分 case PASS、coverage hit、checker self-test 與 input records。
 4. 每次 coverage model 修改後，重新核對 model version 與 VDB 來源。不同模型分母不得直接比較。URG merge 無 warning 仍須人工確認語意一致。
