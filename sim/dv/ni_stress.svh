@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Directed stress uses the existing file master and checkers.
     `define STRESS_ORDER dut.i_response_path.i_ordering
+    bit [1:0] cov_same_id_seen = 0, cov_cross_id_seen = 0;
     bit cov_b_stall_inversion = 0, cov_r_stall_inversion = 0;
     bit wr_limit_seen = 0, rd_limit_seen = 0;
     bit wr_limit_reused = 0, rd_limit_reused = 0;
@@ -25,6 +26,7 @@
     always @(posedge noc_clk) begin
         if (!noc_rst_n) begin
             wr_limit_seen = 0; rd_limit_seen = 0;
+            cov_same_id_seen = 0; cov_cross_id_seen = 0;
             read_order_wait_seen = 0; read_order_resumed = 0;
             wr_limit_reused = 0; rd_limit_reused = 0;
             b_storage_full_seen = 0; r_storage_full_seen = 0;
@@ -110,12 +112,12 @@
                 end
             join_none
         end
-        if (stress_test == 1 && capacity_target != "per_id") begin
+        if (response_hold_cycles != 0 || (stress_test == 1 && capacity_target != "per_id")) begin
             if (is_read) block_r = 1;
             else block_b = 1;
             fork
                 begin
-                    repeat (hold_cycles) @(posedge clk);
+                    repeat (response_hold_cycles != 0 ? response_hold_cycles : hold_cycles) @(posedge clk);
                     #(APPL_DELAY);
                     if (is_read) block_r = 0;
                     else block_b = 0;
@@ -225,6 +227,13 @@
                 $fatal(1, "Read ordering admission wait/recovery not exercised");
         end
     `ifdef NI_COVERAGE
+        if (response_random_delay && reorder_test != 0) begin
+            $display("RESPONSE_INVERSION same_id=%b cross_id=%b", cov_same_id_seen, cov_cross_id_seen);
+            if (reorder_test == 1 && !(&cov_cross_id_seen))
+                $fatal(1, "Read/write cross-ID response inversion not exercised");
+            if (reorder_test == 2 && !(&cov_same_id_seen))
+                $fatal(1, "Read/write same-ID response inversion not exercised");
+        end
         if (response_backpressure)
             $display("REORDER_BACKPRESSURE write=%0d read=%0d", cov_b_stall_inversion, cov_r_stall_inversion);
         if (response_backpressure && reorder_test == 2 &&

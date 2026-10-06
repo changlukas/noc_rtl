@@ -128,6 +128,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 else:
                     burst = 1
             dest = (txn % len(routes[classes[txn]]) if capacity else
+                    (txn // num_ids) % len(routes[classes[txn]]) if case.get("destinations") == "all" else
                     txn % 2 if case.get("destinations") == "alternate" else
                     rng.randrange(2) if case.get("destinations") == "random" else 0)
             if profile == "cosim":
@@ -298,6 +299,13 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             args.append("+capacity_target=" + case["capacity_target"])
         if case.get("response_backpressure"):
             args.append("+response_backpressure")
+        if case.get("response_random_delay"):
+            args.append("+response_random_delay")
+        if case.get("response_hold_cycles"):
+            delay = case["response_hold_cycles"]
+            if type(delay) is not int or delay < 1:
+                raise ValueError("response_hold_cycles must be a positive integer")
+            args.append(f"+response_hold_cycles={delay}")
         if case.get("stress_test"):
             args.append(f"+stress_test={case['stress_test']}")
         if preload:

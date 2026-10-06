@@ -62,6 +62,8 @@ module tb_top #(
     string capacity_target = "per_id";
     int response_error = 0;
     bit response_backpressure = 0;
+    bit response_random_delay = 0;
+    int response_hold_cycles = 0;
     bit block_b = 0, block_r = 0;
     wire [NUM_NSUS-1:0] aw_context_full, ar_context_full;
     wire [NUM_NSUS-1:0] aw_context_accept, ar_context_accept;
@@ -547,9 +549,31 @@ module tb_top #(
         ar_stall_recover: cover property (@(posedge clk) disable iff (!axi_rst_n)
             mem_bus.ar_valid && !mem_bus.ar_ready ##[1:64] mem_bus.ar_valid && mem_bus.ar_ready);
 `endif
+        AXI_BUS #(
+            .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
+            .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
+            .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
+            .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)
+        ) response_delay_bus();
+        axi_delayer_intf #(
+            .AXI_ID_WIDTH        (DEVICE_ID_WIDTH),
+            .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
+            .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
+            .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
+            .STALL_RANDOM_INPUT  (1'b0),
+            .STALL_RANDOM_OUTPUT (1'b1),
+            .FIXED_DELAY_INPUT   (0),
+            .FIXED_DELAY_OUTPUT  (0)
+        ) i_response_delay (
+            .clk_i    (clk),
+            .rst_ni   (axi_rst_n),
+            .bypass_i (!response_random_delay),
+            .slv      (request_delay_bus),
+            .mst      (response_delay_bus)
+        );
         wire delay_en = reorder_test != 0 && PORT == 4;
         if (RSP_DELAY_CYCLES == 0) begin : gen_no_delay
-            `AXI_ASSIGN(delayed_bus, request_delay_bus)
+            `AXI_ASSIGN(delayed_bus, response_delay_bus)
         end else begin : gen_rsp_delay
             AXI_BUS #(
                 .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
@@ -557,7 +581,7 @@ module tb_top #(
                 .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
                 .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)
             ) delay_bus[RSP_DELAY_CYCLES+1]();
-            `AXI_ASSIGN(delay_bus[0], request_delay_bus)
+            `AXI_ASSIGN(delay_bus[0], response_delay_bus)
             `AXI_ASSIGN(delayed_bus, delay_bus[RSP_DELAY_CYCLES])
             // One-cycle upstream cells make the sweep include every integer delay.
             for (genvar stage = 0; stage < RSP_DELAY_CYCLES; stage++) begin : gen_stage
@@ -799,6 +823,11 @@ module tb_top #(
         void'($value$plusargs("capacity_target=%s", capacity_target));
         void'($value$plusargs("response_error=%d", response_error));
         response_backpressure = $test$plusargs("response_backpressure");
+        response_random_delay = $test$plusargs("response_random_delay");
+        void'($value$plusargs("response_hold_cycles=%d", response_hold_cycles));
+        if (response_hold_cycles < 0) $fatal(1, "Negative response hold");
+        $display("SLAVE_RESPONSE_DELAY random=%0d hold_cycles=%0d",
+            response_random_delay, response_hold_cycles);
         if (stress_test != 0 && !RTL_NSU) $fatal(1, "Stress cases require RTL NSU");
         void'($value$plusargs("reorder_test=%d", reorder_test));
         $display("RESPONSE_DELAY enabled=%0d west_setting=%0d", reorder_test != 0, RSP_DELAY_CYCLES);

@@ -196,6 +196,8 @@
         end
         if (index < 0) $fatal(1, "Coverage monitor cannot match ordering response");
         ordering_coverage.sample(is_read, older_same_id, older_other_id);
+        cov_same_id_seen[is_read] |= older_same_id;
+        cov_cross_id_seen[is_read] |= older_other_id;
         if (reorder && (older_same_id || older_other_id)) begin
             if (is_read) cov_r_inverted[tag] = 1;
             else cov_b_inverted[tag] = 1;

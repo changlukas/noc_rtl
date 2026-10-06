@@ -498,3 +498,39 @@ def test_response_error_maps(tmp_path, response, operation):
     assert len({line.split()[0] for line in errors}) == 4096
     assert all(int(line.split()[1], 16) == response for line in errors)
     assert "+response_error=" + str(response) in (output / "schedule.txt").read_text()
+
+
+def test_slave_response_delay_schedule(tmp_path):
+    import json
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps({"cases": [dict(name="single_id_outstanding", count=4,
+        response_hold_cycles=4096, response_random_delay=True)]}))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog, profile="cosim")
+    args = (tmp_path / "out/single_id_outstanding/schedule.txt").read_text().split()
+    assert "+response_hold_cycles=4096" in args
+    assert "+response_random_delay" in args
+    assert "+hold_cycles=0" in args
+    assert "+stall_cycles=0" in args
+
+
+def test_all_id_destination_pairs(tmp_path):
+    import json
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps({"cases": [dict(name="multi_id_outstanding", count=32,
+        ids="multiple", destinations="all")]}))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog, profile="cosim")
+    txns = _parse_write(tmp_path / "out/multi_id_outstanding/write.txt")
+    assert {(t["id"], t["addr"] >> 32) for t in txns} == {(i, d) for i in range(8) for d in range(4)}
+
+
+@pytest.mark.parametrize("mode,max_beats", [("control", 256), ("data", 64)])
+def test_complete_burst_length_sweep(tmp_path, mode, max_beats):
+    import json
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps({"cases": [dict(name="sweep", mode=mode, count=max_beats-1,
+        burst_lengths=list(range(2, max_beats+1)), operation="write")]}))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog, profile="cosim")
+    txns = _parse_write(tmp_path / "out/sweep/write.txt")
+    assert {t["len"]+1 for t in txns} == set(range(2, max_beats+1))
+    for t in txns:
+        assert t["addr"] >> 12 == (t["addr"] + ((t["len"]+1) << t["size"]) - 1) >> 12
