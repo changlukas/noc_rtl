@@ -9,6 +9,7 @@ import shutil
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from prepare import prepare, ROOT
 from gen_standalone_patterns import generate
+from verification_matrix import metadata
 
 
 def main():
@@ -36,7 +37,8 @@ def main():
             shutil.copytree(directory / "patterns" / case["name"], directory / "patterns" / (case["name"] + "_" + case["capacity_target"]), dirs_exist_ok=True)
         shutil.copyfile(out / "profile.yml", directory / "profile.yml")
         rows.append(dict(item=item, coverage_items=[item] + (["P11"] if item in ("P05", "P06", "P07", "P08") else []),
-                         tag=tag, case=case["name"], seed=seed,
+                         tag=tag, case=case["name"], seed=seed, conditions=case, mode=mode,
+                         **metadata(item),
                          cwd=str(directory.relative_to(out)), target=case.get("capacity_target", "per_id")))
 
     if args.capacity:
