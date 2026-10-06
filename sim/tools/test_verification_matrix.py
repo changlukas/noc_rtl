@@ -53,6 +53,19 @@ direction event COUNT AT LEAST NUMBER
         self.assertIsNone(rows[-1][5])
         self.assertEqual(rows[-1][-1],"Uncovered")
 
+    def test_native_test_attribution(self):
+        text = """Group : top::cg
+Group Instance : cov
+Summary for Variable cp_full
+NAME COUNT AT LEAST TEST COUNT TEST COUNT
+observed 7 1 T3 4 T8 3
+"""
+        row = coverage_bins(text, "fresh", {"T3": "run-1", "T8": "run-2"})[0]
+        self.assertEqual(row[5:8], [7, 1, "Covered"])
+        self.assertEqual(row[8], "run-1 (4), run-2 (3)")
+        with self.assertRaises(KeyError):
+            coverage_bins(text, "fresh", {"T3": "run-1"})
+
     def test_empty_report_rejected(self):
         with self.assertRaises(ValueError):
             coverage_bins("", "fresh")

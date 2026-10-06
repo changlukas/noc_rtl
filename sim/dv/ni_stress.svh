@@ -231,7 +231,8 @@
             $display("RESPONSE_INVERSION same_id=%b cross_id=%b", cov_same_id_seen, cov_cross_id_seen);
             if (reorder_test == 1 && !(&cov_cross_id_seen))
                 $fatal(1, "Read/write cross-ID response inversion not exercised");
-            if (reorder_test == 2 && !(&cov_same_id_seen))
+            if (reorder_test == 2 && (!cov_same_id_seen[0] ||
+                    (R_ROB_EN && !cov_same_id_seen[1])))
                 $fatal(1, "Read/write same-ID response inversion not exercised");
         end
         if (response_backpressure)
@@ -251,7 +252,7 @@
                     $fatal(1, "Per-ID limit/reuse not exercised");
                 "context": if (!(&aw_context_reused) || !(&ar_context_reused))
                     $fatal(1, "NSU context full/reuse not exercised");
-                "rob": if (!b_storage_reused || !r_storage_reused)
+                "rob": if (!b_storage_reused || (R_ROB_EN && !r_storage_reused))
                     $fatal(1, "B/R ROB full/reuse not exercised");
                 default: $fatal(1, "Unknown capacity target");
             endcase
