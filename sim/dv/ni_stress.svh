@@ -64,7 +64,7 @@
             hol_wr_progress = 0;
             hol_rd_progress = 0;
         end else begin
-            if (stress_test == 2) begin
+            if (check_destination_progress) begin
                 if (vip.aw_valid && vip.aw_ready) stress_wr_dst[vip.aw_id] = int'(decode_destination(vip.aw_addr));
                 if (vip.ar_valid && vip.ar_ready) stress_rd_dst[vip.ar_id] = int'(decode_destination(vip.ar_addr));
                 if (memory_b_blocked[0] && aw_context_full[0] && vip.b_valid && vip.b_ready &&
@@ -97,41 +97,13 @@
         join_none
     endtask
 
-    task automatic start_stress_phase(input bit is_read);
-        // The prefix fills all but one response FIFO entry. North then holds
-        // the head request while later destinations return out of order.
-        if (response_backpressure && reorder_test == 2) begin
+    task automatic start_response_hold(input bit is_read);
+        if (response_hold_cycles != 0) begin
             if (is_read) block_r = 1;
             else block_b = 1;
             fork
                 begin
-                    repeat (hold_cycles/4) @(posedge clk);
-                    #(APPL_DELAY);
-                    if (is_read) block_r = 0;
-                    else block_b = 0;
-                end
-            join_none
-        end
-        if (response_hold_cycles != 0 || (stress_test == 1 && capacity_target != "per_id")) begin
-            if (is_read) block_r = 1;
-            else block_b = 1;
-            fork
-                begin
-                    repeat (response_hold_cycles != 0 ? response_hold_cycles : hold_cycles) @(posedge clk);
-                    #(APPL_DELAY);
-                    if (is_read) block_r = 0;
-                    else block_b = 0;
-                end
-            join_none
-        end
-        if (stress_test == 2) begin
-            if (is_read) block_r = 1;
-            else block_b = 1;
-            fork
-                begin
-                    if (is_read) wait (hol_rd_progress);
-                    else wait (hol_wr_progress);
-                    @(posedge clk);
+                    repeat (response_hold_cycles) @(posedge clk);
                     #(APPL_DELAY);
                     if (is_read) block_r = 0;
                     else block_b = 0;
@@ -151,7 +123,7 @@
         $fclose(warmup.read_fd);
         $fclose(warmup.write_fd);
         seed = 1;
-        void'($value$plusargs("seed=%d", seed));
+        void'($value$plusargs("reset_seed=%d", seed));
         void'($urandom(seed));
         reset_delay = $urandom_range(2, 24);
         fork : reset_traffic
@@ -220,34 +192,34 @@
         reset_complete = 1;
     endtask
 
-    task automatic check_stress();
-        if (!R_ROB_EN && reorder_test == 2) begin
+    task automatic check_test_conditions();
+        if (!R_ROB_EN && check_order == "same_id") begin
             $display("READ_ORDER_RECOVERY wait=%0d resumed=%0d", read_order_wait_seen, read_order_resumed);
             if (!read_order_wait_seen || !read_order_resumed)
                 $fatal(1, "Read ordering admission wait/recovery not exercised");
         end
     `ifdef NI_COVERAGE
-        if (response_random_delay && reorder_test != 0) begin
+        if (response_random_delay && check_order != "") begin
             $display("RESPONSE_INVERSION same_id=%b cross_id=%b", cov_same_id_seen, cov_cross_id_seen);
-            if (reorder_test == 1 && !(&cov_cross_id_seen))
+            if (check_order == "cross_id" && !(&cov_cross_id_seen))
                 $fatal(1, "Read/write cross-ID response inversion not exercised");
-            if (reorder_test == 2 && (!cov_same_id_seen[0] ||
+            if (check_order == "same_id" && (!cov_same_id_seen[0] ||
                     (R_ROB_EN && !cov_same_id_seen[1])))
                 $fatal(1, "Read/write same-ID response inversion not exercised");
         end
-        if (response_backpressure)
+        if (check_response_stall)
             $display("REORDER_BACKPRESSURE write=%0d read=%0d", cov_b_stall_inversion, cov_r_stall_inversion);
-        if (response_backpressure && reorder_test == 2 &&
+        if (check_response_stall && check_order == "same_id" &&
                 (!cov_b_stall_inversion || !cov_r_stall_inversion))
             $fatal(1, "Same-ID inversion/output-stall correlation not exercised");
     `endif
-        if (response_backpressure && (!b_output_stalled || !r_output_stalled))
+        if (check_response_stall && (!b_output_stalled || !r_output_stalled))
             $fatal(1, "Reorder test missed B/R storage output backpressure");
-        if (stress_test == 1) begin
+        if (check_capacity != "") begin
             $display("CAPACITY_REUSE target=%s per_id=%b%b context=%b/%b rob=%b%b",
-                capacity_target, wr_limit_reused, rd_limit_reused,
+                check_capacity, wr_limit_reused, rd_limit_reused,
                 aw_context_reused, ar_context_reused, b_storage_reused, r_storage_reused);
-            case (capacity_target)
+            case (check_capacity)
                 "per_id": if (!wr_limit_reused || !rd_limit_reused)
                     $fatal(1, "Per-ID limit/reuse not exercised");
                 "context": if (!(&aw_context_reused) || !(&ar_context_reused))
@@ -257,11 +229,11 @@
                 default: $fatal(1, "Unknown capacity target");
             endcase
         end
-        if (stress_test == 2 && (!hol_wr_progress || !hol_rd_progress))
+        if (check_destination_progress && (!hol_wr_progress || !hol_rd_progress))
             $fatal(1, "Unblocked destination did not progress during blocking");
-        if (stress_test == 3 && (!reset_complete || !reset_pending_seen || b_count == 0 || r_count == 0))
+        if (reset_recovery && (!reset_complete || !reset_pending_seen || b_count == 0 || r_count == 0))
             $fatal(1, "Reset recovery not exercised");
-        if (stress_test != 0 || response_backpressure)
-            $display("STRESS_PASS type=%0d backpressure=%0d", stress_test, response_backpressure);
+        if (check_capacity != "" || check_destination_progress || reset_recovery || check_response_stall)
+            $display("TEST_CONDITIONS_PASS");
     endtask
     `undef STRESS_ORDER

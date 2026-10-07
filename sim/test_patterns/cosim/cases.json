@@ -5,18 +5,18 @@
       "mode": "control",
       "count": 16,
       "burst_beats": 8,
-      "stall_cycles": 4
+      "source_response_delay": true
     },
     {
       "name": "ctrl_capacity_recover",
       "mode": "control",
       "count": 320,
       "burst_beats": 4,
-      "hold_cycles": 4096,
-      "capacity_test": true,
       "ids": "multiple",
       "min_outstanding": 64,
-      "min_unique": 8
+      "min_unique": 8,
+      "source_response_hold_cycles": 4096,
+      "fifo_capacity": "control"
     },
     {
       "name": "ctrl_partial_write",
@@ -37,18 +37,18 @@
       "mode": "data",
       "count": 16,
       "burst_beats": 8,
-      "stall_cycles": 4
+      "source_response_delay": true
     },
     {
       "name": "data_capacity_recover",
       "mode": "data",
       "count": 320,
       "burst_beats": 8,
-      "hold_cycles": 4096,
-      "capacity_test": true,
       "ids": "multiple",
       "min_outstanding": 64,
-      "min_unique": 8
+      "min_unique": 8,
+      "source_response_hold_cycles": 4096,
+      "fifo_capacity": "data"
     },
     {
       "name": "data_partial_write",

@@ -43,7 +43,7 @@ def main():
 
     if args.capacity:
         case = dict(name="capacity_reuse", count=320, burst_beats=1, ids="multiple",
-                    stress_test=1, capacity_test=True, capacity_target=args.capacity,
+                    sequence="capacity_reuse", capacity_target=args.capacity,
                     response_hold_cycles=4096)
         for mode in ("control", "data"):
             add({"per_id": "P14", "context": "P15", "rob": "P18"}[args.capacity], case, mode)
@@ -79,7 +79,7 @@ def main():
                 add(item, dict(cases[name]), seed=seed)
         for seed in (1, 17, 29):
             add("P22", dict(name="reset_recovery", count=8, burst_beats=4, ids="multiple",
-                           destinations="alternate", stress_test=3), seed=seed)
+                           destinations="alternate", sequence="reset_recovery"), seed=seed)
     shutil.copyfile(ROOT / "sim/script/run_verification.py", out / "run_verification.py")
     (out / "verification-runs.json").write_text(json.dumps(rows, indent=2) + "\n")
     files = sorted(p for p in out.rglob("*") if p.is_file() and p.name != "SHA256SUMS" and "build" not in p.relative_to(out).parts)

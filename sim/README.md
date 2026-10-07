@@ -116,3 +116,21 @@ The Split VC profile currently fails Router integration because Router VC reassi
 does not preserve the NI read/write VC pools. The identical NI profile passes the
 existing direct-link environment. See `docs/verification-parameter-results.md`;
 this is an open integration issue, not a waived check.
+
+### Stimulus and acceptance
+
+Generated `schedule.txt` contains timing and sequence controls. `manifest.json`
+contains acceptance criteria such as minimum outstanding count, response arrival
+order, and the capacity to exercise. The runner applies these checks automatically.
+Regenerate patterns when updating the TB. Old manifests without acceptance criteria
+are rejected.
+
+Memory preload, initialization writes, and readback follow the generated file list
+in the manifest. Unlisted files left by previous synchronizations are ignored. Read/write concurrency does not implicitly enable readback. Source response
+hold and Device response hold are independent. Device hold uses a fixed number of
+AXI clocks and does not wait for DUT buffer state.
+
+Source B/R per-beat delay uses upstream delay cells, while the file master retains
+its own response queues. Normal directed cases bypass the delay cells. Generator
+seed is recorded in the manifest. The run record separately records the simulation
+seed, also used for reset timing. Upstream random delay cells use their own LFSR.

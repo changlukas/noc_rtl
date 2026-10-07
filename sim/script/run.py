@@ -18,7 +18,7 @@ p.add_argument("--coverage", action="store_true")
 p.add_argument("--coverage-name", help="Unique native coverage test name")
 p.add_argument("--backpressure", action="store_true")
 p.add_argument("--target", choices=("per_id", "context", "rob"), default="per_id")
-p.add_argument("--seed", type=int, default=1)
+p.add_argument("--seed", type=int, default=1, help="Simulation seed; transaction seed is set during pattern generation")
 a = p.parse_args()
 patterns = Path("patterns")
 if a.mode != "auto":
@@ -37,8 +37,6 @@ if a.case == "capacity_reuse":
 stim = patterns / pattern
 if not 0 <= a.seed <= 0xffffffff:
     p.error("SEED must be an unsigned 32-bit integer")
-if a.case != "reset_recovery" and a.seed != json.loads((stim / "manifest.json").read_text())["seed"]:
-    p.error("SEED changes reset timing only; regenerate patterns to change transaction seed")
 run_name = a.coverage_name or (pattern + "_" + a.mode + "_s" + str(a.seed))
 if not re.fullmatch(r"[A-Za-z0-9_]+", run_name):
     p.error("coverage name must contain only letters, digits and underscores")
@@ -50,7 +48,18 @@ report = Path(a.report)
 report.mkdir(parents=True, exist_ok=True)
 args = [str(Path(a.binary).resolve()), "+stim_dir=" + str(stim.resolve())]
 args += [v for v in (stim / "schedule.txt").read_text().split() if not v.startswith("+seed=")]
-args += ["+seed=" + str(a.seed)]
+manifest = json.loads((stim / "manifest.json").read_text())
+if "acceptance" not in manifest or "files" not in manifest:
+    p.error("Pattern manifest has no acceptance criteria or file list; regenerate patterns")
+args += ["+reset_seed=" + str(a.seed), "+ntb_random_seed=" + str(a.seed)]
+for key, value in manifest["acceptance"].items():
+    args.append("+check_" + key + "=" + str(value))
+for filename, flag in (("preload.mem", "preload"), ("init_write.txt", "init_phase"),
+                       ("verify_read.txt", "readback")):
+    if filename in manifest["files"]:
+        if not (stim / filename).is_file():
+            p.error("Missing pattern file: " + str(stim / filename))
+        args.append("+" + flag)
 if a.coverage:
     args += ["-cm", "line+cond+fsm+tgl+branch+assert",
              "-cm_dir", str(Path(a.binary).resolve()) + ".vdb",
@@ -88,6 +97,7 @@ if a.coverage:
     # Run provenance only. Functional coverage bins/results belong to VCS/URG.
     result = dict(case=a.case, mode=a.mode, target=a.target, backpressure=a.backpressure, seed=a.seed, passed=passed, command=args,
                   vdb=str(Path(a.binary).resolve()) + ".vdb",
+                  stimulus_seed=manifest["seed"], simulation_seed=a.seed,
                   source_manifest_sha256=hashlib.sha256((build_source / "SHA256SUMS").read_bytes()).hexdigest(),
                   source_directory=str(build_source),
                   profile=Path("profile.yml").read_text(),

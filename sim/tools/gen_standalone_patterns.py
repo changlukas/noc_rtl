@@ -73,13 +73,17 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             if case["count"] != len(lane_points):
                 raise ValueError("lane_sweep count must match legal size/lane pairs")
         random_fields = case.get("random", False) or selected == "rand"
-        if case.get("stress_test") or case.get("response_backpressure"):
+        if case.get("sequence") or case.get("response_backpressure"):
             random_fields = False
         random_memory = profile == "cosim" and case.get("random", False)
         concurrent_rw = case.get("concurrent_rw", False) or random_memory
         rng = random.Random(seed)
         target = out / name
         target.mkdir(parents=True, exist_ok=True)
+        for filename in ("preload.mem", "init_write.txt", "verify_read.txt", "rerr.mem", "werr.mem"):
+            optional = target / filename
+            if optional.exists():
+                optional.unlink()
         writes, reads = [], []
         init_writes, verify_reads = [], []
         preload = []
@@ -136,7 +140,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     if len(routes[classes[txn]]) < 4:
                         raise ValueError("co-simulation reorder cases need four destinations")
                     dest = txn % 4
-                elif case.get("capacity_test"):
+                elif (case.get("fifo_capacity") or case.get("sequence") == "capacity_reuse"):
                     dest = txn % len(routes[classes[txn]])
                 elif case.get("destinations") == "random":
                     dest = rng.randrange(len(routes[classes[txn]]))
@@ -145,7 +149,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 if not available:
                     raise ValueError("random control stimulus exceeds disjoint address capacity")
                 dest = rng.choice(available)
-            if case.get("stress_test") == 1:
+            if case.get("sequence") == "capacity_reuse":
                 dest = (txn // num_ids) % len(routes[classes[txn]])
             if case.get("response_backpressure") and case.get("require_buffered"):
                 # Leave one response FIFO entry for the delayed head transaction.
@@ -154,10 +158,11 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 dest = 0 if case["capacity_target"] == "per_id" else txn % len(routes[classes[txn]])
                 if case["capacity_target"] == "per_id":
                     axi_id = 0
-            if case.get("stress_test") == 2:
-                # ID 0 targets the unblocked peer; remaining IDs fill the blocked NSU.
-                dest = 0 if txn == 0 else 1
-                axi_id = 0 if txn == 0 else 1 + (txn-1) % (num_ids-1)
+            if case.get("sequence") == "destination_blocking":
+                # Send the unblocked destination after enough requests to fill a context.
+                progress_index = min(count - 1, (hardware or {}).get("context_depth", 32) + 1)
+                dest = 0 if txn == progress_index else 1
+                axi_id = 0 if txn == progress_index else 1 + txn % (num_ids-1)
             route = routes[classes[txn]][dest]
             step = 1 << size
             offset = 256 + (txn % 8)*max(8, step)
@@ -168,7 +173,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 # The existing memory scoreboard supports INCR and single beats.
                 burst = 1
                 offset = txn * (512 if is_data else 64)
-                if case.get("capacity_test"):
+                if (case.get("fifo_capacity") or case.get("sequence") == "capacity_reuse"):
                     offset = (txn // len(routes[classes[txn]])) * (length + 1) * step
             if "burst_lengths" in case:
                 # Alternate region start, a 4 KB boundary, and the SAM end.
@@ -177,7 +182,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             if random_memory and not is_data:
                 offset = route_slots.get(dest, 0) * 64
                 route_slots[dest] = route_slots.get(dest, 0) + 1
-            if case.get("stress_test") in (1, 2):
+            if case.get("sequence") in ("capacity_reuse", "destination_blocking"):
                 offset = txn * step
             if lane_sweep:
                 offset += lane
@@ -239,7 +244,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                                     "onehot": 1 << txn}[lane_sweep]
                         strobe = hex(full_strobe & mask)
                     writes.append(f"{data} {strobe} {user}")
-            if profile == "cosim" and (operation == "read" or random_memory or case.get("stress_test") == 3):
+            if profile == "cosim" and (operation == "read" or random_memory or case.get("sequence") == "reset_recovery"):
                 bases = [address]
                 if random_memory:
                     bases.append(address + (0x10000 if is_data else 0x800))
@@ -270,18 +275,34 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         args = ["+block_case", f"+case_id_width={id_width}", f"+case_name={name}",
                 f"+mode={selected}", f"+seed={seed}", f"+random_case={int(case.get('random', False))}"]
         args += [f"+{key}={case.get(key, defaults.get(key, 0))}" for key in SCHEDULE]
+        acceptance = {}
         if profile == "cosim":
-            args = [f"+case_name={name}", f"+seed={seed}",
-                    f"+min_outstanding={case.get('min_outstanding', 1)}",
-                    f"+min_unique={case.get('min_unique', 1)}",
-                    f"+backpressure={int(name == 'backpressure')}",
-                    f"+init_phase={int(bool(init_writes))}",
-                    f"+concurrent_rw={int(bool(concurrent_rw))}",
-                    f"+stall_cycles={case.get('stall_cycles', 0)}",
-                    f"+hold_cycles={case.get('hold_cycles', 0)}",
-                    f"+capacity_test={int(bool(case.get('capacity_test')))}",
-                    f"+data_case={int(selected == 'data')}",
-                    f"+reorder_test={2 if case.get('require_buffered') else int(bool(case.get('require_ooo')))}"]
+            args = [f"+case_name={name}"]
+            if concurrent_rw:
+                args.append("+concurrent_rw")
+            acceptance = dict(min_outstanding=case.get("min_outstanding", 1),
+                              min_unique=case.get("min_unique", 1))
+            if case.get("require_buffered"):
+                acceptance["order"] = "same_id"
+            elif case.get("require_ooo"):
+                acceptance["order"] = "cross_id"
+            if case.get("capacity_target"):
+                acceptance["capacity"] = case["capacity_target"]
+            if case.get("fifo_capacity"):
+                acceptance["fifo_capacity"] = case["fifo_capacity"]
+            if case.get("response_backpressure"):
+                acceptance["response_stall"] = 1
+                args.append("+request_random_delay")
+            for key in ("response_delay_port", "response_hold_port",
+                        "source_response_hold_cycles"):
+                if case.get(key):
+                    args.append(f"+{key}={case[key]}")
+            if case.get("source_response_delay"):
+                args.append("+source_response_delay")
+            if case.get("sequence") == "reset_recovery":
+                args.append("+reset_recovery")
+            if case.get("sequence") == "destination_blocking":
+                acceptance["destination_progress"] = 1
         response_error = case.get("response_error", 0)
         if response_error:
             if profile != "cosim" or response_error not in (2, 3) or init_writes or verify_reads:
@@ -295,10 +316,6 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                         errors.append(f"@{txn['addr'] + offset:x} {response_error:x}")
                 (target / error_file).write_text("\n".join(errors or ["@0 0"]) + "\n")
             args.append(f"+response_error={response_error}")
-        if case.get("capacity_target"):
-            args.append("+capacity_target=" + case["capacity_target"])
-        if case.get("response_backpressure"):
-            args.append("+response_backpressure")
         if case.get("response_random_delay"):
             args.append("+response_random_delay")
         if case.get("response_hold_cycles"):
@@ -306,14 +323,14 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             if type(delay) is not int or delay < 1:
                 raise ValueError("response_hold_cycles must be a positive integer")
             args.append(f"+response_hold_cycles={delay}")
-        if case.get("stress_test"):
-            args.append(f"+stress_test={case['stress_test']}")
-        if preload:
+        if preload and profile == "standalone":
             args.append("+preload")
         (target / "schedule.txt").write_text("\n".join(args) + "\n")
         (target / "manifest.json").write_text(json.dumps(dict(case=name, mode=selected, seed=seed,
                                                               id_width=id_width, coverage=coverage,
-                                                              **({"profile": profile} if profile == "cosim" else {})), indent=2)+"\n")
+                                                              **({"profile": profile, "acceptance": acceptance,
+                                                                  "files": [f for f in ("preload.mem", "init_write.txt", "verify_read.txt")
+                                                                            if (target / f).is_file()]} if profile == "cosim" else {})), indent=2)+"\n")
     (out / "cases.list").write_text("\n".join(names) + "\n")
     return names
 

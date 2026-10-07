@@ -104,6 +104,17 @@ def coverage_bins(text, report, test_runs=None):
     return result
 
 
+
+def stimulus_settings(schedule):
+    # Checks, phase selection and seeds are recorded separately from timing controls.
+    controls = ("concurrent_rw", "source_response_delay", "source_response_hold_cycles",
+                "request_random_delay", "response_random_delay", "response_hold_cycles",
+                "response_hold_port", "response_delay_port", "response_error",
+                "hold_cycles", "stall_cycles")  # Retain explicit settings in older run records.
+    return " ".join(k + "=" + str(schedule[k]) for k in controls
+                    if schedule.get(k) not in (None, "", 0, "0", False))
+
+
 def export(campaign, out, data_dir=None):
     data_dir = data_dir or ROOT / "docs/data"
     runs = list(csv.DictReader((data_dir / "verification-runs.csv").open()))
@@ -119,7 +130,7 @@ def export(campaign, out, data_dir=None):
         if not match:
             raise ValueError("Pattern ID missing: " + run_id)
         run["pattern_id"] = match[1]
-        run["stimulus_conditions"] = " ".join("+" + k + "=" + str(v) for k,v in schedule.items() if k not in ("stim_dir", "case_name"))
+        run["stimulus_conditions"] = stimulus_settings(schedule)
         run_summary.append([run_id,run["pattern_id"],run["case"],run["config"],run["run_result"],int(run["cycles"]),run["stimulus_conditions"],run["run_record"]])
     for r in raw:
         run = runs[r["run_id"]]

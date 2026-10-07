@@ -8,6 +8,7 @@ module tb_top #(
     parameter int unsigned INPUT_ID_WIDTH            = ni_params_pkg::AXI_ID_WIDTH,
     parameter int unsigned OUTPUT_ID_WIDTH           = ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned MAX_OUTSTANDING_PER_ID    = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
+    parameter int unsigned SOURCE_RESPONSE_DELAY_CYCLES = 4,
     parameter int unsigned RSP_DELAY_CYCLES          = 0,
     parameter int unsigned OUTPUT_REG_TYPE           = 0,
     parameter int unsigned IO_FIFO_DEPTH             = 32,
@@ -57,12 +58,18 @@ module tb_top #(
         dut.i_response_path.i_ordering.wr_outstanding_cnt_reg[dut.path_aw.axi.awid] >= MAX_OUTSTANDING_PER_ID;
     wire rd_order_full = dut.path_ar_valid &&
         dut.i_response_path.i_ordering.rd_outstanding_cnt_reg[dut.path_ar.axi.arid] >= MAX_OUTSTANDING_PER_ID;
-    int reorder_test = 0;
-    int stress_test = 0;
-    string capacity_target = "per_id";
+    string check_order = "";
+    string check_capacity = "";
+    string check_fifo_capacity = "";
+    bit check_destination_progress = 0;
+    bit reset_recovery = 0;
+    int response_delay_port = 0;
+    int response_hold_port = 0;
     int response_error = 0;
-    bit response_backpressure = 0;
+    bit check_response_stall = 0;
     bit response_random_delay = 0;
+    bit request_random_delay = 0;
+    bit source_response_delay = 0;
     int response_hold_cycles = 0;
     bit block_b = 0, block_r = 0;
     wire [NUM_NSUS-1:0] aw_context_full, ar_context_full;
@@ -105,7 +112,31 @@ module tb_top #(
     );
     AXI_BUS_DV #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
         .AXI_ID_WIDTH   (INPUT_ID_WIDTH),
-        .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) vip(clk);
+        .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) dut_vip(clk);
+    AXI_BUS_DV #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
+        .AXI_ID_WIDTH(INPUT_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) vip(clk);
+    AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
+        .AXI_ID_WIDTH(INPUT_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) source_delay_bus[SOURCE_RESPONSE_DELAY_CYCLES+1]();
+    `AXI_ASSIGN(source_delay_bus[0], vip)
+    `AXI_ASSIGN(dut_vip, source_delay_bus[SOURCE_RESPONSE_DELAY_CYCLES])
+    for (genvar stage = 0; stage < SOURCE_RESPONSE_DELAY_CYCLES; stage++) begin : gen_source_response_delay
+        axi_delayer_intf #(
+            .AXI_ID_WIDTH        (INPUT_ID_WIDTH),
+            .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
+            .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
+            .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
+            .STALL_RANDOM_INPUT  (1'b0),
+            .STALL_RANDOM_OUTPUT (1'b0),
+            .FIXED_DELAY_INPUT   (0),
+            .FIXED_DELAY_OUTPUT  (1)
+        ) i_source_response_delay (
+            .clk_i    (clk),
+            .rst_ni   (axi_rst_n),
+            .bypass_i (!source_response_delay),
+            .slv      (source_delay_bus[stage]),
+            .mst      (source_delay_bus[stage+1])
+        );
+    end
     axi_if #(.ADDR_W(AXI_ADDR_WIDTH), .DATA_W(AXI_DATA_WIDTH),
         .ID_W     (INPUT_ID_WIDTH),
         .AWUSER_W (AXI_AWUSER_WIDTH)) bus();
@@ -180,50 +211,50 @@ module tb_top #(
     wire [NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit [NUM_PORTS], rx_dat_flit [NUM_PORTS];
     wire [NUM_PORTS-1:0] tx_req_ready, rx_req_ready, tx_rsp_ready, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] tx_dat_credit [NUM_PORTS], rx_dat_credit [NUM_PORTS];
-    assign bus.awid     = vip.aw_id;
-    assign bus.awaddr   = vip.aw_addr;
-    assign bus.awlen    = vip.aw_len;
-    assign bus.awsize   = vip.aw_size;
-    assign bus.awburst  = vip.aw_burst;
-    assign bus.awlock   = vip.aw_lock;
-    assign bus.awcache  = vip.aw_cache;
-    assign bus.awprot   = vip.aw_prot;
-    assign bus.awqos    = vip.aw_qos;
-    assign bus.awregion = vip.aw_region;
-    assign bus.awuser   = vip.aw_user;
-    assign bus.awvalid  = vip.aw_valid;
-    assign vip.aw_ready = bus.awready;
-    assign bus.wdata    = vip.w_data;
-    assign bus.wstrb    = vip.w_strb;
-    assign bus.wlast    = vip.w_last;
-    assign bus.wvalid   = vip.w_valid;
-    assign vip.w_ready  = bus.wready;
-    assign bus.arid     = vip.ar_id;
-    assign bus.araddr   = vip.ar_addr;
-    assign bus.arlen    = vip.ar_len;
-    assign bus.arsize   = vip.ar_size;
-    assign bus.arburst  = vip.ar_burst;
-    assign bus.arlock   = vip.ar_lock;
-    assign bus.arcache  = vip.ar_cache;
-    assign bus.arprot   = vip.ar_prot;
-    assign bus.arqos    = vip.ar_qos;
-    assign bus.arregion = vip.ar_region;
-    assign bus.arvalid  = vip.ar_valid;
-    assign vip.ar_ready = bus.arready;
+    assign bus.awid     = dut_vip.aw_id;
+    assign bus.awaddr   = dut_vip.aw_addr;
+    assign bus.awlen    = dut_vip.aw_len;
+    assign bus.awsize   = dut_vip.aw_size;
+    assign bus.awburst  = dut_vip.aw_burst;
+    assign bus.awlock   = dut_vip.aw_lock;
+    assign bus.awcache  = dut_vip.aw_cache;
+    assign bus.awprot   = dut_vip.aw_prot;
+    assign bus.awqos    = dut_vip.aw_qos;
+    assign bus.awregion = dut_vip.aw_region;
+    assign bus.awuser   = dut_vip.aw_user;
+    assign bus.awvalid  = dut_vip.aw_valid;
+    assign dut_vip.aw_ready = bus.awready;
+    assign bus.wdata    = dut_vip.w_data;
+    assign bus.wstrb    = dut_vip.w_strb;
+    assign bus.wlast    = dut_vip.w_last;
+    assign bus.wvalid   = dut_vip.w_valid;
+    assign dut_vip.w_ready  = bus.wready;
+    assign bus.arid     = dut_vip.ar_id;
+    assign bus.araddr   = dut_vip.ar_addr;
+    assign bus.arlen    = dut_vip.ar_len;
+    assign bus.arsize   = dut_vip.ar_size;
+    assign bus.arburst  = dut_vip.ar_burst;
+    assign bus.arlock   = dut_vip.ar_lock;
+    assign bus.arcache  = dut_vip.ar_cache;
+    assign bus.arprot   = dut_vip.ar_prot;
+    assign bus.arqos    = dut_vip.ar_qos;
+    assign bus.arregion = dut_vip.ar_region;
+    assign bus.arvalid  = dut_vip.ar_valid;
+    assign dut_vip.ar_ready = bus.arready;
     assign bus.wuser    = '0;
     assign bus.aruser   = '0;
-    assign bus.bready   = vip.b_ready;
-    assign vip.b_valid  = bus.bvalid;
-    assign vip.b_id     = bus.bid;
-    assign vip.b_resp   = bus.bresp;
-    assign vip.b_user   = '0;
-    assign bus.rready   = vip.r_ready;
-    assign vip.r_valid  = bus.rvalid;
-    assign vip.r_id     = bus.rid;
-    assign vip.r_data   = bus.rdata ^ (corrupt_rsp ? AXI_DATA_WIDTH'(1) : '0);
-    assign vip.r_resp   = bus.rresp;
-    assign vip.r_last   = bus.rlast;
-    assign vip.r_user   = '0;
+    assign bus.bready   = dut_vip.b_ready;
+    assign dut_vip.b_valid  = bus.bvalid;
+    assign dut_vip.b_id     = bus.bid;
+    assign dut_vip.b_resp   = bus.bresp;
+    assign dut_vip.b_user   = '0;
+    assign bus.rready   = dut_vip.r_ready;
+    assign dut_vip.r_valid  = bus.rvalid;
+    assign dut_vip.r_id     = bus.rid;
+    assign dut_vip.r_data   = bus.rdata ^ (corrupt_rsp ? AXI_DATA_WIDTH'(1) : '0);
+    assign dut_vip.r_resp   = bus.rresp;
+    assign dut_vip.r_last   = bus.rlast;
+    assign dut_vip.r_user   = '0;
     nmu #(
         .REQ_AW_REG_TYPE (OUTPUT_REG_TYPE),
         .REQ_W_REG_TYPE (OUTPUT_REG_TYPE),
@@ -352,7 +383,7 @@ module tb_top #(
                 sample_cycle++;
                 if (mem_bus.aw_valid && mem_bus.aw_ready) dst_wr_cnt[n]++;
                 if (mem_bus.ar_valid && mem_bus.ar_ready) dst_rd_cnt[n]++;
-                if (reorder_test != 0 && PORT == 4) begin
+                if (PORT == response_delay_port) begin
                     if (delayed_bus.b_valid && b_wait_start < 0) b_wait_start = sample_cycle;
                     if (mem_bus.b_valid && mem_bus.b_ready && b_wait_start >= 0) begin
                         $display("DELAY_SAMPLE channel=B cycles=%0d", sample_cycle - b_wait_start);
@@ -537,7 +568,7 @@ module tb_top #(
         ) i_request_delay (
             .clk_i    (clk),
             .rst_ni   (axi_rst_n),
-            .bypass_i (!response_backpressure),
+            .bypass_i (!request_random_delay),
             .slv      (mem_bus),
             .mst      (request_delay_bus)
         );
@@ -571,7 +602,7 @@ module tb_top #(
             .slv      (request_delay_bus),
             .mst      (response_delay_bus)
         );
-        wire delay_en = reorder_test != 0 && PORT == 4;
+        wire delay_en = PORT == response_delay_port;
         if (RSP_DELAY_CYCLES == 0) begin : gen_no_delay
             `AXI_ASSIGN(delayed_bus, response_delay_bus)
         end else begin : gen_rsp_delay
@@ -609,8 +640,8 @@ module tb_top #(
         `AXI_TYPEDEF_ALL(gate, mon_addr_t, memory_id_t, mon_data_t, mon_strb_t, mon_user_t)
         gate_req_t gate_req, memory_req;
         gate_resp_t gate_rsp, memory_rsp;
-        wire stop_b = block_b && (response_backpressure ? PORT == 1 : stress_test != 2 || n == 0 || !aw_context_full[0]);
-        wire stop_r = block_r && (response_backpressure ? PORT == 1 : stress_test != 2 || n == 0 || !ar_context_full[0]);
+        wire stop_b = block_b && (response_hold_port == 0 || PORT == response_hold_port);
+        wire stop_r = block_r && (response_hold_port == 0 || PORT == response_hold_port);
         `AXI_ASSIGN_TO_REQ(gate_req, delayed_bus)
         `AXI_ASSIGN_FROM_RESP(delayed_bus, gate_rsp)
         `AXI_ASSIGN_FROM_REQ(memory_bus, memory_req)
@@ -715,8 +746,8 @@ module tb_top #(
     int read_beat[2**INPUT_ID_WIDTH] = '{default:0};
     master_t master, init_master, verify_master;
     scoreboard_t scoreboard;
-    int init_phase = 0, concurrent_rw = 0, stall_cycles = 0, hold_cycles = 0;
-    int capacity_test = 0, data_case = 0;
+    bit init_phase = 0, concurrent_rw = 0, readback = 0;
+    int source_response_hold_cycles = 0;
     int b_stall_cnt = 0, r_stall_cnt = 0, aw_stall_cnt = 0, ar_stall_cnt = 0;
     int tx_req_peak = 0;
     int tx_dat_peak[NUM_DAT_VC] = '{default:0};
@@ -750,39 +781,19 @@ module tb_top #(
     endfunction
 
     task automatic receive_b();
-        master_t::b_beat_t beat;
-        if (hold_cycles != 0) begin
+        if (source_response_hold_cycles != 0) begin
             wait (vip.b_valid);
-            repeat (hold_cycles) @(posedge clk);
+            repeat (source_response_hold_cycles) @(posedge clk);
         end
-        if (stall_cycles == 0) begin
-            master.wait_b();
-        end else begin
-            while (master.b_outst.size() != 0) begin
-                wait (vip.b_valid);
-                repeat (stall_cycles) @(posedge clk);
-                master.drv.recv_b(beat);
-                void'(master.b_outst.pop_front());
-            end
-        end
+        master.wait_b();
     endtask
 
     task automatic receive_r();
-        master_t::r_beat_t beat;
-        if (hold_cycles != 0) begin
+        if (source_response_hold_cycles != 0) begin
             wait (vip.r_valid);
-            repeat (hold_cycles) @(posedge clk);
+            repeat (source_response_hold_cycles) @(posedge clk);
         end
-        if (stall_cycles == 0) begin
-            master.wait_r();
-        end else begin
-            while (master.r_outst.size() != 0) begin
-                wait (vip.r_valid);
-                repeat (stall_cycles) @(posedge clk);
-                master.drv.recv_r(beat);
-                if (beat.r_last) void'(master.r_outst.pop_front());
-            end
-        end
+        master.wait_r();
     endtask
 
     assert property (@(posedge clk) disable iff (!axi_rst_n)
@@ -819,18 +830,25 @@ module tb_top #(
             end
         end
 `endif
-        void'($value$plusargs("stress_test=%d", stress_test));
-        void'($value$plusargs("capacity_target=%s", capacity_target));
+        void'($value$plusargs("check_order=%s", check_order));
+        void'($value$plusargs("check_capacity=%s", check_capacity));
+        void'($value$plusargs("check_fifo_capacity=%s", check_fifo_capacity));
+        void'($value$plusargs("check_destination_progress=%d", check_destination_progress));
+        void'($value$plusargs("check_response_stall=%d", check_response_stall));
+        reset_recovery = $test$plusargs("reset_recovery");
         void'($value$plusargs("response_error=%d", response_error));
-        response_backpressure = $test$plusargs("response_backpressure");
         response_random_delay = $test$plusargs("response_random_delay");
+        request_random_delay = $test$plusargs("request_random_delay");
+        void'($value$plusargs("response_delay_port=%d", response_delay_port));
+        void'($value$plusargs("response_hold_port=%d", response_hold_port));
         void'($value$plusargs("response_hold_cycles=%d", response_hold_cycles));
-        if (response_hold_cycles < 0) $fatal(1, "Negative response hold");
-        $display("SLAVE_RESPONSE_DELAY random=%0d hold_cycles=%0d",
-            response_random_delay, response_hold_cycles);
-        if (stress_test != 0 && !RTL_NSU) $fatal(1, "Stress cases require RTL NSU");
-        void'($value$plusargs("reorder_test=%d", reorder_test));
-        $display("RESPONSE_DELAY enabled=%0d west_setting=%0d", reorder_test != 0, RSP_DELAY_CYCLES);
+        if (response_hold_cycles < 0 || response_hold_port < 0 || response_hold_port > NUM_NSUS ||
+                response_delay_port < 0 || response_delay_port > NUM_NSUS)
+            $fatal(1, "Invalid response delay configuration");
+        if ((check_capacity != "" || check_destination_progress || reset_recovery) && !RTL_NSU)
+            $fatal(1, "Resource/reset checks require RTL NSU");
+        $display("SLAVE_RESPONSE_DELAY random=%0d hold_cycles=%0d hold_port=%0d delay_port=%0d delay_cycles=%0d",
+            response_random_delay, response_hold_cycles, response_hold_port, response_delay_port, RSP_DELAY_CYCLES);
         $display("DAT_CREDIT_DEPTH router=%0d nmu_rx=%0d nsu_rx=%0d",
             CREDIT_DEPTH, CREDIT_DEPTH, CREDIT_DEPTH);
         master = new(vip);
@@ -854,18 +872,17 @@ module tb_top #(
         master.num_reads = master.ar_queue.size();
         master.num_writes = master.aw_queue.size();
         corrupt_rsp = $test$plusargs("corrupt_rsp");
-        void'($value$plusargs("min_outstanding=%d", min_outstanding));
-        void'($value$plusargs("min_unique=%d", min_unique));
+        void'($value$plusargs("check_min_outstanding=%d", min_outstanding));
+        void'($value$plusargs("check_min_unique=%d", min_unique));
         expected_writes = master.num_writes;
         expected_reads = master.num_reads;
         expected_beats = 0;
         expect_reads(master);
-        void'($value$plusargs("init_phase=%d", init_phase));
-        void'($value$plusargs("concurrent_rw=%d", concurrent_rw));
-        void'($value$plusargs("stall_cycles=%d", stall_cycles));
-        void'($value$plusargs("hold_cycles=%d", hold_cycles));
-        void'($value$plusargs("capacity_test=%d", capacity_test));
-        void'($value$plusargs("data_case=%d", data_case));
+        init_phase = $test$plusargs("init_phase");
+        concurrent_rw = $test$plusargs("concurrent_rw");
+        readback = $test$plusargs("readback");
+        source_response_delay = $test$plusargs("source_response_delay");
+        void'($value$plusargs("source_response_hold_cycles=%d", source_response_hold_cycles));
         if (init_phase) begin
             init_master = new(vip);
             init_master.write_fd = $fopen({stim_dir, "/init_write.txt"}, "r");
@@ -875,7 +892,7 @@ module tb_top #(
             init_master.num_writes = init_master.aw_queue.size();
             expected_writes += init_master.num_writes;
         end
-        if (concurrent_rw) begin
+        if (readback) begin
             verify_master = new(vip);
             verify_master.read_fd = $fopen({stim_dir, "/verify_read.txt"}, "r");
             if (!verify_master.read_fd) $fatal(1, "Missing verification reads");
@@ -893,7 +910,7 @@ module tb_top #(
         wait (axi_rst_n && noc_rst_n);
         @(posedge clk);
         start_scoreboard();
-        if (stress_test == 3) run_reset_recovery(stim_dir);
+        if (reset_recovery) run_reset_recovery(stim_dir);
         if (init_phase) begin
             fork init_master.run_aw(); init_master.run_w(); init_master.wait_b(); join
         end
@@ -901,21 +918,24 @@ module tb_top #(
             concurrent_active = 1'b1;
             master.run();
             concurrent_active = 1'b0;
-            fork verify_master.run_ar(); verify_master.wait_r(); join
         end else begin
             if (expected_writes != 0) begin
-                start_stress_phase(0);
+                start_response_hold(0);
                 fork master.run_aw(); master.run_w(); receive_b(); join
             end
             if (expected_reads != 0) begin
-                start_stress_phase(1);
+                start_response_hold(1);
                 fork master.run_ar(); receive_r(); join
             end
+        end
+        if (readback) begin
+            fork verify_master.run_ar(); verify_master.wait_r(); join
         end
         repeat (10) @(posedge clk);
         if (b_count != expected_writes || r_count != expected_reads ||
             r_beats != expected_beats || (expected_reads != 0 && checked_bytes == 0))
-            $fatal(1, "Transaction count mismatch");
+            $fatal(1, "Transaction count mismatch B=%0d/%0d R=%0d/%0d beats=%0d/%0d",
+                b_count, expected_writes, r_count, expected_reads, r_beats, expected_beats);
         foreach (expected_ar[id])
             if (expected_ar[id].size() != 0) $fatal(1, "Unreturned read ID %0d", id);
         if ((expected_writes != 0 && (peak_w < min_outstanding || peak_unique_w < min_unique)) ||
@@ -930,16 +950,16 @@ module tb_top #(
             b_full_cnt, r_full_cnt, dat_full_cnt, wr_limit_cnt, rd_limit_cnt);
         $display("CONCURRENT live=%0d w_during_read=%0d r_during_write=%0d",
             overlap_cnt, w_during_read_cnt, r_during_write_cnt);
-        if ((stall_cycles != 0 || hold_cycles != 0) &&
+        if ((source_response_delay || source_response_hold_cycles != 0) &&
                 (b_stall_cnt == 0 || r_stall_cnt == 0))
             $fatal(1, "Response backpressure was not exercised");
-        if (capacity_test && stress_test == 0 && (b_full_cnt == 0 || wr_limit_cnt == 0 || rd_limit_cnt == 0 ||
+        if (check_fifo_capacity != "" && (b_full_cnt == 0 || wr_limit_cnt == 0 || rd_limit_cnt == 0 ||
                 aw_stall_cnt == 0 || ar_stall_cnt == 0 ||
-                (data_case ? dat_full_cnt == 0 : r_full_cnt == 0)))
+                (check_fifo_capacity == "data" ? dat_full_cnt == 0 : r_full_cnt == 0)))
             $fatal(1, "Required capacity saturation was not reached");
         if (concurrent_rw && (overlap_cnt == 0 || w_during_read_cnt == 0 || r_during_write_cnt == 0))
             $fatal(1, "Read/write concurrency was not exercised");
-        check_stress();
+        check_test_conditions();
         if (!ordering_done) $fatal(1, "AXI ordering checker has pending transactions");
         $display("AXI_ORDERING_CHECK_DRAINED");
         $display("RESPONSE_CHECK expected=%0d writes=%0d read_beats=%0d", response_error, b_count, r_beats);
@@ -1002,8 +1022,8 @@ module tb_top #(
             if (live_r[id] != 0) unique_r++;
         end
         if (axi_rst_n) begin
-            if (vip.b_valid && !vip.b_ready) b_stall_cnt++;
-            if (vip.r_valid && !vip.r_ready) r_stall_cnt++;
+            if (dut_vip.b_valid && !dut_vip.b_ready) b_stall_cnt++;
+            if (dut_vip.r_valid && !dut_vip.r_ready) r_stall_cnt++;
             if (vip.aw_valid && !vip.aw_ready) aw_stall_cnt++;
             if (vip.ar_valid && !vip.ar_ready) ar_stall_cnt++;
             if ((dut.i_response_path.i_rx_credit_buffer.ctrl_full && !dut.i_response_path.i_rx_vc_arbiter.is_r)) b_full_cnt++;

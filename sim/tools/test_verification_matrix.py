@@ -1,5 +1,5 @@
 import unittest
-from verification_matrix import coverage_bins, TARGETS, metadata
+from verification_matrix import coverage_bins, TARGETS, metadata, stimulus_settings
 
 class MatrixExportTest(unittest.TestCase):
     def test_all_pattern_ids(self):
@@ -65,6 +65,16 @@ observed 7 1 T3 4 T8 3
         self.assertEqual(row[8], "run-1 (4), run-2 (3)")
         with self.assertRaises(KeyError):
             coverage_bins(text, "fresh", {"T3": "run-1"})
+
+    def test_stimulus_settings_exclude_checks_and_runner_details(self):
+        schedule = dict(check_min_outstanding=32, min_unique="8", seed="17",
+                        init_phase="1", preload="1", data_case="1", reorder_test="2",
+                        stress_test="1", backpressure="0", capacity_target="rob",
+                        response_hold_cycles="256", response_random_delay="1",
+                        response_error="0", source_response_hold_cycles="1024")
+        self.assertEqual(stimulus_settings(schedule),
+                         "source_response_hold_cycles=1024 response_random_delay=1 response_hold_cycles=256")
+        self.assertEqual(schedule["check_min_outstanding"], 32)
 
     def test_empty_report_rejected(self):
         with self.assertRaises(ValueError):

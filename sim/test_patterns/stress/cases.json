@@ -5,9 +5,9 @@
       "count": 320,
       "burst_beats": 1,
       "ids": "multiple",
-      "capacity_test": true,
-      "hold_cycles": 4096,
-      "stress_test": 1
+      "sequence": "capacity_reuse",
+      "capacity_target": "per_id",
+      "response_hold_cycles": 4096
     },
     {
       "name": "hol_blocking",
@@ -15,7 +15,9 @@
       "burst_beats": 1,
       "ids": "multiple",
       "destinations": "alternate",
-      "stress_test": 2
+      "sequence": "destination_blocking",
+      "response_hold_cycles": 4096,
+      "response_hold_port": 1
     },
     {
       "name": "reset_recovery",
@@ -23,7 +25,7 @@
       "burst_beats": 4,
       "ids": "multiple",
       "destinations": "alternate",
-      "stress_test": 3
+      "sequence": "reset_recovery"
     }
   ]
 }

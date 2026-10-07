@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import pytest
 from gen_standalone_patterns import generate, REPO
@@ -198,7 +199,7 @@ def test_cosim_memory_dependencies(tmp_path, mode):
             assert len(words) - 1 == 1 << reads[0]["size"]
             assert [int(x, 16) for x in words[1:]] == [
                 (reads[0]["addr"] + b) & 255 for b in range(1 << reads[0]["size"])]
-            assert "+preload" in (tmp_path / name / "schedule.txt").read_text()
+            assert (tmp_path / name / "preload.mem").is_file()
             continue
         assert len(writes) == len(reads) > 0
         initialized = set()
@@ -217,8 +218,8 @@ def test_cosim_memory_dependencies(tmp_path, mode):
             assert write["addr"] % (1 << 32) + (write["len"] + 1) * step <= (
                 0x2001000 if write["addr"] % (1 << 32) >= 0x2000000 else 0x2000000)
         schedule = (tmp_path / name / "schedule.txt").read_text()
-        assert "response_delay" not in schedule
-        assert f"+backpressure={int(name == 'backpressure')}" in schedule
+        assert "+response_delay=" not in schedule
+        assert "+backpressure" not in schedule
 
 
 def test_cosim_additional_memory_phases(tmp_path):
@@ -304,9 +305,11 @@ def test_cosim_reorder_destinations_and_delay_selection(tmp_path, mode):
                 mask = (1 << (8 * (1 << txn["size"]))) - 1
                 signatures.append((int(txn["beats"][0].split()[0], 16) >> (lane * 8)) & mask)
             assert len(set(signatures)) == len(signatures)
-            assert "+reorder_test=" + ("1" if name == "multi_id_out_of_order" else "2") in schedule
+            assert "+response_delay_port=4" in schedule
+            acceptance = json.loads((tmp_path / name / "manifest.json").read_text())["acceptance"]
+            assert acceptance["order"] == ("cross_id" if name == "multi_id_out_of_order" else "same_id")
         else:
-            assert "+reorder_test=0" in schedule
+            assert "+response_delay_port" not in schedule
     assert "reset_recovery" not in names
 
 
@@ -324,7 +327,7 @@ def test_capacity_profile_inputs(tmp_path):
         assert all(t["len"] == 0 for t in writes)
         assert [(t["id"], t["addr"]) for t in writes] == [(t["id"], t["addr"]) for t in reads]
         schedule = (tmp_path / name / "schedule.txt").read_text()
-        assert "+backpressure=0" in schedule and "+reorder_test=0" in schedule
+        assert "+backpressure" not in schedule and "+response_delay_port" not in schedule
     with pytest.raises(ValueError, match="num_ids"):
         generate(tmp_path / "invalid", REPO / "sim/topology.yml", 3,
                  catalog=catalog, profile="cosim")
@@ -366,7 +369,7 @@ def test_random_concurrent_memory_and_strobes(tmp_path, seed, name):
             assert mask & ~full == 0
             kinds.add("zero" if mask == 0 else "full" if mask == full else "partial")
     assert kinds == {"full", "partial", "zero"}
-    assert "+concurrent_rw=1" in (root / "schedule.txt").read_text()
+    assert "+concurrent_rw" in (root / "schedule.txt").read_text()
 
 
 @pytest.mark.parametrize("mode", ["control", "data", "rand"])
@@ -509,8 +512,8 @@ def test_slave_response_delay_schedule(tmp_path):
     args = (tmp_path / "out/single_id_outstanding/schedule.txt").read_text().split()
     assert "+response_hold_cycles=4096" in args
     assert "+response_random_delay" in args
-    assert "+hold_cycles=0" in args
-    assert "+stall_cycles=0" in args
+    assert not any(v.startswith("+hold_cycles=") for v in args)
+    assert not any(v.startswith("+stall_cycles=") for v in args)
 
 
 def test_all_id_destination_pairs(tmp_path):
@@ -534,3 +537,26 @@ def test_complete_burst_length_sweep(tmp_path, mode, max_beats):
     assert {t["len"]+1 for t in txns} == set(range(2, max_beats+1))
     for t in txns:
         assert t["addr"] >> 12 == (t["addr"] + ((t["len"]+1) << t["size"]) - 1) >> 12
+
+
+def test_cosim_acceptance_is_not_stimulus(tmp_path):
+    generate(tmp_path, REPO / "sim/topology.yml", 3, profile="cosim")
+    folder = tmp_path / "single_id_reorder"
+    args = (folder / "schedule.txt").read_text().split()
+    checks = json.loads((folder / "manifest.json").read_text())["acceptance"]
+    assert checks["order"] == "same_id" and checks["min_outstanding"] == 2
+    assert not any(v.startswith(("+min_", "+check_", "+reorder_test", "+stress_test",
+                                "+capacity_test", "+data_case", "+backpressure")) for v in args)
+    assert "+response_delay_port=4" in args
+
+
+def test_regeneration_removes_stale_memory_phases(tmp_path):
+    catalog = tmp_path / "catalog.json"
+    catalog.write_text(json.dumps({"cases": [dict(name="reuse", count=4, random=True)]}))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog, profile="cosim")
+    folder = tmp_path / "out/reuse"
+    assert (folder / "verify_read.txt").is_file()
+    catalog.write_text(json.dumps({"cases": [dict(name="reuse", count=1, operation="write")]}))
+    generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog, profile="cosim")
+    assert not (folder / "verify_read.txt").exists()
+    assert not (folder / "preload.mem").exists()

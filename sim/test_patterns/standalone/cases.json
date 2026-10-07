@@ -84,7 +84,8 @@
       "startup_delay": 80,
       "min_outstanding": 2,
       "min_unique": 2,
-      "require_ooo": 1
+      "require_ooo": 1,
+      "response_delay_port": 4
     },
     {
       "name": "single_id_reorder",
@@ -94,7 +95,8 @@
       "response_delay": 12,
       "startup_delay": 80,
       "min_outstanding": 2,
-      "require_buffered": 1
+      "require_buffered": 1,
+      "response_delay_port": 4
     },
     {
       "name": "outstanding_full_recover",

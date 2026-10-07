@@ -124,7 +124,8 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     (out / "topology_pkg.sv").write_text(emit_sam_pkg(yaml.safe_load(topo.read_text())))
     (out / "files.f").write_text("\n".join(source_list) + "\n")
     patterns = (out / "generated_patterns") if profile_path else ROOT / f"sim/test_patterns/cosim/generated/i{pattern_id_width}"
-    hardware = dict(response_fifo_depth=profile.get("io_fifo_depth", 32))
+    hardware = dict(response_fifo_depth=profile.get("io_fifo_depth", 32),
+                    context_depth=profile.get("context_depth", 32))
     def generate(*args, **kwargs):
         return generate_patterns(*args, hardware=hardware, **kwargs)
     cases = generate(patterns, topo, id_width=pattern_id_width, profile="cosim")
@@ -152,7 +153,8 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     variants = [dict(variants[0], name="capacity_reuse_"+target, capacity_target=target)
                 for target in ("per_id", "context", "rob")]
     base_cases = json.loads((ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]
-    variants += [dict(case, name=case["name"]+"_backpressure", count=64, hold_cycles=1024,
+    variants += [dict(case, name=case["name"]+"_backpressure", count=64, source_response_hold_cycles=1024,
+                     response_hold_cycles=256 if case.get("require_buffered") else 0, response_hold_port=1,
                      response_backpressure=True)
                  for case in base_cases if case["name"] in ("single_id_reorder", "multi_id_out_of_order")]
     variant_catalog = out / "stress-variants.json"

@@ -16,4 +16,4 @@ sync: prepare
 	python3 sim/tools/sync_nmu_workstation.py --source build/sim/stage --remote-dir $(REMOTE_ROOT)/sim
 check:
 	python3 specgen/tools/codegen.py --check
-	python3 -m pytest -q specgen/tests sim/tools/test_gen_standalone_patterns.py sim/tools/test_standalone_clean.py sim/tools/test_coverage_build_key.py
+	python3 -m pytest -q specgen/tests sim/tools/test_gen_standalone_patterns.py sim/tools/test_standalone_clean.py sim/tools/test_coverage_build_key.py sim/tools/test_tb_runner.py sim/tools/test_verification_matrix.py
