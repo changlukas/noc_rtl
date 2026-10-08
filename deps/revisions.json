@@ -40,5 +40,21 @@
     "url": "https://github.com/pulp-platform/FlooNoC.git",
     "revision": "6ea0648407e7d989b7ec3a1ce6eaa2045b7cd114",
     "source_path": "hw/test/axi_reorder_compare.sv"
+  },
+  {
+    "name": "tvip-axi",
+    "url": "https://github.com/taichi-ishitani/tvip-axi.git",
+    "revision": "955ca0f1be5265614859e7e187a6e93f41523361",
+    "local_changes": "AWUSER, AxREGION and AxLOCK transport and sampling; sample delay forwarding"
+  },
+  {
+    "name": "tue",
+    "url": "https://github.com/taichi-ishitani/tue.git",
+    "revision": "b49856a47ed162fd0eea4509f2495465d0091e7f"
+  },
+  {
+    "name": "tvip-common",
+    "url": "https://github.com/taichi-ishitani/tvip-common.git",
+    "revision": "be09036727aac5be4c483536b12e7a1e3c0c8b8b"
   }
 ]
