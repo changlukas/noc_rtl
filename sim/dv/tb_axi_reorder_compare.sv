@@ -40,30 +40,30 @@ module tb_axi_reorder_compare;
         target_req = '0;
         target_rsp = '0;
     endtask
-    task automatic aw(input bit target, input id_t id, input addr_t addr);
+    task automatic aw(input bit target, input id_t id, input addr_t addr, input int len = 0);
         @(negedge clk);
         clear_bus();
         if (target) begin
-            target_req[0].aw = '{id:id, addr:addr, size:3, burst:1, default:'0};
+            target_req[0].aw = '{id:id, addr:addr, size:3, burst:1, len:len, default:'0};
             target_req[0].aw_valid = 1;
             target_rsp[0].aw_ready = 1;
         end else begin
-            source_req.aw = '{id:id, addr:addr, size:3, burst:1, default:'0};
+            source_req.aw = '{id:id, addr:addr, size:3, burst:1, len:len, default:'0};
             source_req.aw_valid = 1;
             source_rsp.aw_ready = 1;
         end
         @(negedge clk);
         clear_bus();
     endtask
-    task automatic w(input bit target, input data_t data);
+    task automatic w(input bit target, input data_t data, input bit last = 1);
         @(negedge clk);
         clear_bus();
         if (target) begin
-            target_req[0].w = '{data:data, strb:'1, last:1, default:'0};
+            target_req[0].w = '{data:data, strb:'1, last:last, default:'0};
             target_req[0].w_valid = 1;
             target_rsp[0].w_ready = 1;
         end else begin
-            source_req.w = '{data:data, strb:'1, last:1, default:'0};
+            source_req.w = '{data:data, strb:'1, last:last, default:'0};
             source_req.w_valid = 1;
             source_rsp.w_ready = 1;
         end
@@ -125,6 +125,28 @@ module tb_axi_reorder_compare;
         if ($test$plusargs("trace")) begin
             $display("CHECKER_START fault=%0d time=%0t", fault, $time);
             $fflush();
+        end
+        if (fault >= 10 && fault <= 12) begin
+            aw(0, 0, 32'h100, 1);
+            w(0, 64'h1111, 0);
+            w(0, 64'h2222, 1);
+            w(1, fault == 11 ? 64'hdead : 64'h1111, 0);
+            w(1, 64'h2222, 1);
+            if (done) $fatal(1, "Checker drained with unmatched device W");
+            if (fault == 12) begin
+                @(negedge clk);
+                rst_n = 0;
+                repeat (3) @(negedge clk);
+                rst_n = 1;
+            end else begin
+                aw(1, 2, 32'h100, 1);
+                b(1, 2);
+                b(0, 0);
+            end
+            repeat (3) @(posedge clk);
+            if (!done) $fatal(1, "Checker did not drain");
+            $display("CHECKER_TEST_DONE");
+            $finish;
         end
         if (fault >= 7 && fault <= 9) begin
             aw(0, 0, 32'h100);

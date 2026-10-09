@@ -15,7 +15,8 @@ subprocess.run([os.environ.get("VCS", "vcs"), "-full64", "-sverilog", "-ntb_opts
 for fault, expected in [(0, None), (1, "AW mismatch or same-ID request reordered"),
                         (2, "AR mismatch or same-ID request reordered"),
                         (3, "W mismatch"), (4, "R mismatch"), (5, None), (6, "R mismatch"),
-                        (7, None), (8, "B mismatch"), (9, "R mismatch")]:
+                        (7, None), (8, "B mismatch"), (9, "R mismatch"),
+                        (10, None), (11, "W mismatch"), (12, None)]:
     result = subprocess.run([str(binary), "+fault=" + str(fault)],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, timeout=180)
     (build / ("fault_%d.log" % fault)).write_text(result.stdout)

@@ -142,6 +142,7 @@ class axi_reorder_compare_core #(
   int unsigned w_input_queue[$];
   int unsigned write_seq = 0;
   w_chan_t  w_pending[$];
+  w_chan_t  w_device_pending[NumSlaves][$];
   ar_chan_t ar_queue [NumSlaves][$];
   b_chan_t  b_queue  [NumAddrRegions][NumAxiIds][$];
   r_chan_t  r_queue  [NumAddrRegions][NumAxiIds][$];
@@ -160,6 +161,7 @@ class axi_reorder_compare_core #(
       aw_queue[i].delete();
       aw_seq_queue[i].delete();
       w_output_queue[i].delete();
+      w_device_pending[i].delete();
       ar_queue[i].delete();
       for (int id = 0; id < NumAxiIds; id++) begin
         aw_id_queue[i][id].delete();
@@ -241,11 +243,11 @@ class axi_reorder_compare_core #(
           end
         end
       end
-      if (req.w_valid && rsp.w_ready) begin
+      if (req.w_valid && rsp.w_ready) w_device_pending[i].push_back(req.w);
+      // AW and W handshakes are independent at the device interface.
+      while (w_device_pending[i].size() != 0 && w_output_queue[i].size() != 0) begin
         automatic w_chan_t w_exp, w_act;
-        automatic id_t w_id;
-        w_act = req.w;
-        if (w_output_queue[i].size() == 0) report_fatal($sformatf("W has no accepted AW"));
+        w_act = w_device_pending[i].pop_front();
         if (w_queue[w_output_queue[i][0]].size() == 0)
           report_fatal($sformatf("W precedes its source data"));
         w_exp = w_queue[w_output_queue[i][0]].pop_front();
@@ -391,7 +393,7 @@ class axi_reorder_compare_core #(
   function bit drained();
     if (w_queue.num() || w_pending.size() || w_input_queue.size()) return 0;
     foreach (aw_queue[i]) begin
-      if (aw_queue[i].size() || ar_queue[i].size() || aw_seq_queue[i].size() || w_output_queue[i].size()) return 0;
+      if (aw_queue[i].size() || ar_queue[i].size() || aw_seq_queue[i].size() || w_output_queue[i].size() || w_device_pending[i].size()) return 0;
       for (int id = 0; id < NumAxiIds; id++)
         if (aw_id_queue[i][id].size() || ar_id_queue[i][id].size()) return 0;
     end
