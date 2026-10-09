@@ -560,3 +560,22 @@ def test_regeneration_removes_stale_memory_phases(tmp_path):
     generate(tmp_path / "out", REPO / "sim/topology.yml", 3, catalog, profile="cosim")
     assert not (folder / "verify_read.txt").exists()
     assert not (folder / "preload.mem").exists()
+
+
+def test_destination_permutation_preserves_transactions(tmp_path):
+    case = dict(name="data_write_burst", mode="data", count=3,
+                operation="write", burst_lengths=[2, 8, 64])
+    seen = set()
+    for shift in range(4):
+        catalog = tmp_path / "cases.json"
+        catalog.write_text(json.dumps({"cases": [dict(case,
+            destination_order=[(i + shift) % 4 for i in range(4)])]}))
+        out = tmp_path / str(shift)
+        generate(out, REPO / "sim/topology.yml", 3, catalog, profile="cosim")
+        txns = _parse_write(out / case["name"] / "write.txt")
+        assert [t["len"] + 1 for t in txns] == [2, 8, 64]
+        assert len({t["addr"] >> 32 for t in txns}) == 1
+        seen.update(t["addr"] >> 32 for t in txns)
+        for t in txns:
+            assert t["addr"] >> 12 == (t["addr"] + ((t["len"] + 1) << t["size"]) - 1) >> 12
+    assert seen == {0, 1, 2, 3}

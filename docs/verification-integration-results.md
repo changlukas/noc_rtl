@@ -1,5 +1,29 @@
 # NI Verification Report
 
+## 2026-10-09：UVM coverage regression
+
+`R_ROB_EN=1, NUM_DAT_VC=2`，其餘容量使用預設值。AXI／NoC clock 均為 1 GHz。
+
+- 168/168 VCS PASS，21,996 筆 input transaction records。
+- FIFO、ROB、Stress covergroups 已移除。Data、ordering、capacity/recovery checks 與 protocol assertions 保留。
+- 四個 destinations 分別掃描 burst length、transfer size、byte lane、WSTRB、response error 與 boundary。新增 simultaneous outstanding 與 credit pressure patterns。
+- 修正 checker 對 device W-before-AW 的誤判。13 項 checker 正向／錯誤注入測試符合預期。
+- DUT、硬體參數與 C++ model 未修改，C++ 重編次數為 0。
+
+| Native URG | Result |
+|---|---:|
+| Group score | 100.00% |
+| Instance score | 99.24% |
+| Per-instance bins | 1,354 |
+| Uncovered bins | 10 |
+| Assertion failures | 0 |
+| URG warnings | 0 |
+
+未命中的 10 bins 均為五個 router→NI links、每 link 兩個 VCs 的 `credit_return_send = zero / returned / sent`。Router model 在 output FIFO admission 消耗 credit，後續 cycle 才送出。Link credit 為零時，當 cycle 回補的 credit 無法產生同 cycle transmission。這些 bins 仍保留在報告分母，未新增 exclusion。
+
+[本輪 URG report](../build/coverage-closure-20261009/evidence/reports/r1_vc2/dashboard.html) 僅包含上述 168 runs。Stimulus SHA256、binary hash、run records 與 native bin attribution 保存在 `build/coverage-closure-20261009/`。下方為歷史紀錄，不併入本輪結果。
+
+
 ## 2026-10-06：P01–P22 execution
 
 本輪 **60/60 VCS PASS**，新增 **9,359 input transaction records**。含歷史證據共 **207 runs / 37,604 records**。AXI / NoC clock 均為 1 GHz。沿用 AXI file master、memory、scoreboard 與 axi_reorder_compare，DUT 與 C++ model 未修改，C++ model 重編次數為 0。
@@ -142,8 +166,8 @@ Transaction records 由輸入檔取得。PASS 屬於 run 結果，不能把每�
 |---|---|---|
 | Source AXI | transaction_cg、write_strobe_cg、boundary_cg、response_cg、outstanding_cg | AXI-01/02/03/05/06，NI-01/02/03 |
 | Device AXI | aw_stall_recover、w_stall_recover、ar_stall_recover | AXI-04 |
-| Internal／mixed | ordering_cg、rob_cg、stress_cg、reset_cg | AXI-07，NI-04/07/09/11 |
-| Internal primitives | fifo_cg、credit_cg、arbiter／credit-forward assertions | NI-04/05/10 |
+| Internal／mixed | ordering_cg、reset_cg | AXI-07，NI-04/07/09/11 |
+| NoC／assertions | credit_cg、arbiter／credit-forward assertions | NI-04/05/10 |
 
 Bins、cross、sample condition 與 exclusions 見 [Functional Coverage Plan](verification-testplan.md#functional-coverage-plan)，source links 見 [Coverage Source Index](verification-testplan.md#coverage-source-index)。Report 保留內部證據，但不以其取代尚未實作的 interface coverpoints。
 

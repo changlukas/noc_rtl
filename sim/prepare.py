@@ -93,10 +93,9 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         source_list.append("repo/" + relative)
     copy(ROOT / "sim/dv/ni_stress.svh", "repo/sim/dv/ni_stress.svh")
     copy(ROOT / "sim/dv/ni_coverage.svh", "repo/sim/dv/ni_coverage.svh")
-    copy(ROOT / "sim/dv/ni_resource_coverage.sv", "repo/sim/dv/ni_resource_coverage.sv")
     copy(ROOT / "sim/dv/ni_arbiter_checks.sv", "repo/sim/dv/ni_arbiter_checks.sv")
     source_list.append("repo/sim/dv/ni_arbiter_checks.sv")
-    source_list += ["+incdir+repo/sim/dv", "repo/sim/dv/ni_resource_coverage.sv"]
+    source_list.append("+incdir+repo/sim/dv")
     copy(ROOT / "sim/script/coverage.hier", "coverage.hier")
     if direct:
         relative = "sim/standalone/nsu/ni_direct_link.sv"

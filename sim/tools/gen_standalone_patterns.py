@@ -23,12 +23,12 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         import yaml
         from address_map import pack_config
         _, entries = pack_config(yaml.safe_load(topology.read_text()))
-    routes = {m: [e for e in entries if e["space"] == space]
+    base_routes = {m: [e for e in entries if e["space"] == space]
               for m, space in (("control", "config"), ("data", "memory"))}
     if profile not in ("standalone", "cosim"):
         raise ValueError("unknown verification profile")
     required_destinations = 2 if profile == "standalone" else 1
-    if any(len(v) < required_destinations for v in routes.values()):
+    if any(len(v) < required_destinations for v in base_routes.values()):
         raise ValueError("standalone suite needs two control/data destinations")
     if not 1 <= id_width <= 8 or mode not in ("auto", "control", "data", "rand"):
         raise ValueError("invalid ID width or MODE")
@@ -41,6 +41,12 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         if not cases:
             raise ValueError("unknown CASE: " + case_name)
     for case in cases:
+        routes = base_routes
+        if "destination_order" in case:
+            order = case["destination_order"]
+            if any(sorted(order) != list(range(len(v))) for v in base_routes.values()):
+                raise ValueError("destination_order must be a permutation of destination indices")
+            routes = {mode: [entries[i] for i in order] for mode, entries in base_routes.items()}
         name = case["name"]
         if profile == "cosim" and (case.get("reset_warmup") or case.get("legacy_mixed") or
                                     case.get("require_stall")):

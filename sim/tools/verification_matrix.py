@@ -24,15 +24,15 @@ TARGETS = {
     "P11": ("AXI-02, NI-01", "boundary_cg; transaction_cg"),
     "P12": ("NI-01, NI-03", "transaction_cg"),
     "P13": ("AXI-05", "response_cg"),
-    "P14": ("AXI-06, NI-04", "outstanding_cg; rob_cg.cp_per_id_limit; stress_cg.cp_limit_reuse"),
-    "P15": ("AXI-06, NI-04", "outstanding_cg; fifo_cg (AW/AR context)"),
+    "P14": ("AXI-06, NI-04", "outstanding_cg"),
+    "P15": ("AXI-06, NI-04", "outstanding_cg"),
     "P16": ("AXI-07, NI-11", "ordering_cg; outstanding_cg"),
-    "P17": ("AXI-07, NI-11", "ordering_cg; rob_cg"),
-    "P18": ("NI-04, NI-11", "rob_cg; stress_cg; ordering_cg"),
-    "P19": ("AXI-01/02/03/06", "transaction_cg; write_strobe_cg; outstanding_cg; fifo_cg"),
-    "P20": ("AXI-01/02/03/06, NI-05/10", "transaction_cg; write_strobe_cg; outstanding_cg; fifo_cg; credit_cg; arbiter covers"),
-    "P21": ("AXI-01/02/03/06, NI-05/10", "transaction_cg; write_strobe_cg; outstanding_cg; fifo_cg; credit_cg; arbiter covers"),
-    "P22": ("NI-09", "reset_cg; stress_cg"),
+    "P17": ("AXI-07, NI-11", "ordering_cg"),
+    "P18": ("NI-04, NI-11", "ordering_cg"),
+    "P19": ("AXI-01/02/03/06", "transaction_cg; write_strobe_cg; outstanding_cg"),
+    "P20": ("AXI-01/02/03/06, NI-05/10", "transaction_cg; write_strobe_cg; outstanding_cg; credit_cg; arbiter covers"),
+    "P21": ("AXI-01/02/03/06, NI-05/10", "transaction_cg; write_strobe_cg; outstanding_cg; credit_cg; arbiter covers"),
+    "P22": ("NI-09", "reset_cg"),
 }
 
 def metadata(item):

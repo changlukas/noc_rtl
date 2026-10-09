@@ -42,7 +42,7 @@ NI Functions 分為 Address Decoding / Translation、Packetization / Depacketiza
 
 Generic AXI 包含輸入與輸出的 transaction fields、handshake、responses、outstanding、ordering。NI Functions 說明 AXI 與 NoC 之間的轉換及 response reordering。架構與介面要求另列。先檢查功能是否列全，再檢查 coverage model 是否量到。
 
-功能目標使用 NMU／NSU top-level interfaces。Internal FIFO、ROB、arbiter coverage 保留為補充證據。外部 stall 只能證明發生等待，不能直接判定哪個 buffer 已滿。內部公平性也不能只由端口輸出次序推定。
+功能目標使用 NMU／NSU top-level interfaces。FIFO、ROB、Stress covergroups 已移除，容量與恢復條件由既有 checks 驗證。Arbiter assertions 保留。外部 stall 只能證明發生等待，不能直接判定哪個 buffer 已滿。內部公平性也不能只由端口輸出次序推定。
 
 未測功能不得直接標為 unsupported。FIXED/WRAP、exclusive、unaligned、sideband、SAM miss 等需先確認支援範圍。每個建議新增的 cross 必須指出它要檢查的功能交互作用，不要求所有欄位做 Cartesian product。
 

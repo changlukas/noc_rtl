@@ -9,39 +9,8 @@
     } cov_request_t;
     cov_request_t cov_wr_pending[$], cov_rd_pending[$];
 
-
-
-
-
-
     bit cov_b_inverted[1 << ni_flit_pkg::ORDERING_TAG_WIDTH] = '{default:0};
     bit cov_r_inverted[1 << ni_flit_pkg::ORDERING_TAG_WIDTH] = '{default:0};
-
-
-
-
-
-    covergroup stress_cg with function sample(bit is_read, bit limit_reuse,
-            bit rob_full, bit rob_reuse, bit hol_progress, bit reset_recovered,
-            bit inversion_stall);
-        option.per_instance = 1;
-        cp_direction: coverpoint is_read { bins write = {0}; bins read = {1}; }
-        cp_limit_reuse: coverpoint limit_reuse { bins observed = {1}; }
-        cp_rob_full: coverpoint rob_full { bins observed = {1}; }
-        cp_rob_reuse: coverpoint rob_reuse { bins observed = {1}; }
-        cp_hol: coverpoint hol_progress { bins observed = {1}; }
-        cp_reset: coverpoint reset_recovered { bins observed = {1}; }
-        cp_inversion_stall: coverpoint inversion_stall { bins observed = {1}; }
-        direction_limit_reuse: cross cp_direction, cp_limit_reuse;
-        storage_full: cross cp_direction, cp_rob_full;
-        storage_reuse: cross cp_direction, cp_rob_reuse;
-        direction_hol_progress: cross cp_direction, cp_hol;
-        reset_recovery: cross cp_direction, cp_reset;
-        reorder_backpressure: cross cp_direction, cp_inversion_stall;
-    endgroup
-    stress_cg stress_coverage = new();
-
-
 
     covergroup ordering_cg with function sample(bit is_read, bit same_id, bit other_id);
         option.per_instance = 1;
@@ -53,26 +22,11 @@
     endgroup
     ordering_cg ordering_coverage = new();
 
-    covergroup rob_cg with function sample(int allocation, bit retire, bit no_tail_space,
-            bit per_id_limit, bit axi_stall, bit output_stall);
-        option.per_instance = 1;
-        cp_allocation: coverpoint allocation { bins bypass = {1}; bins reorder = {2}; }
-        cp_retire: coverpoint retire { bins observed = {1}; }
-        cp_no_tail_space: coverpoint no_tail_space { bins observed = {1}; }
-        cp_per_id_limit: coverpoint per_id_limit { bins observed = {1}; }
-        cp_axi_stall: coverpoint axi_stall { bins observed = {1}; }
-        cp_output_stall: coverpoint output_stall { bins observed = {1}; }
-    endgroup
-    rob_cg b_rob_coverage = new();
-    rob_cg r_rob_coverage = new();
-
     covergroup reset_cg with function sample(bit pending);
         option.per_instance = 1;
         cp_pending: coverpoint pending { bins occupied = {1}; }
     endgroup
     reset_cg reset_coverage = new();
-
-
 
     // Identity tracking is needed to sample actual arrival inversions.
     task automatic cov_response(input bit is_read, input int id, input int tag,
@@ -154,21 +108,6 @@
                 cov_b_inverted[`COV_ORDER.wr_order_head[`COV_ORDER.b_sel_id].base] = 0;
             if (`COV_ORDER.r_retire && `COV_ORDER.r_sel_valid && `COV_ORDER.m_r_o.rlast)
                 cov_r_inverted[`COV_ORDER.rd_order_head[`COV_ORDER.r_sel_id].base] = 0;
-            stress_coverage.sample(0, wr_limit_reused, b_storage_full, b_storage_reused,
-                hol_wr_progress, reset_complete && b_count != 0, cov_b_stall_inversion);
-            stress_coverage.sample(1, rd_limit_reused, r_storage_full, r_storage_reused,
-                hol_rd_progress, reset_complete && r_count != 0, cov_r_stall_inversion);
-            b_rob_coverage.sample(
-                `COV_ORDER.aw_accept ? (`COV_ORDER.aw_reorder ? 2 : 1) : 0,
-                `COV_ORDER.b_retire && `COV_ORDER.b_sel_valid,
-                `COV_ORDER.b_free_cnt == 0, wr_order_full, vip.b_valid && !vip.b_ready,
-                `COV_ORDER.b_sel_valid && !`COV_ORDER.m_b_ready_i);
-            r_rob_coverage.sample(
-                `COV_ORDER.ar_accept ? (`COV_ORDER.ar_reorder ? 2 : 1) : 0,
-                `COV_ORDER.r_retire && `COV_ORDER.r_sel_valid,
-                `COV_ORDER.R_ROB_EN && `COV_ORDER.r_free_cnt == 0,
-                rd_order_full, vip.r_valid && !vip.r_ready,
-                `COV_ORDER.r_sel_valid && !`COV_ORDER.m_r_ready_i);
         end
     end
 

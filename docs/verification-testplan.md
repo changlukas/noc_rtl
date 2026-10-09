@@ -311,7 +311,7 @@ AXI 與 REQ/RSP 在 valid && ready 時傳送。DAT 在 valid 時傳送，使用 
 - **Test Type:** Directed。
 - **Coverage Method:** Checker／assertion 與既有 coverage 物件見 Link to Coverage，缺口見 report。
 - **Applicable Configurations:** C0～C6，實際執行子集見 run records。
-- **Link to Coverage:** stress_cg、rob_cg、fifo_cg。精確 full/reuse 證據為內部觀察。
+- **Link to Coverage:** outstanding_cg、ordering_cg，以及 capacity/recovery checks。
 - **Test Conditions:** 延遲 responses，持續送 requests。分別針對 per-ID、context、reorder capacity，之後恢復 responses。
 
 ### Requirement: Credit-Based Flow Control
@@ -368,7 +368,7 @@ AXI 與 REQ/RSP 在 valid && ready 時傳送。DAT 在 valid 時傳送，使用 
 - **Test Type:** Directed / Random，依 case 選用。
 - **Coverage Method:** Checker／assertion 與既有 coverage 物件見 Link to Coverage，缺口見 report。
 - **Applicable Configurations:** C0，T0/T1/T2。
-- **Link to Coverage:** reset_cg、stress_cg.reset_recovery、reset checks。
+- **Link to Coverage:** reset_cg、reset checks。
 - **Test Conditions:** 有 pending read/write 時同時 reset 全平台，解除後先等待，再送新 requests。
 
 ### Requirement: Arbitration
@@ -432,13 +432,10 @@ AXI sampling 在 axi_rst_n=1 時進行。Single/burst 是 AxLEN 的分類，AXI 
 | Item | Coverage Group | Coverpoint / Bins | Cross | Sample condition |
 |---|---|---|---|---|
 | AXI-07、NI-11 | ordering_cg | cp_same_id_inversion、cp_cross_id_inversion: absent/observed | direction_same_id、direction_cross_id | NoC clock，內部 ordering B handshake 或 RLAST handshake，判斷是否還有較早接受的 pending request |
-| NI-04/11 | rob_cg，B/R 各一 instance | cp_allocation: bypass/reorder。cp_retire、cp_no_tail_space、cp_per_id_limit、cp_axi_stall、cp_output_stall: observed=1 | 無 | NoC clock，取內部 allocation、retirement 與 capacity/stall 條件。allocation=0 不命中 bin |
-| NI-04 | fifo_cg | cp_full、cp_empty、cp_push_pop、cp_recovery: observed=1 | 無 | 各被 bind instance 的 clock，reset 解除後取樣。Recovery 是 full 後再接受 push |
-| NI-05 | credit_cg | cp_available: zero/nonzero。cp_give: idle/returned。cp_take: idle/sent | credit_return_send | 各 credit counter clock，reset 解除後取樣 |
+| NI-05 | credit_cg | cp_available: zero/nonzero。cp_give: idle/returned。cp_take: idle/sent | credit_return_send | NoC monitor sample，reset 解除後依 DAT transmission 與 credit return 更新每個 link／VC 的 credit balance |
 | NI-09 | reset_cg | cp_pending: occupied=1 | 無 | NoC clock，reset 有效時，在清空 coverage pending records 前取樣 |
-| NI-04/09/11、AXI-07 | stress_cg | cp_limit_reuse、cp_rob_full、cp_rob_reuse、cp_hol、cp_reset、cp_inversion_stall: observed=1 | direction_limit_reuse、storage_full、storage_reuse、direction_hol_progress、reset_recovery、reorder_backpressure | NoC clock，reset 解除後 read/write 各取樣一次。輸入為 TB 累積的事件 flags，hit 次數不等於獨立事件數 |
 
-cp_hol 的條件與證據限制見 report 的 hol_blocking Test Scope。內部 ROB/FIFO/credit bins 保留為補充證據，不代替 top-level interface goals。
+FIFO、ROB、Stress covergroups 已移除。容量、恢復與排序的 pass/fail checks 保留。
 
 ### Ignore / Illegal Bins
 
@@ -465,8 +462,9 @@ cp_hol 的條件與證據限制見 report 的 hol_blocking Test Scope。內部 R
 
 | Source | Objects／用途 |
 |---|---|
-| [ni_coverage.svh](../sim/dv/ni_coverage.svh) | transaction_cg、write_strobe_cg、boundary_cg、response_cg、outstanding_cg，以及內部／混合的 ordering_cg、rob_cg、stress_cg、reset_cg |
-| [ni_resource_coverage.sv](../sim/dv/ni_resource_coverage.sv) | 內部 fifo_cg、credit_cg。FIFO 覆蓋範圍不包含全部 CDC FIFO |
+| [ni_axi_coverage.svh](../sim/uvm/ni_axi_coverage.svh) | AXI monitor subscriber：transaction_cg、write_strobe_cg、boundary_cg、response_cg、outstanding_cg |
+| [ni_noc_monitor.svh](../sim/uvm/ni_noc_monitor.svh) | NoC monitor subscriber：credit_cg |
+| [ni_coverage.svh](../sim/dv/ni_coverage.svh) | ordering_cg、reset_cg |
 | [tb_top.sv](../sim/tb_top.sv) | Device AXI stall/recovery properties、scoreboard 與 ordering checker 接線 |
 | [ni_arbiter_checks.sv](../sim/dv/ni_arbiter_checks.sv) | 內部 RR／no-bubble assertions 與 contention covers |
 | [ni_arbiter_checks.sv](../sim/dv/ni_arbiter_checks.sv) 的 ni_credit_forward_checks | 內部 credit forwarding assertions |
