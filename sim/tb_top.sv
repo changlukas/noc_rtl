@@ -1,6 +1,7 @@
 `timescale 1ps / 1ps
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
+`include "axi_vip_connect.svh"
 module tb_top #(
     parameter int unsigned AXI_CLK_PERIOD_PS         = 1000,
     parameter int unsigned NOC_CLK_PERIOD_PS         = 1000,
@@ -15,16 +16,19 @@ module tb_top #(
     parameter int unsigned B_ROB_DEPTH               = ni_params_pkg::NMU_ROB_B_DEPTH,
     parameter int unsigned R_ROB_DEPTH               = ni_params_pkg::NMU_ROB_R_DEPTH,
     parameter bit          R_ROB_EN                  = bit'(ni_params_pkg::NMU_R_ROB_EN),
-    parameter bit          RTL_NSU                   = 0,
     parameter int unsigned DEVICE_ID_WIDTH           = ni_params_pkg::NSU_AXI_ID_WIDTH,
     parameter int unsigned CONTEXT_DEPTH             = ni_params_pkg::NSU_MAX_OUTSTANDING
 );
     import ni_params_pkg::*;
+    import uvm_pkg::*;
+    import tvip_axi_types_pkg::*;
+    import tvip_axi_pkg::*;
+    import ni_test_pkg::*;
     localparam int unsigned NUM_IDS = 1 << INPUT_ID_WIDTH;
     localparam time CLK_PERIOD = AXI_CLK_PERIOD_PS * 1ps;
     localparam time NOC_CLK_PERIOD = NOC_CLK_PERIOD_PS * 1ps;
     localparam time APPL_DELAY = 0ps;
-    localparam time ACQ_DELAY  = CLK_PERIOD / 5;
+    localparam time ACQ_DELAY  = 0ps;
     localparam int NUM_PORTS = 5;
     localparam int NMU_PORT = 0;
     localparam int NUM_NSUS = NUM_PORTS - 1;
@@ -36,8 +40,6 @@ module tb_top #(
     initial begin
         if (AXI_CLK_PERIOD_PS < 2 || NOC_CLK_PERIOD_PS < 2)
             $fatal(1, "Clock periods must be at least 2 ps");
-        if (!RTL_NSU && (AXI_CLK_PERIOD_PS != NOC_CLK_PERIOD_PS || NOC_CLK_PHASE_PS != 0))
-            $fatal(1, "Independent clocks require RTL NSU");
         $display("PARAM_CONFIG device_id=%0d context=%0d per_id=%0d io_fifo=%0d reg_type=%0d b_rob=%0d r_rob=%0d r_rob_en=%0d vc=%0d vc_mode=%0d credit=%0d",
             DEVICE_ID_WIDTH, CONTEXT_DEPTH, MAX_OUTSTANDING_PER_ID, IO_FIFO_DEPTH,
             OUTPUT_REG_TYPE, B_ROB_DEPTH, R_ROB_DEPTH, R_ROB_EN, NUM_DAT_VC, NOC_DAT_VC_MODE, CREDIT_DEPTH);
@@ -48,11 +50,7 @@ module tb_top #(
             IO_FIFO_DEPTH*$bits(ni_flit_pkg::req_flit_t),
             NUM_WR_VC*IO_FIFO_DEPTH*$bits(ni_flit_pkg::dat_flit_t),
             $bits(ni_types_pkg::nmu_aw_request_t)+ni_flit_pkg::AXI_LEN_WIDTH+1);
-        $display("TX_STORAGE_OLD equal_depth_bits=%0d prior_depth_bits=%0d",
-            IO_FIFO_DEPTH*(3*$bits(ni_types_pkg::nmu_aw_request_t)+$bits(ni_types_pkg::nmu_ar_request_t)+
-                2*($bits(ni_signals_pkg::axi_w_t)+$bits(ni_types_pkg::nmu_aw_request_t)+ni_flit_pkg::AXI_LEN_WIDTH)),
-            NOC_FIFO_DEPTH*(3*$bits(ni_types_pkg::nmu_aw_request_t)+$bits(ni_types_pkg::nmu_ar_request_t)+
-                2*($bits(ni_signals_pkg::axi_w_t)+$bits(ni_types_pkg::nmu_aw_request_t)+ni_flit_pkg::AXI_LEN_WIDTH)));
+
     end
     wire wr_order_full = dut.path_aw_valid &&
         dut.i_response_path.i_ordering.wr_outstanding_cnt_reg[dut.path_aw.axi.awid] >= MAX_OUTSTANDING_PER_ID;
@@ -89,6 +87,9 @@ module tb_top #(
     bit corrupt_rsp = 0;
     logic clk = 0, noc_clk = 0, rst_n = 0;
     wire axi_rst_n, noc_rst_n;
+    tvip_axi_if source_axi(clk, axi_rst_n);
+    tvip_axi_if device_axi[4](clk, axi_rst_n);
+
     always #(CLK_PERIOD / 2) clk = ~clk;
     initial begin
         #(NOC_CLK_PHASE_PS * 1ps);
@@ -111,98 +112,13 @@ module tb_top #(
         .init_no          ()
     );
     AXI_BUS_DV #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-        .AXI_ID_WIDTH   (INPUT_ID_WIDTH),
-        .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) dut_vip(clk);
-    AXI_BUS_DV #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
         .AXI_ID_WIDTH(INPUT_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) vip(clk);
-    AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-        .AXI_ID_WIDTH(INPUT_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) source_delay_bus[SOURCE_RESPONSE_DELAY_CYCLES+1]();
-    `AXI_ASSIGN(source_delay_bus[0], vip)
-    `AXI_ASSIGN(dut_vip, source_delay_bus[SOURCE_RESPONSE_DELAY_CYCLES])
-    for (genvar stage = 0; stage < SOURCE_RESPONSE_DELAY_CYCLES; stage++) begin : gen_source_response_delay
-        axi_delayer_intf #(
-            .AXI_ID_WIDTH        (INPUT_ID_WIDTH),
-            .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
-            .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
-            .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
-            .STALL_RANDOM_INPUT  (1'b0),
-            .STALL_RANDOM_OUTPUT (1'b0),
-            .FIXED_DELAY_INPUT   (0),
-            .FIXED_DELAY_OUTPUT  (1)
-        ) i_source_response_delay (
-            .clk_i    (clk),
-            .rst_ni   (axi_rst_n),
-            .bypass_i (!source_response_delay),
-            .slv      (source_delay_bus[stage]),
-            .mst      (source_delay_bus[stage+1])
-        );
-    end
     axi_if #(.ADDR_W(AXI_ADDR_WIDTH), .DATA_W(AXI_DATA_WIDTH),
         .ID_W     (INPUT_ID_WIDTH),
         .AWUSER_W (AXI_AWUSER_WIDTH)) bus();
     typedef logic [AXI_ADDR_WIDTH-1:0] mon_addr_t;
-    localparam int MON_ID_WIDTH = INPUT_ID_WIDTH > DEVICE_ID_WIDTH ? INPUT_ID_WIDTH : DEVICE_ID_WIDTH;
-    typedef logic [MON_ID_WIDTH-1:0] mon_id_t;
-    typedef logic [AXI_DATA_WIDTH-1:0] mon_data_t;
-    typedef logic [AXI_DATA_WIDTH/8-1:0] mon_strb_t;
-    typedef logic [AXI_AWUSER_WIDTH-1:0] mon_user_t;
-    `AXI_TYPEDEF_ALL(mon, mon_addr_t, mon_id_t, mon_data_t, mon_strb_t, mon_user_t)
-    typedef struct packed {
-        int unsigned idx;
-        mon_addr_t start_addr;
-        mon_addr_t end_addr;
-    } mon_rule_t;
-    function automatic mon_rule_t [topology_pkg::SAM_NUM_RULES-1:0] monitor_rules();
-        for (int r = 0; r < topology_pkg::SAM_NUM_RULES; r++) begin
-            monitor_rules[r].start_addr = topology_pkg::SAM[r].start_addr;
-            monitor_rules[r].end_addr   = topology_pkg::SAM[r].end_addr;
-            for (int n = 0; n < NUM_NSUS; n++) begin
-                if (topology_pkg::SAM[r].idx.dst_id == nsu_id(n+1))
-                    monitor_rules[r].idx = n;
-            end
-        end
-    endfunction
-    localparam mon_rule_t [topology_pkg::SAM_NUM_RULES-1:0] MON_RULES = monitor_rules();
-    mon_req_t mon_mst_raw;
-    mon_req_t mon_mst_req;
-    mon_resp_t mon_mst_rsp;
-    mon_req_t [NUM_NSUS-1:0] mon_slv_req;
-    mon_resp_t [NUM_NSUS-1:0] mon_slv_rsp;
-    wire ordering_done;
-    `AXI_ASSIGN_TO_REQ(mon_mst_raw, vip)
-    // RTL preserves opaque AWUSER; upper collective fields terminate in the NI.
-    // The reference-model port omits AWUSER. WUSER/ARUSER are tied off.
-    always_comb begin
-        mon_mst_req         = mon_mst_raw;
-        mon_mst_req.aw.user = RTL_NSU ? mon_user_t'(mon_mst_raw.aw.user[ni_flit_pkg::AXI_USER_WIDTH-1:0]) : '0;
-        mon_mst_req.w.user  = '0;
-        mon_mst_req.ar.user = '0;
-    end
-    `AXI_ASSIGN_TO_RESP(mon_mst_rsp, vip)
-    axi_reorder_compare #(
-        .NumSlaves      (NUM_NSUS),
-        .AxiIdWidth     (MON_ID_WIDTH),
-        .NumAddrRegions (topology_pkg::SAM_NUM_RULES),
-        .addr_t         (mon_addr_t),
-        .rule_t         (mon_rule_t),
-        .AddrRegions    (MON_RULES),
-        .aw_chan_t      (mon_aw_chan_t),
-        .w_chan_t       (mon_w_chan_t),
-        .b_chan_t       (mon_b_chan_t),
-        .ar_chan_t      (mon_ar_chan_t),
-        .r_chan_t       (mon_r_chan_t),
-        .req_t          (mon_req_t),
-        .rsp_t          (mon_resp_t)
-    ) i_ordering_checker (
-        .clk_i          (clk),
-        .rst_ni         (axi_rst_n),
-        .mon_mst_req_i  (mon_mst_req),
-        .mon_mst_rsp_i  (mon_mst_rsp),
-        .mon_slv_req_i  (mon_slv_req),
-        .mon_slv_rsp_i  (mon_slv_rsp),
-        .end_of_sim_o   (ordering_done)
-    );
-    longint unsigned router_ctx, nsu_ctx[NUM_NSUS];
+    localparam ni_mon_rule_t [topology_pkg::SAM_NUM_RULES-1:0] MON_RULES = NI_MON_RULES;
+    longint unsigned router_ctx;
     wire [NUM_PORTS-1:0] tx_req_valid, rx_req_valid;
     wire [NOC_REQ_FLIT_WIDTH-1:0] tx_req_flit [NUM_PORTS], rx_req_flit [NUM_PORTS];
     wire [NUM_PORTS-1:0] tx_rsp_valid, rx_rsp_valid;
@@ -211,50 +127,73 @@ module tb_top #(
     wire [NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit [NUM_PORTS], rx_dat_flit [NUM_PORTS];
     wire [NUM_PORTS-1:0] tx_req_ready, rx_req_ready, tx_rsp_ready, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] tx_dat_credit [NUM_PORTS], rx_dat_credit [NUM_PORTS];
-    assign bus.awid     = dut_vip.aw_id;
-    assign bus.awaddr   = dut_vip.aw_addr;
-    assign bus.awlen    = dut_vip.aw_len;
-    assign bus.awsize   = dut_vip.aw_size;
-    assign bus.awburst  = dut_vip.aw_burst;
-    assign bus.awlock   = dut_vip.aw_lock;
-    assign bus.awcache  = dut_vip.aw_cache;
-    assign bus.awprot   = dut_vip.aw_prot;
-    assign bus.awqos    = dut_vip.aw_qos;
-    assign bus.awregion = dut_vip.aw_region;
-    assign bus.awuser   = dut_vip.aw_user;
-    assign bus.awvalid  = dut_vip.aw_valid;
-    assign dut_vip.aw_ready = bus.awready;
-    assign bus.wdata    = dut_vip.w_data;
-    assign bus.wstrb    = dut_vip.w_strb;
-    assign bus.wlast    = dut_vip.w_last;
-    assign bus.wvalid   = dut_vip.w_valid;
-    assign dut_vip.w_ready  = bus.wready;
-    assign bus.arid     = dut_vip.ar_id;
-    assign bus.araddr   = dut_vip.ar_addr;
-    assign bus.arlen    = dut_vip.ar_len;
-    assign bus.arsize   = dut_vip.ar_size;
-    assign bus.arburst  = dut_vip.ar_burst;
-    assign bus.arlock   = dut_vip.ar_lock;
-    assign bus.arcache  = dut_vip.ar_cache;
-    assign bus.arprot   = dut_vip.ar_prot;
-    assign bus.arqos    = dut_vip.ar_qos;
-    assign bus.arregion = dut_vip.ar_region;
-    assign bus.arvalid  = dut_vip.ar_valid;
-    assign dut_vip.ar_ready = bus.arready;
+    ni_noc_if noc_observe[2*NUM_PORTS](noc_clk, noc_rst_n);
+    for (genvar p = 0; p < NUM_PORTS; p++) begin : gen_noc_observe
+        assign noc_observe[2*p+0].req = rx_req_flit[p];
+        assign noc_observe[2*p+0].req_valid = rx_req_valid[p];
+        assign noc_observe[2*p+0].req_ready = rx_req_ready[p];
+        assign noc_observe[2*p+0].rsp = rx_rsp_flit[p];
+        assign noc_observe[2*p+0].rsp_valid = rx_rsp_valid[p];
+        assign noc_observe[2*p+0].rsp_ready = rx_rsp_ready[p];
+        assign noc_observe[2*p+0].dat = rx_dat_flit[p];
+        assign noc_observe[2*p+0].dat_valid = rx_dat_valid[p];
+        assign noc_observe[2*p+0].credit = rx_dat_credit[p];
+        initial uvm_config_db #(virtual ni_noc_if)::set(null, $sformatf("uvm_test_top.env.noc_tx%0d", p), "vif", noc_observe[2*p+0]);
+        assign noc_observe[2*p+1].req = tx_req_flit[p];
+        assign noc_observe[2*p+1].req_valid = tx_req_valid[p];
+        assign noc_observe[2*p+1].req_ready = tx_req_ready[p];
+        assign noc_observe[2*p+1].rsp = tx_rsp_flit[p];
+        assign noc_observe[2*p+1].rsp_valid = tx_rsp_valid[p];
+        assign noc_observe[2*p+1].rsp_ready = tx_rsp_ready[p];
+        assign noc_observe[2*p+1].dat = tx_dat_flit[p];
+        assign noc_observe[2*p+1].dat_valid = tx_dat_valid[p];
+        assign noc_observe[2*p+1].credit = tx_dat_credit[p];
+        initial uvm_config_db #(virtual ni_noc_if)::set(null, $sformatf("uvm_test_top.env.noc_rx%0d", p), "vif", noc_observe[2*p+1]);
+    end
+    assign bus.awid     = vip.aw_id;
+    assign bus.awaddr   = vip.aw_addr;
+    assign bus.awlen    = vip.aw_len;
+    assign bus.awsize   = vip.aw_size;
+    assign bus.awburst  = vip.aw_burst;
+    assign bus.awlock   = vip.aw_lock;
+    assign bus.awcache  = vip.aw_cache;
+    assign bus.awprot   = vip.aw_prot;
+    assign bus.awqos    = vip.aw_qos;
+    assign bus.awregion = vip.aw_region;
+    assign bus.awuser   = vip.aw_user;
+    assign bus.awvalid  = vip.aw_valid;
+    assign vip.aw_ready = bus.awready;
+    assign bus.wdata    = vip.w_data;
+    assign bus.wstrb    = vip.w_strb;
+    assign bus.wlast    = vip.w_last;
+    assign bus.wvalid   = vip.w_valid;
+    assign vip.w_ready  = bus.wready;
+    assign bus.arid     = vip.ar_id;
+    assign bus.araddr   = vip.ar_addr;
+    assign bus.arlen    = vip.ar_len;
+    assign bus.arsize   = vip.ar_size;
+    assign bus.arburst  = vip.ar_burst;
+    assign bus.arlock   = vip.ar_lock;
+    assign bus.arcache  = vip.ar_cache;
+    assign bus.arprot   = vip.ar_prot;
+    assign bus.arqos    = vip.ar_qos;
+    assign bus.arregion = vip.ar_region;
+    assign bus.arvalid  = vip.ar_valid;
+    assign vip.ar_ready = bus.arready;
     assign bus.wuser    = '0;
     assign bus.aruser   = '0;
-    assign bus.bready   = dut_vip.b_ready;
-    assign dut_vip.b_valid  = bus.bvalid;
-    assign dut_vip.b_id     = bus.bid;
-    assign dut_vip.b_resp   = bus.bresp;
-    assign dut_vip.b_user   = '0;
-    assign bus.rready   = dut_vip.r_ready;
-    assign dut_vip.r_valid  = bus.rvalid;
-    assign dut_vip.r_id     = bus.rid;
-    assign dut_vip.r_data   = bus.rdata ^ (corrupt_rsp ? AXI_DATA_WIDTH'(1) : '0);
-    assign dut_vip.r_resp   = bus.rresp;
-    assign dut_vip.r_last   = bus.rlast;
-    assign dut_vip.r_user   = '0;
+    assign bus.bready   = vip.b_ready;
+    assign vip.b_valid  = bus.bvalid;
+    assign vip.b_id     = bus.bid;
+    assign vip.b_resp   = bus.bresp;
+    assign vip.b_user   = '0;
+    assign bus.rready   = vip.r_ready;
+    assign vip.r_valid  = bus.rvalid;
+    assign vip.r_id     = bus.rid;
+    assign vip.r_data   = bus.rdata ^ (corrupt_rsp ? AXI_DATA_WIDTH'(1) : '0);
+    assign vip.r_resp   = bus.rresp;
+    assign vip.r_last   = bus.rlast;
+    assign vip.r_user   = '0;
     nmu #(
         .REQ_AW_REG_TYPE (OUTPUT_REG_TYPE),
         .REQ_W_REG_TYPE (OUTPUT_REG_TYPE),
@@ -299,7 +238,6 @@ module tb_top #(
         for (int p = 0; p <= NUM_NSUS; p++)
             node_ids[p] = ni_flit_pkg::DST_ID_WIDTH'(p == 0 ? NMU_ID : nsu_id(p));
     endfunction
-    initial if (!RTL_NSU) $fatal(1, "Direct-link environment requires RTL NSU");
     ni_direct_link #(
         .NUM_NSUS (NUM_NSUS ),
         .NODE_IDS (node_ids())
@@ -355,49 +293,66 @@ module tb_top #(
         AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
             .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
             .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) mem_bus();
-        ni_signals_pkg::axi_req_t mem_req;
-        ni_signals_pkg::axi_rsp_t mem_rsp;
-        AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
-            .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)) delayed_bus();
-        `AXI_ASSIGN_TO_REQ(mon_slv_req[n], mem_bus)
-        `AXI_ASSIGN_TO_RESP(mon_slv_rsp[n], mem_bus)
-        initial begin : preload_memory
-            string directory;
-            int error_code;
-            if ($value$plusargs("response_error=%d", error_code)) begin
-                if (!(error_code inside {2, 3})) $fatal(1, "Invalid response_error");
-                if (!$value$plusargs("stim_dir=%s", directory)) $fatal(1, "Missing stim_dir");
-                $readmemh({directory, "/rerr.mem"}, i_memory.i_sim_mem.rerr);
-                $readmemh({directory, "/werr.mem"}, i_memory.i_sim_mem.werr);
-            end
-            if ($test$plusargs("preload")) begin
-                if (!$value$plusargs("stim_dir=%s", directory)) $fatal(1, "Missing stim_dir");
-                $readmemh({directory, "/preload.mem"}, i_memory.i_sim_mem.mem);
-            end
+        initial begin
+            tvip_axi_configuration cfg;
+            int code, delay_port;
+            bit stall_requests, stall_responses;
+            stall_requests = $test$plusargs("request_random_delay");
+            stall_responses = $test$plusargs("response_random_delay");
+            code = 0;
+            delay_port = 0;
+            void'($value$plusargs("response_delay_port=%d", delay_port));
+            void'($value$plusargs("response_error=%d", code));
+            cfg = tvip_axi_configuration::type_id::create($sformatf("device_cfg%0d", n));
+            cfg.vif = device_axi[n];
+            cfg.awuser_width = AXI_AWUSER_WIDTH;
+            if (!cfg.randomize() with {
+                id_width == DEVICE_ID_WIDTH; address_width == AXI_ADDR_WIDTH;
+                data_width == AXI_DATA_WIDTH; max_burst_length == 256;
+                response_ordering == TVIP_AXI_IN_ORDER;
+                default_awready == !stall_requests;
+                default_wready == !stall_requests;
+                default_arready == !stall_requests;
+                awready_delay.min_delay == 0; awready_delay.max_delay == (stall_requests ? 4 : 0);
+                wready_delay.min_delay == 0; wready_delay.max_delay == (stall_requests ? 4 : 0);
+                arready_delay.min_delay == 0; arready_delay.max_delay == (stall_requests ? 4 : 0);
+                response_delay.min_delay == 0; response_delay.max_delay == (stall_responses ? 4 : 0);
+                response_start_delay.min_delay == (PORT == delay_port ? RSP_DELAY_CYCLES : 0);
+                response_start_delay.max_delay == (PORT == delay_port ? RSP_DELAY_CYCLES : 0);
+                response_weight_okay == (code == 0 ? 1 : 0);
+                response_weight_exokay == 0;
+                response_weight_slave_error == (code == 2 ? 1 : 0);
+                response_weight_decode_error == (code == 3 ? 1 : 0);
+            }) $fatal(1, "Device VIP configuration failed");
+            uvm_config_db #(tvip_axi_configuration)::set(null, "uvm_test_top.env", $sformatf("device_cfg%0d", n), cfg);
         end
-        int b_wait_start = -1, r_wait_start = -1;
-        int sample_cycle = 0;
+        int pending_aw = 0, pending_w = 0, pending_ar = 0;
         always @(posedge clk) begin
-            if (axi_rst_n) begin
-                sample_cycle++;
-                if (mem_bus.aw_valid && mem_bus.aw_ready) dst_wr_cnt[n]++;
-                if (mem_bus.ar_valid && mem_bus.ar_ready) dst_rd_cnt[n]++;
-                if (PORT == response_delay_port) begin
-                    if (delayed_bus.b_valid && b_wait_start < 0) b_wait_start = sample_cycle;
-                    if (mem_bus.b_valid && mem_bus.b_ready && b_wait_start >= 0) begin
-                        $display("DELAY_SAMPLE channel=B cycles=%0d", sample_cycle - b_wait_start);
-                        b_wait_start = -1;
-                    end
-                    if (delayed_bus.r_valid && r_wait_start < 0) r_wait_start = sample_cycle;
-                    if (mem_bus.r_valid && mem_bus.r_ready && r_wait_start >= 0) begin
-                        $display("DELAY_SAMPLE channel=R cycles=%0d", sample_cycle - r_wait_start);
-                        r_wait_start = -1;
-                    end
+            if (!axi_rst_n) begin
+                pending_aw = 0;
+                pending_w = 0;
+                pending_ar = 0;
+            end else begin
+                if (mem_bus.aw_valid && mem_bus.aw_ready) begin
+                    dst_wr_cnt[n]++;
+                    pending_aw++;
                 end
+                if (mem_bus.w_valid && mem_bus.w_ready && mem_bus.w_last) pending_w++;
+                if (mem_bus.ar_valid && mem_bus.ar_ready) begin
+                    dst_rd_cnt[n]++;
+                    pending_ar++;
+                end
+                if (mem_bus.b_valid && mem_bus.b_ready) begin
+                    pending_aw--;
+                    pending_w--;
+                end
+                if (mem_bus.r_valid && mem_bus.r_ready && mem_bus.r_last) pending_ar--;
             end
         end
-        if (RTL_NSU) begin : gen_rtl_nsu
+        assign memory_b_blocked[n] = block_b && (response_hold_port == 0 || PORT == response_hold_port) &&
+            pending_aw > 0 && pending_w > 0;
+        assign memory_r_blocked[n] = block_r && (response_hold_port == 0 || PORT == response_hold_port) && pending_ar > 0;
+        begin : gen_rtl_nsu
             axi_if #(.ADDR_W(AXI_ADDR_WIDTH), .DATA_W(AXI_DATA_WIDTH),
                 .ID_W(DEVICE_ID_WIDTH), .AWUSER_W(AXI_AWUSER_WIDTH)) device_bus();
             nsu #(
@@ -484,94 +439,6 @@ module tb_top #(
             assign device_bus.rvalid = mem_bus.r_valid;
             assign device_bus.ruser = mem_bus.r_user;
         end
-`ifndef TB_DIRECT_LINK
-        else begin : gen_cmodel_nsu
-        nsu_wrap i_nsu (
-            .clk_i             (noc_clk),
-            .rst_n_i           (noc_rst_n),
-            .ctx_i             (nsu_ctx[n]),
-            .rx_req_valid_i    (tx_req_valid[PORT]),
-            .rx_req_flit_i     (tx_req_flit[PORT]),
-            .rx_req_ready_o    (tx_req_ready[PORT]),
-            .tx_rsp_valid_o    (rx_rsp_valid[PORT]),
-            .tx_rsp_flit_o     (rx_rsp_flit[PORT]),
-            .tx_rsp_ready_i    (rx_rsp_ready[PORT]),
-            .tx_dat_valid_o    (rx_dat_valid[PORT]),
-            .tx_dat_flit_o     (rx_dat_flit[PORT]),
-            .tx_dat_crdvalid_i (rx_dat_credit[PORT]),
-            .rx_dat_valid_i    (tx_dat_valid[PORT]),
-            .rx_dat_flit_i     (tx_dat_flit[PORT]),
-            .rx_dat_crdvalid_o (tx_dat_credit[PORT]),
-            .axi_req_o         (mem_req),
-            .axi_rsp_i         (mem_rsp)
-        );
-        assign mem_bus.aw_id = mem_req.awid;
-        assign mem_bus.aw_addr = mem_req.awaddr;
-        assign mem_bus.aw_len = mem_req.awlen;
-        assign mem_bus.aw_size = mem_req.awsize;
-        assign mem_bus.aw_burst = mem_req.awburst;
-        assign mem_bus.aw_lock = mem_req.awlock;
-        assign mem_bus.aw_cache = mem_req.awcache;
-        assign mem_bus.aw_prot = mem_req.awprot;
-        assign mem_bus.aw_qos = mem_req.awqos;
-        assign mem_bus.aw_region = mem_req.awregion;
-        assign mem_bus.aw_valid = mem_req.awvalid;
-        assign mem_bus.w_data = mem_req.wdata;
-        assign mem_bus.w_strb = mem_req.wstrb;
-        assign mem_bus.w_last = mem_req.wlast;
-        assign mem_bus.w_valid = mem_req.wvalid;
-        assign mem_bus.ar_id = mem_req.arid;
-        assign mem_bus.ar_addr = mem_req.araddr;
-        assign mem_bus.ar_len = mem_req.arlen;
-        assign mem_bus.ar_size = mem_req.arsize;
-        assign mem_bus.ar_burst = mem_req.arburst;
-        assign mem_bus.ar_lock = mem_req.arlock;
-        assign mem_bus.ar_cache = mem_req.arcache;
-        assign mem_bus.ar_prot = mem_req.arprot;
-        assign mem_bus.ar_qos = mem_req.arqos;
-        assign mem_bus.ar_region = mem_req.arregion;
-        assign mem_bus.ar_valid = mem_req.arvalid;
-        assign mem_bus.aw_user = '0;
-        assign mem_bus.aw_atop = '0;
-        assign mem_bus.w_user = '0;
-        assign mem_bus.ar_user = '0;
-        assign mem_bus.b_ready = mem_req.bready;
-        assign mem_bus.r_ready = mem_req.rready;
-        assign mem_rsp.awready = mem_bus.aw_ready;
-        assign mem_rsp.wready = mem_bus.w_ready;
-        assign mem_rsp.arready = mem_bus.ar_ready;
-        assign mem_rsp.bid = mem_bus.b_id;
-        assign mem_rsp.bresp = mem_bus.b_resp;
-        assign mem_rsp.bvalid = mem_bus.b_valid;
-        assign mem_rsp.rid = mem_bus.r_id;
-        assign mem_rsp.rdata = mem_bus.r_data;
-        assign mem_rsp.rresp = mem_bus.r_resp;
-        assign mem_rsp.rlast = mem_bus.r_last;
-        assign mem_rsp.rvalid = mem_bus.r_valid;
-        end
-`endif
-        AXI_BUS #(
-            .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
-            .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
-            .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)
-        ) request_delay_bus();
-        axi_delayer_intf #(
-            .AXI_ID_WIDTH        (DEVICE_ID_WIDTH),
-            .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
-            .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
-            .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
-            .STALL_RANDOM_INPUT  (1'b1),
-            .STALL_RANDOM_OUTPUT (1'b0),
-            .FIXED_DELAY_INPUT   (0),
-            .FIXED_DELAY_OUTPUT  (0)
-        ) i_request_delay (
-            .clk_i    (clk),
-            .rst_ni   (axi_rst_n),
-            .bypass_i (!request_random_delay),
-            .slv      (mem_bus),
-            .mst      (request_delay_bus)
-        );
 `ifdef NI_COVERAGE
         aw_stall_recover: cover property (@(posedge clk) disable iff (!axi_rst_n)
             mem_bus.aw_valid && !mem_bus.aw_ready ##[1:64] mem_bus.aw_valid && mem_bus.aw_ready);
@@ -580,110 +447,8 @@ module tb_top #(
         ar_stall_recover: cover property (@(posedge clk) disable iff (!axi_rst_n)
             mem_bus.ar_valid && !mem_bus.ar_ready ##[1:64] mem_bus.ar_valid && mem_bus.ar_ready);
 `endif
-        AXI_BUS #(
-            .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
-            .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
-            .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)
-        ) response_delay_bus();
-        axi_delayer_intf #(
-            .AXI_ID_WIDTH        (DEVICE_ID_WIDTH),
-            .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
-            .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
-            .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
-            .STALL_RANDOM_INPUT  (1'b0),
-            .STALL_RANDOM_OUTPUT (1'b1),
-            .FIXED_DELAY_INPUT   (0),
-            .FIXED_DELAY_OUTPUT  (0)
-        ) i_response_delay (
-            .clk_i    (clk),
-            .rst_ni   (axi_rst_n),
-            .bypass_i (!response_random_delay),
-            .slv      (request_delay_bus),
-            .mst      (response_delay_bus)
-        );
-        wire delay_en = PORT == response_delay_port;
-        if (RSP_DELAY_CYCLES == 0) begin : gen_no_delay
-            `AXI_ASSIGN(delayed_bus, response_delay_bus)
-        end else begin : gen_rsp_delay
-            AXI_BUS #(
-                .AXI_ADDR_WIDTH (AXI_ADDR_WIDTH),
-                .AXI_DATA_WIDTH (AXI_DATA_WIDTH),
-                .AXI_ID_WIDTH   (DEVICE_ID_WIDTH),
-                .AXI_USER_WIDTH (AXI_AWUSER_WIDTH)
-            ) delay_bus[RSP_DELAY_CYCLES+1]();
-            `AXI_ASSIGN(delay_bus[0], response_delay_bus)
-            `AXI_ASSIGN(delayed_bus, delay_bus[RSP_DELAY_CYCLES])
-            // One-cycle upstream cells make the sweep include every integer delay.
-            for (genvar stage = 0; stage < RSP_DELAY_CYCLES; stage++) begin : gen_stage
-                axi_delayer_intf #(
-                    .AXI_ID_WIDTH        (DEVICE_ID_WIDTH),
-                    .AXI_ADDR_WIDTH      (AXI_ADDR_WIDTH),
-                    .AXI_DATA_WIDTH      (AXI_DATA_WIDTH),
-                    .AXI_USER_WIDTH      (AXI_AWUSER_WIDTH),
-                    .STALL_RANDOM_INPUT  (1'b0),
-                    .STALL_RANDOM_OUTPUT (1'b0),
-                    .FIXED_DELAY_INPUT   (0),
-                    .FIXED_DELAY_OUTPUT  (1)
-                ) i_rsp_delay (
-                    .clk_i    (clk),
-                    .rst_ni   (axi_rst_n),
-                    .bypass_i (!delay_en),
-                    .slv      (delay_bus[stage]),
-                    .mst      (delay_bus[stage+1])
-                );
-            end
-        end
-        AXI_BUS #(.AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH(DEVICE_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) memory_bus();
-        typedef logic [DEVICE_ID_WIDTH-1:0] memory_id_t;
-        `AXI_TYPEDEF_ALL(gate, mon_addr_t, memory_id_t, mon_data_t, mon_strb_t, mon_user_t)
-        gate_req_t gate_req, memory_req;
-        gate_resp_t gate_rsp, memory_rsp;
-        wire stop_b = block_b && (response_hold_port == 0 || PORT == response_hold_port);
-        wire stop_r = block_r && (response_hold_port == 0 || PORT == response_hold_port);
-        `AXI_ASSIGN_TO_REQ(gate_req, delayed_bus)
-        `AXI_ASSIGN_FROM_RESP(delayed_bus, gate_rsp)
-        `AXI_ASSIGN_FROM_REQ(memory_bus, memory_req)
-        `AXI_ASSIGN_TO_RESP(memory_rsp, memory_bus)
-        always_comb begin
-            memory_req = gate_req;
-            gate_rsp = memory_rsp;
-            memory_req.b_ready = gate_req.b_ready && !stop_b;
-            memory_req.r_ready = gate_req.r_ready && !stop_r;
-            gate_rsp.b_valid = memory_rsp.b_valid && !stop_b;
-            gate_rsp.r_valid = memory_rsp.r_valid && !stop_r;
-        end
-        assign memory_b_blocked[n] = stop_b && memory_rsp.b_valid;
-        assign memory_r_blocked[n] = stop_r && memory_rsp.r_valid;
-        axi_sim_mem_intf #(
-            .AXI_ADDR_WIDTH     (AXI_ADDR_WIDTH),
-            .AXI_DATA_WIDTH     (AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH       (DEVICE_ID_WIDTH),
-            .AXI_USER_WIDTH     (AXI_AWUSER_WIDTH),
-            .WARN_UNINITIALIZED (1'b1),
-            .UNINITIALIZED_DATA ("undefined"),
-            .APPL_DELAY         (APPL_DELAY),
-            .ACQ_DELAY          (ACQ_DELAY)
-        ) i_memory (
-            .clk_i              (clk),
-            .rst_ni             (axi_rst_n),
-            .axi_slv            (memory_bus),
-            .mon_w_valid_o      (),
-            .mon_w_addr_o       (),
-            .mon_w_data_o       (),
-            .mon_w_id_o         (),
-            .mon_w_user_o       (),
-            .mon_w_beat_count_o (),
-            .mon_w_last_o       (),
-            .mon_r_valid_o      (),
-            .mon_r_addr_o       (),
-            .mon_r_data_o       (),
-            .mon_r_id_o         (),
-            .mon_r_user_o       (),
-            .mon_r_beat_count_o (),
-            .mon_r_last_o       ()
-        );
+        `NI_AXI_UVM_SLAVE(mem_bus, device_axi[n])
+
     end
     assign rx_rsp_valid[NMU_PORT] = 1'b0;
     assign rx_rsp_flit[NMU_PORT]  = '0;
@@ -702,32 +467,52 @@ module tb_top #(
             $fatal(1, "Request routed back to LOCAL");
     end
     typedef axi_test::axi_file_master #(
-        .AW (AXI_ADDR_WIDTH),
-        .DW (AXI_DATA_WIDTH),
-        .IW (INPUT_ID_WIDTH),
-        .UW (AXI_AWUSER_WIDTH),
-        .TA (APPL_DELAY),
-        .TT (ACQ_DELAY)
+        .AW(AXI_ADDR_WIDTH), .DW(AXI_DATA_WIDTH), .IW(INPUT_ID_WIDTH),
+        .UW(AXI_AWUSER_WIDTH), .TA(APPL_DELAY), .TT(ACQ_DELAY)
     ) master_t;
-    typedef axi_test::axi_scoreboard #(
-        .AW (AXI_ADDR_WIDTH),
-        .DW (AXI_DATA_WIDTH),
-        .IW (INPUT_ID_WIDTH),
-        .UW (AXI_AWUSER_WIDTH),
-        .TT (ACQ_DELAY)
-    ) scoreboard_base_t;
-    class scoreboard_t extends scoreboard_base_t;
-        function new(virtual AXI_BUS_DV #(
-            .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH), .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-            .AXI_ID_WIDTH(INPUT_ID_WIDTH), .AXI_USER_WIDTH(AXI_AWUSER_WIDTH)) axi);
-            super.new(axi);
-        endfunction
-        task preload(input string filename);
-            logic [7:0] bytes[axi_addr_t];
-            $readmemh(filename, bytes);
-            foreach (bytes[address]) memory_q[address].push_back(bytes[address]);
-        endtask
-    endclass
+    function automatic tvip_axi_master_item convert_address(master_t::ax_beat_t address, bit is_read);
+        tvip_axi_master_item item = new();
+        item.access_type = is_read ? TVIP_AXI_READ_ACCESS : TVIP_AXI_WRITE_ACCESS;
+        item.id = address.ax_id;
+        item.address = address.ax_addr;
+        item.burst_length = int'(address.ax_len) + 1;
+        item.burst_size = 1 << address.ax_size;
+        item.burst_type = tvip_axi_burst_type'(address.ax_burst);
+        item.lock = address.ax_lock;
+        item.put_cache(address.ax_cache);
+        item.protection = tvip_axi_protection'(address.ax_prot);
+        item.qos = address.ax_qos;
+        item.region = address.ax_region;
+        item.awuser = is_read ? 0 : address.ax_user;
+        item.need_response = 0;
+        return item;
+    endfunction
+
+    function automatic void load_sequence(master_t source, ni_pattern_sequence seq);
+        int beat = 0;
+        foreach (source.aw_queue[i]) begin
+            tvip_axi_master_item item = convert_address(source.aw_queue[i], 0);
+            if (source.aw_queue[i].ax_atop != 0) $fatal(1, "AXI VIP adapter does not carry AWATOP");
+            item.data = new[item.burst_length];
+            item.strobe = new[item.burst_length];
+            foreach (item.data[j]) begin
+                if (source.w_queue[beat].w_user != 0) $fatal(1, "AXI VIP adapter does not carry WUSER");
+                item.data[j] = source.w_queue[beat].w_data;
+                item.strobe[j] = source.w_queue[beat].w_strb;
+                beat++;
+            end
+            seq.writes.push_back(item);
+        end
+        foreach (source.ar_queue[i]) begin
+            if (source.ar_queue[i].ax_user != 0) $fatal(1, "AXI VIP adapter does not carry ARUSER");
+            seq.reads.push_back(convert_address(source.ar_queue[i], 1));
+        end
+    endfunction
+
+    `NI_AXI_UVM_MASTER(vip, source_axi)
+    uvm_event stimulus_start = uvm_event_pool::get_global("ni_start");
+    uvm_event stimulus_done = uvm_event_pool::get_global("ni_done");
+    uvm_event checks_done = uvm_event_pool::get_global("ni_checked");
 `ifndef TB_DIRECT_LINK
     import "DPI-C" context function int cmodel_check_error(output string message);
     always @(negedge noc_clk) begin : check_model_error
@@ -745,7 +530,7 @@ module tb_top #(
     master_t::ax_beat_t expected_ar[2**INPUT_ID_WIDTH][$];
     int read_beat[2**INPUT_ID_WIDTH] = '{default:0};
     master_t master, init_master, verify_master;
-    scoreboard_t scoreboard;
+    ni_scoreboard scoreboard;
     bit init_phase = 0, concurrent_rw = 0, readback = 0;
     int source_response_hold_cycles = 0;
     int b_stall_cnt = 0, r_stall_cnt = 0, aw_stall_cnt = 0, ar_stall_cnt = 0;
@@ -780,22 +565,6 @@ module tb_top #(
         end
     endfunction
 
-    task automatic receive_b();
-        if (source_response_hold_cycles != 0) begin
-            wait (vip.b_valid);
-            repeat (source_response_hold_cycles) @(posedge clk);
-        end
-        master.wait_b();
-    endtask
-
-    task automatic receive_r();
-        if (source_response_hold_cycles != 0) begin
-            wait (vip.r_valid);
-            repeat (source_response_hold_cycles) @(posedge clk);
-        end
-        master.wait_r();
-    endtask
-
     assert property (@(posedge clk) disable iff (!axi_rst_n)
         bus.bvalid && !bus.bready |=> bus.bvalid && $stable({bus.bid, bus.bresp}))
         else $fatal(1, "B response changed under backpressure");
@@ -808,12 +577,21 @@ module tb_top #(
     import "DPI-C" context function void cmodel_finalize();
     import "DPI-C" context function longint unsigned cmodel_router_create(
         input string name, input int x, y, mesh_x, mesh_y, num_vc);
-    import "DPI-C" context function longint unsigned cmodel_nsu_create(
-        input string name, input int src_id, num_vc, max_ids, max_outstanding,
-        port_id, input string config_path);
-    import "DPI-C" context function void cmodel_nsu_set_dat_credit_depth(
-        input longint unsigned ctx, input int depth);
 `endif
+    initial begin
+        uvm_event write_start = uvm_event_pool::get_global("ni_write_start");
+        forever begin
+            write_start.wait_trigger();
+            start_response_hold(0);
+        end
+    end
+    initial begin
+        uvm_event read_start = uvm_event_pool::get_global("ni_read_start");
+        forever begin
+            read_start.wait_trigger();
+            start_response_hold(1);
+        end
+    end
     initial begin : run
         string stim_dir;
         int first_char;
@@ -821,14 +599,6 @@ module tb_top #(
         cmodel_init();
         router_ctx = cmodel_router_create("router", ROUTER_X, ROUTER_Y,
             MESH_DIM, MESH_DIM, NUM_DAT_VC);
-        for (int n = 0; n < NUM_NSUS; n++) begin
-            if (!RTL_NSU) begin
-            nsu_ctx[n] = cmodel_nsu_create($sformatf("nsu_%0d", n + 1), nsu_id(n + 1),
-                NUM_DAT_VC, NSU_META_BUFFER_MAX_UNIQUE_IDS,
-                NSU_META_BUFFER_MAX_OUTSTANDING, 0, "");
-            cmodel_nsu_set_dat_credit_depth(nsu_ctx[n], CREDIT_DEPTH);
-            end
-        end
 `endif
         void'($value$plusargs("check_order=%s", check_order));
         void'($value$plusargs("check_capacity=%s", check_capacity));
@@ -845,14 +615,11 @@ module tb_top #(
         if (response_hold_cycles < 0 || response_hold_port < 0 || response_hold_port > NUM_NSUS ||
                 response_delay_port < 0 || response_delay_port > NUM_NSUS)
             $fatal(1, "Invalid response delay configuration");
-        if ((check_capacity != "" || check_destination_progress || reset_recovery) && !RTL_NSU)
-            $fatal(1, "Resource/reset checks require RTL NSU");
         $display("SLAVE_RESPONSE_DELAY random=%0d hold_cycles=%0d hold_port=%0d delay_port=%0d delay_cycles=%0d",
             response_random_delay, response_hold_cycles, response_hold_port, response_delay_port, RSP_DELAY_CYCLES);
         $display("DAT_CREDIT_DEPTH router=%0d nmu_rx=%0d nsu_rx=%0d",
             CREDIT_DEPTH, CREDIT_DEPTH, CREDIT_DEPTH);
-        master = new(vip);
-        scoreboard = new(vip);
+        master = new(null);
         if (!$value$plusargs("stim_dir=%s", stim_dir)) $fatal(1, "Missing stim_dir");
         master.read_fd = $fopen({stim_dir, "/read.txt"}, "r");
         master.write_fd = $fopen({stim_dir, "/write.txt"}, "r");
@@ -884,7 +651,7 @@ module tb_top #(
         source_response_delay = $test$plusargs("source_response_delay");
         void'($value$plusargs("source_response_hold_cycles=%d", source_response_hold_cycles));
         if (init_phase) begin
-            init_master = new(vip);
+            init_master = new(null);
             init_master.write_fd = $fopen({stim_dir, "/init_write.txt"}, "r");
             if (!init_master.write_fd) $fatal(1, "Missing initialization writes");
             init_master.parse_write();
@@ -893,7 +660,7 @@ module tb_top #(
             expected_writes += init_master.num_writes;
         end
         if (readback) begin
-            verify_master = new(vip);
+            verify_master = new(null);
             verify_master.read_fd = $fopen({stim_dir, "/verify_read.txt"}, "r");
             if (!verify_master.read_fd) $fatal(1, "Missing verification reads");
             verify_master.parse_read();
@@ -902,36 +669,66 @@ module tb_top #(
             expected_reads += verify_master.num_reads;
             expect_reads(verify_master);
         end
-        if ($test$plusargs("preload")) scoreboard.preload({stim_dir, "/preload.mem"});
         if (expected_writes == 0 && expected_reads == 0)
             $fatal(1, "Empty memory test");
+        begin
+            ni_pattern_sequence seq;
+            tvip_axi_configuration cfg;
+            uvm_config_db #(int)::set(null, "uvm_test_top.env.*", "clock_period_ps", AXI_CLK_PERIOD_PS);
+            cfg = tvip_axi_configuration::type_id::create("source_cfg");
+            cfg.vif = source_axi;
+            cfg.awuser_width = AXI_AWUSER_WIDTH;
+            if (!cfg.randomize() with {
+                id_width == INPUT_ID_WIDTH; address_width == AXI_ADDR_WIDTH;
+                data_width == AXI_DATA_WIDTH; max_burst_length == 256;
+                default_bready == !(source_response_delay || source_response_hold_cycles != 0 || reset_recovery);
+                default_rready == !(source_response_delay || source_response_hold_cycles != 0 || reset_recovery);
+                bready_delay.min_delay == (source_response_delay ? SOURCE_RESPONSE_DELAY_CYCLES : 0);
+                bready_delay.max_delay == (source_response_delay ? SOURCE_RESPONSE_DELAY_CYCLES : 0);
+                rready_delay.min_delay == (source_response_delay ? SOURCE_RESPONSE_DELAY_CYCLES : 0);
+                rready_delay.max_delay == (source_response_delay ? SOURCE_RESPONSE_DELAY_CYCLES : 0);
+            }) $fatal(1, "Source VIP configuration failed");
+            uvm_config_db #(tvip_axi_configuration)::set(null, "uvm_test_top.env", "source_cfg", cfg);
+            seq = new("requests");
+            load_sequence(master, seq);
+            seq.concurrent_rw = concurrent_rw;
+            seq.first_response_delay = source_response_hold_cycles;
+            uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "sequence1", seq);
+            if (reset_recovery) begin
+                seq = new("warmup");
+                load_sequence(master, seq);
+                seq.concurrent_rw = 1;
+                // Keep warmup responses pending until reset aborts the sequence.
+                seq.first_response_delay = 100000;
+                uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "warmup", seq);
+            end
+            if (init_phase) begin
+                seq = new("initialization");
+                load_sequence(init_master, seq);
+                uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "sequence0", seq);
+            end
+            if (readback) begin
+                seq = new("readback");
+                load_sequence(verify_master, seq);
+                uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "sequence2", seq);
+            end
+        end
+        fork
+            run_test("ni_test");
+        join_none
         repeat (5) @(negedge clk);
         rst_n = 1;
         wait (axi_rst_n && noc_rst_n);
         @(posedge clk);
-        start_scoreboard();
+        if (!uvm_config_db #(ni_scoreboard)::get(null, "", "ni_scoreboard", scoreboard))
+            $fatal(1, "Missing UVM scoreboard");
+        stimulus_start.trigger();
         if (reset_recovery) run_reset_recovery(stim_dir);
-        if (init_phase) begin
-            fork init_master.run_aw(); init_master.run_w(); init_master.wait_b(); join
-        end
-        if (concurrent_rw) begin
-            concurrent_active = 1'b1;
-            master.run();
-            concurrent_active = 1'b0;
-        end else begin
-            if (expected_writes != 0) begin
-                start_response_hold(0);
-                fork master.run_aw(); master.run_w(); receive_b(); join
-            end
-            if (expected_reads != 0) begin
-                start_response_hold(1);
-                fork master.run_ar(); receive_r(); join
-            end
-        end
-        if (readback) begin
-            fork verify_master.run_ar(); verify_master.wait_r(); join
-        end
+        concurrent_active = concurrent_rw;
+        stimulus_done.wait_on();
+        concurrent_active = 0;
         repeat (10) @(posedge clk);
+        checked_bytes = scoreboard.checked_bytes;
         if (b_count != expected_writes || r_count != expected_reads ||
             r_beats != expected_beats || (expected_reads != 0 && checked_bytes == 0))
             $fatal(1, "Transaction count mismatch B=%0d/%0d R=%0d/%0d beats=%0d/%0d",
@@ -960,16 +757,16 @@ module tb_top #(
         if (concurrent_rw && (overlap_cnt == 0 || w_during_read_cnt == 0 || r_during_write_cnt == 0))
             $fatal(1, "Read/write concurrency was not exercised");
         check_test_conditions();
-        if (!ordering_done) $fatal(1, "AXI ordering checker has pending transactions");
+        if (!scoreboard.drained()) $fatal(1, "AXI ordering checker has pending transactions");
         $display("AXI_ORDERING_CHECK_DRAINED");
         $display("RESPONSE_CHECK expected=%0d writes=%0d read_beats=%0d", response_error, b_count, r_beats);
-        scoreboard.reset();
+
         $display("NMU_COSIM_COUNTS writes=%0d reads=%0d r_beats=%0d checked_bytes=%0d",
             b_count, r_count, r_beats, checked_bytes);
 `ifndef TB_DIRECT_LINK
         cmodel_finalize();
 `endif
-        $finish;
+        checks_done.trigger();
     end
     initial begin
         repeat (100000) @(posedge clk);
@@ -998,14 +795,6 @@ module tb_top #(
                 vip.r_last !== (read_beat[vip.r_id] == int'(request.ax_len)))
                 $fatal(1, "Invalid RRESP/RLAST");
             address = request.ax_addr + AXI_ADDR_WIDTH'(read_beat[vip.r_id] << request.ax_size);
-            for (int byte_idx = 0; byte_idx < (1 << request.ax_size); byte_idx++) begin
-                lane = int'(address % (AXI_DATA_WIDTH/8)) + byte_idx;
-                scoreboard.get_byte(address + AXI_ADDR_WIDTH'(byte_idx), expected_byte);
-                if ($isunknown(expected_byte) || $isunknown(vip.r_data[lane*8 +: 8]))
-                    $fatal(1, "Read comparison contains uninitialized data id=%0d addr=%h lane=%0d expected=%h actual=%h",
-                        vip.r_id, address, lane, expected_byte, vip.r_data[lane*8 +: 8]);
-                checked_bytes++;
-            end
             r_beats++;
             if (vip.r_last) begin
                 void'(expected_ar[vip.r_id].pop_front());
@@ -1022,8 +811,8 @@ module tb_top #(
             if (live_r[id] != 0) unique_r++;
         end
         if (axi_rst_n) begin
-            if (dut_vip.b_valid && !dut_vip.b_ready) b_stall_cnt++;
-            if (dut_vip.r_valid && !dut_vip.r_ready) r_stall_cnt++;
+            if (vip.b_valid && !vip.b_ready) b_stall_cnt++;
+            if (vip.r_valid && !vip.r_ready) r_stall_cnt++;
             if (vip.aw_valid && !vip.aw_ready) aw_stall_cnt++;
             if (vip.ar_valid && !vip.ar_ready) ar_stall_cnt++;
             if ((dut.i_response_path.i_rx_credit_buffer.ctrl_full && !dut.i_response_path.i_rx_vc_arbiter.is_r)) b_full_cnt++;

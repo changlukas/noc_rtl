@@ -8,76 +8,18 @@
         bit reorder;
     } cov_request_t;
     cov_request_t cov_wr_pending[$], cov_rd_pending[$];
-    int cov_wr_live[NUM_IDS] = '{default:0};
-    int cov_rd_live[NUM_IDS] = '{default:0};
 
-    covergroup response_cg with function sample(bit read, logic [1:0] resp);
-        option.per_instance = 1;
-        cp_read: coverpoint read;
-        cp_resp: coverpoint resp {
-            bins okay = {0};
-            bins slverr = {2};
-            bins decerr = {3};
-        }
-        response_type: cross cp_read, cp_resp;
-    endgroup
-    response_cg response_coverage = new();
-    always @(posedge clk) begin
-        if (axi_rst_n) begin
-            if (vip.b_valid && vip.b_ready) response_coverage.sample(0, vip.b_resp);
-            if (vip.r_valid && vip.r_ready) response_coverage.sample(1, vip.r_resp);
-        end
-    end
 
-    covergroup transaction_cg with function sample(
-            bit is_read, bit is_data, int id, int beats, int size, int burst, int dst);
-        option.per_instance = 1;
-        cp_direction: coverpoint is_read { bins write = {0}; bins read = {1}; }
-        cp_traffic: coverpoint is_data { bins control = {0}; bins data = {1}; }
-        cp_id: coverpoint id { bins id[] = {[0:NUM_IDS-1]}; }
-        cp_beats: coverpoint beats {
-            bins single = {1};
-            bins burst[] = {2,3,4,7,8,15,16,31,32,63,64,127,128,255,256};
-        }
-        cp_size: coverpoint size { bins size[] = {[0:$clog2(AXI_DATA_WIDTH/8)]}; }
-        cp_burst: coverpoint burst { bins incr = {1}; }
-        cp_destination: coverpoint dst { bins destination[] = {[0:NUM_NSUS-1]}; }
-        direction_traffic: cross cp_direction, cp_traffic;
-        direction_length: cross cp_direction, cp_beats;
-        direction_destination: cross cp_direction, cp_destination;
-    endgroup
-    transaction_cg transaction_coverage = new();
 
-    mon_aw_chan_t cov_aw_queue[$];
-    mon_w_chan_t cov_w_queue[$];
-    int cov_w_beat = 0;
+
+
+
     bit cov_b_inverted[1 << ni_flit_pkg::ORDERING_TAG_WIDTH] = '{default:0};
     bit cov_r_inverted[1 << ni_flit_pkg::ORDERING_TAG_WIDTH] = '{default:0};
 
-    covergroup write_strobe_cg with function sample(int kind, int lane, int size);
-        option.per_instance = 1;
-        cp_strobe: coverpoint kind { bins zero = {0}; bins partial = {1}; bins full = {2}; }
-        cp_lane: coverpoint lane { bins lane[] = {[0:AXI_DATA_WIDTH/8-1]}; }
-        cp_size: coverpoint size { bins size[] = {[0:$clog2(AXI_DATA_WIDTH/8)]}; }
-        strobe_size: cross cp_strobe, cp_size {
-            ignore_bins byte_partial = binsof(cp_strobe.partial) && binsof(cp_size) intersect {0};
-        }
-    endgroup
-    write_strobe_cg write_strobe_coverage = new();
 
-    covergroup boundary_cg with function sample(bit is_read, bit is_data,
-            bit page_end, bit sam_start, bit sam_end);
-        option.per_instance = 1;
-        cp_direction: coverpoint is_read { bins write = {0}; bins read = {1}; }
-        cp_traffic: coverpoint is_data { bins control = {0}; bins data = {1}; }
-        cp_page_end: coverpoint page_end { bins observed = {1}; }
-        cp_sam_start: coverpoint sam_start { bins observed = {1}; }
-        cp_sam_end: coverpoint sam_end { bins observed = {1}; }
-        page_boundary: cross cp_direction, cp_traffic, cp_page_end;
-        sam_first: cross cp_direction, cp_traffic, cp_sam_start;
-        sam_last: cross cp_direction, cp_traffic, cp_sam_end;
-    endgroup
-    boundary_cg boundary_coverage = new();
+
+
 
     covergroup stress_cg with function sample(bit is_read, bit limit_reuse,
             bit rob_full, bit rob_reuse, bit hol_progress, bit reset_recovered,
@@ -99,17 +41,7 @@
     endgroup
     stress_cg stress_coverage = new();
 
-    covergroup outstanding_cg with function sample(int writes, int reads);
-        option.per_instance = 1;
-        cp_write: coverpoint writes {
-            bins idle = {0}; bins single = {1}; bins multiple = {[2:$]};
-        }
-        cp_read: coverpoint reads {
-            bins idle = {0}; bins single = {1}; bins multiple = {[2:$]};
-        }
-        read_write: cross cp_write, cp_read;
-    endgroup
-    outstanding_cg outstanding_coverage = new();
+
 
     covergroup ordering_cg with function sample(bit is_read, bit same_id, bit other_id);
         option.per_instance = 1;
@@ -140,28 +72,7 @@
     endgroup
     reset_cg reset_coverage = new();
 
-    function automatic void cov_address(input bit is_read, input mon_addr_t addr,
-            input int id, input int len, input int size, input int burst);
-        bit is_data;
-        int destination;
-        is_data = 0;
-        destination = -1;
-        for (int rule = 0; rule < topology_pkg::SAM_NUM_RULES; rule++) begin
-            if (addr >= topology_pkg::SAM[rule].start_addr &&
-                    addr < topology_pkg::SAM[rule].end_addr) begin
-                is_data = topology_pkg::SAM[rule].idx.is_data;
-                boundary_coverage.sample(is_read, is_data,
-                    ((addr + ((len+1) << size)) % 4096) == 0,
-                    addr == topology_pkg::SAM[rule].start_addr,
-                    addr + ((len+1) << size) == topology_pkg::SAM[rule].end_addr);
-                for (int n = 0; n < NUM_NSUS; n++)
-                    if (topology_pkg::SAM[rule].idx.dst_id == nsu_id(n+1)) destination = n;
-                break;
-            end
-        end
-        if (destination < 0) $fatal(1, "Coverage monitor cannot decode destination");
-        transaction_coverage.sample(is_read, is_data, id, len+1, size, burst, destination);
-    endfunction
+
 
     // Identity tracking is needed to sample actual arrival inversions.
     task automatic cov_response(input bit is_read, input int id, input int tag,
@@ -203,71 +114,6 @@
             else cov_b_inverted[tag] = 1;
         end
     endtask
-
-    always @(posedge clk) begin : sample_ni_coverage
-        int wr_total, rd_total;
-        mon_aw_chan_t aw;
-        mon_w_chan_t w;
-        mon_strb_t mask;
-        int lo, hi;
-        if (!axi_rst_n) begin
-            cov_aw_queue.delete();
-            cov_w_queue.delete();
-            cov_w_beat = 0;
-            foreach (cov_wr_live[id]) begin
-                cov_wr_live[id] = 0;
-                cov_rd_live[id] = 0;
-            end
-        end else begin
-            if (vip.aw_valid && vip.aw_ready) begin
-                cov_address(0, vip.aw_addr, int'(vip.aw_id), int'(vip.aw_len),
-                    int'(vip.aw_size), int'(vip.aw_burst));
-                cov_wr_live[vip.aw_id]++;
-                cov_aw_queue.push_back(mon_mst_raw.aw);
-            end
-            if (vip.ar_valid && vip.ar_ready) begin
-                cov_address(1, vip.ar_addr, int'(vip.ar_id), int'(vip.ar_len),
-                    int'(vip.ar_size), int'(vip.ar_burst));
-                cov_rd_live[vip.ar_id]++;
-            end
-            if (vip.w_valid && vip.w_ready) begin
-                cov_w_queue.push_back(mon_mst_raw.w);
-            end
-            // AW and W are independent; pair accepted beats in AXI write order.
-            while (cov_aw_queue.size() != 0 && cov_w_queue.size() != 0) begin
-                aw = cov_aw_queue[0];
-                w = cov_w_queue.pop_front();
-                lo = axi_pkg::beat_lower_byte(aw.addr, aw.size, aw.len, aw.burst,
-                    AXI_DATA_WIDTH/8, cov_w_beat);
-                hi = axi_pkg::beat_upper_byte(aw.addr, aw.size, aw.len, aw.burst,
-                    AXI_DATA_WIDTH/8, cov_w_beat);
-                mask = '0;
-                for (int lane = lo; lane <= hi; lane++) mask[lane] = 1;
-                write_strobe_coverage.sample(w.strb == 0 ? 0 : w.strb == mask ? 2 : 1,
-                    lo, int'(aw.size));
-                if (w.last) begin
-                    void'(cov_aw_queue.pop_front());
-                    cov_w_beat = 0;
-                end else cov_w_beat++;
-            end
-            if (vip.b_valid && vip.b_ready) begin
-                cov_wr_live[vip.b_id]--;
-            end
-            if (vip.r_valid && vip.r_ready) begin
-                if (vip.r_last) begin
-                    cov_rd_live[vip.r_id]--;
-                end
-            end
-            wr_total = 0;
-            rd_total = 0;
-            foreach (cov_wr_live[id]) begin
-                wr_total += cov_wr_live[id];
-                rd_total += cov_rd_live[id];
-            end
-            outstanding_coverage.sample(wr_total, rd_total);
-
-        end
-    end
 
     always @(posedge noc_clk) begin : sample_noc_coverage
         cov_request_t request;
@@ -327,8 +173,7 @@
     end
 
     final begin
-        if (cov_wr_pending.size() != 0 || cov_rd_pending.size() != 0 ||
-                cov_aw_queue.size() != 0 || cov_w_queue.size() != 0)
+        if (cov_wr_pending.size() != 0 || cov_rd_pending.size() != 0)
             $error("Coverage monitor has pending ordering records");
     end
     `undef COV_ORDER

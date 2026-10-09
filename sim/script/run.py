@@ -73,18 +73,22 @@ log = r.stdout.decode(errors="replace")
 log_path = report / (a.case + ("_corrupt" if a.corrupt else "") + ".log")
 diagnostics = re.sub(r"Warning: [^\n]*\nMacro 'FFARN' is deprecated\. Use 'FF' instead\.\n", "", log)
 failed = r.returncode != 0 or bool(re.search(r"(?im)^(?:Warning:|Error:|Fatal:)|\b(?:mismatch|does not match|Assertion failed)\b", diagnostics))
+failed |= bool(re.search(r"(?m)^UVM_(?:ERROR|FATAL)(?!\s*:)|^UVM_(?:ERROR|FATAL)\s*:\s*[1-9]", diagnostics))
 if a.wave:
     wave_file = report / (a.case + ".fsdb")
     failed |= (not re.search(r"\*Verdi\*.*Create FSDB file", log) or
                not wave_file.is_file() or wave_file.stat().st_size == 0)
 passed = "NMU_COSIM_COUNTS" in log and "AXI_ORDERING_CHECK_DRAINED" in log and not failed
 if a.corrupt:
-    errors = re.findall(r"(?m)^Error: [^\n]*\n([^\n]*)", log)
+    errors = re.findall(r"(?m)^UVM_ERROR .*?\[([^]]+)\] ([^\n]*)", log)
     fatals = re.findall(r"(?m)^Fatal: [^\n]*\n([^\n]*)", log)
     passed = (r.returncode in (0, 1) and "Unexpected RData" in log and
-              bool(errors) and all(message == "R mismatch" for message in errors) and
-              all(message == "AXI ordering checker has pending transactions" for message in fatals) and
-              "i_ordering_checker" in log)
+              {code for code, _ in errors} == {"AXI_ORDER", "AXI_DATA"} and
+              all((code == "AXI_ORDER" and message == "R mismatch") or
+                  (code == "AXI_DATA" and message.startswith("Unexpected RData")) for code, message in errors) and
+              not re.search(r"(?m)^UVM_FATAL(?!\s*:)|^Error:", log) and
+              all(message == "AXI ordering checker has pending transactions" for message in fatals))
+
 if passed:
     log += "NMU_COSIM_CORRUPTION_DETECTED\n" if a.corrupt else "NMU_COSIM_PASS\n"
 log_path.write_text(log)

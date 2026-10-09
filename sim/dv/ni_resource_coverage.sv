@@ -32,31 +32,6 @@ module ni_fifo_coverage (
 
 endmodule
 
-module ni_credit_coverage (
-    input wire clk_i,
-    input wire rst_n_i,
-    input wire credit_left_i,
-    input wire give_i,
-    input wire take_i
-);
-    covergroup credit_cg with function sample(bit available, bit give, bit take);
-        option.per_instance = 1;
-        cp_available: coverpoint available { bins zero = {0}; bins nonzero = {1}; }
-        cp_give: coverpoint give { bins idle = {0}; bins returned = {1}; }
-        cp_take: coverpoint take { bins idle = {0}; bins sent = {1}; }
-        credit_return_send: cross cp_available, cp_give, cp_take {
-            // Taking with neither stored nor returned credit is prohibited by the cell assertion.
-            ignore_bins no_credit_send = binsof(cp_available.zero) &&
-                binsof(cp_give.idle) && binsof(cp_take.sent);
-        }
-    endgroup
-    credit_cg credit_coverage = new();
-    always @(posedge clk_i) begin
-        if (rst_n_i) credit_coverage.sample(credit_left_i, give_i, take_i);
-    end
-
-endmodule
-
 bind cc_fifo ni_fifo_coverage i_coverage (
     .clk_i   (clk_i),
     .rst_n_i (rst_ni),
@@ -64,13 +39,6 @@ bind cc_fifo ni_fifo_coverage i_coverage (
     .empty_i (empty_o),
     .push_i  (push_i && !full_o),
     .pop_i   (pop_i && !empty_o)
-);
-bind cc_credit_counter ni_credit_coverage i_coverage (
-    .clk_i         (clk_i),
-    .rst_n_i       (rst_ni),
-    .credit_left_i (credit_left_o),
-    .give_i        (credit_give_i),
-    .take_i        (credit_take_i)
 );
 bind nsu_context_buffer ni_fifo_coverage i_aw_coverage (
     .clk_i   (clk_i),

@@ -5,6 +5,8 @@ virtual class tvip_axi_monitor_base #(
   type  BASE  = uvm_monitor,
   type  ITEM  = uvm_sequence_item
 ) extends tvip_axi_component_base #(BASE);
+  // Local extension: passive beat-level observations for external checkers.
+  uvm_analysis_port #(uvm_sequence_item) transfer_port;
   uvm_analysis_port #(tvip_axi_item)  address_item_port;
   uvm_analysis_port #(tvip_axi_item)  request_item_port;
   uvm_analysis_port #(tvip_axi_item)  response_item_port;
@@ -14,6 +16,7 @@ virtual class tvip_axi_monitor_base #(
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
+    transfer_port = new("transfer_port", this);
     address_item_port   = new("address_item_port" , this);
     request_item_port   = new("request_item_port" , this);
     response_item_port  = new("response_item_port", this);

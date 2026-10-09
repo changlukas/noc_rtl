@@ -23,6 +23,50 @@ make clean
 
 Repository source entry points: `sim/standalone/nmu/`, `sim/standalone/nsu/`, and `sim/`. Run `make prepare` or `make sync` from the repository root to prepare or synchronize all three environments. Shared patterns remain under `sim/test_patterns/`.
 
+## UVM structure
+
+The shared integration/direct-link testbench uses an active Source AXI agent and
+four active Device AXI agents. The agents own all AXI stimulus and responses.
+Monitor analysis ports feed `ni_scoreboard` and per-interface AXI coverage. The scoreboard reuses
+independent memory/history and end-to-end ordering algorithms. Each observation
+contains the clock's channel handshakes, retaining W-before-AW and per-beat R checks.
+The five AXI agents share ACLK. The scoreboard processes same-clock observations
+in source-request, device-request, device-response, source-response order.
+The file-master parser reads existing patterns without driving a bus.
+NoC monitors observe ten unidirectional views of the five bidirectional NI links.
+Internal ROB/FIFO/arbitration observations remain supplemental static coverage/SVA.
+
+```text
+sim/
+|-- tb_top.sv                    Clock/reset, DUT, interfaces, static checks
+|-- uvm/
+|   |-- ni_test_pkg.sv           Package
+|   |-- ni_test.svh              Sequences, reset coordination, end-of-test
+|   |-- ni_env.svh               Agents, scoreboard and coverage connections
+|   |-- ni_axi_monitor.svh       Upstream monitor extension for channel observations
+|   |-- ni_scoreboard.svh        Data and end-to-end ordering checks
+|   |-- ni_data_checker.svh      Existing data checker adapter
+|   |-- ni_axi_coverage.svh      AXI coverage subscriber
+|   |-- ni_noc_if.sv             Passive NoC interface views
+|   |-- ni_noc_monitor.svh       NoC monitor and credit coverage
+|   |-- ni_pattern_sequence.svh  Existing pattern records to upstream items
+|   |-- ni_slave_sequence.svh    Finite response hold through upstream hook
+|   `-- axi_vip_connect.svh      Interface signal-name assignments
+|-- dv/                         Existing checkers and covergroups, VIP self-test
+|-- test_patterns/              Shared input patterns
+|-- profiles/                   Hardware configurations
+|-- script/                     VCS build/run/coverage
+|-- tools/                      Pattern generation and result export
+`-- standalone/                 NMU loopback and direct NMU/NSU environment
+```
+
+Upstream agents, driver, monitors, memory and response scheduling remain under
+`deps/tvip-axi`, `deps/tue` and `deps/tvip-common`, with pinned revisions and licenses.
+UVM completion waits for sequence completion, UVM scoreboard drain and scenario checks.
+The UVM integration regression passed 60/60 runs with R_ROB_EN=1 and NUM_DAT_VC=2.
+Checker self-tests passed 10/10. Deliberate R-data corruption was detected by both
+data and ordering checks. Other hardware configurations are not covered by this run.
+
 ## Coverage
 
 Use the existing commands with `COVERAGE=1`, for example:
@@ -66,7 +110,8 @@ make run COVERAGE=1 CASE=hol_blocking MODE=data
 make run COVERAGE=1 CASE=reset_recovery MODE=control SEED=17
 ```
 
-`BACKPRESSURE=1` selects 64 transactions and a source response hold in the two reorder cases.
+`BACKPRESSURE=1` selects 64 transactions, a source response hold, and Device AW/W/AR ready delays through the upstream VIP.
+Ordinary directed tests configure zero request delay. Native cover properties record stall/recovery at each NSU slave AXI port.
 The same-ID variant first fills 31 of the default 32 response FIFO entries, then
 delays the next destination while later responses arrive. Acceptance requires the
 same inverted transaction to encounter ROB output backpressure in both directions.
@@ -130,7 +175,7 @@ in the manifest. Unlisted files left by previous synchronizations are ignored. R
 hold and Device response hold are independent. Device hold uses a fixed number of
 AXI clocks and does not wait for DUT buffer state.
 
-Source B/R per-beat delay uses upstream delay cells, while the file master retains
-its own response queues. Normal directed cases bypass the delay cells. Generator
-seed is recorded in the manifest. The run record separately records the simulation
-seed, also used for reset timing. Upstream random delay cells use their own LFSR.
+Source B/R per-beat delay uses the upstream UVM master configuration. Normal
+directed cases use zero delay. The AXI file master is used only to parse existing
+pattern files. Generator seed is recorded in the manifest. The run record
+separately records the simulation seed used by UVM randomization and reset timing.

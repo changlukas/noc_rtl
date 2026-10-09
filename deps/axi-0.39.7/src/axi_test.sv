@@ -2097,6 +2097,11 @@ package axi_test;
       end
     endtask : handle_write_resp
 
+    // Local adaptation: UVM consumers override reporting without duplicating comparison logic.
+    virtual function void report_read_error(string message);
+      $warning("%s", message);
+    endfunction
+
     /// Handle read checking against the golden model
     protected task automatic handle_read(input axi_id_t id);
       ax_beat_t  ar_beat;
@@ -2139,13 +2144,13 @@ package axi_test;
               if (exp_data.size() > 0) begin
                 tst_data  = exp_data.find with (item === 8'hxx || item === act_data);
                 assert (tst_data.size() > 0) else begin
-                  $warning("Unexpected RData ID: %0h \n \
+                  report_read_error($sformatf("Unexpected RData ID: %0h \n \
                             Addr:     %h \n \
                             Byte Idx: %h \n \
                             Exp Data: %s \n \
                             Act Data: %h \n \
                             BeatData: %h",
-                  r_beat.r_id, beat_address+j, idx_data, $sformatf("%p", exp_data), act_data, r_beat.r_data);
+                  r_beat.r_id, beat_address+j, idx_data, $sformatf("%p", exp_data), act_data, r_beat.r_data));
                 end
               end
             end
@@ -2420,7 +2425,8 @@ package axi_test;
       ) axi
     );
       this.drv = new(axi);
-      this.reset();
+      // Local: permit parser-only use by the UVM pattern sequence.
+      if (axi != null) this.reset();
     endfunction
 
     function void reset();

@@ -8,7 +8,7 @@ import subprocess
 build = Path("build/ordering_checker").resolve()
 build.mkdir(parents=True, exist_ok=True)
 binary = build / "simv"
-subprocess.run([os.environ.get("VCS", "vcs"), "-full64", "-sverilog", "-assert", "svaext",
+subprocess.run([os.environ.get("VCS", "vcs"), "-full64", "-sverilog", "-ntb_opts", "uvm-1.2", "-lca", "-assert", "svaext",
                 "-override_timescale=1ns/1ps", "-f", "files.f", "repo/sim/dv/tb_axi_reorder_compare.sv",
                 "-top", "tb_axi_reorder_compare", "-Mdir=" + str(build / "csrc"),
                 "-o", str(binary), "-l", str(build / "compile.log")], check=True)

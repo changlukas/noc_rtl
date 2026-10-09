@@ -5,6 +5,7 @@ import csv
 import json
 import itertools
 import re
+import yaml
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -52,10 +53,11 @@ def coverage_bins(text, report, test_runs=None):
             domains = {}
         if line.startswith("Group Instance : "):
             instance = line.split(" : ", 1)[1].strip()
+            domains = {}
         if line.startswith("Summary for Variable ") or line.startswith("Summary for Cross "):
             point = line.split(" ", 3)[3].strip()
             table = False
-        fields = line.split()
+        fields = re.findall(r"\[[^\]]*\]|\S+", line)
         if "COUNT" in fields and "AT" in fields and "LEAST" in fields:
             table = True
             count_index = fields.index("COUNT")
@@ -65,13 +67,17 @@ def coverage_bins(text, report, test_runs=None):
             table = False
         if not (instance and point and table and len(fields) >= 3):
             continue
-        if "*" in fields[:count_index] and fields[count_index:count_index+2] == ["--", "--"]:
-            options = [domains[axis] if value == "*" else [value] for axis,value in zip(axes,fields)]
+        if any(value == "*" or value.startswith("[") for value in fields[:count_index]):
+            options = [domains[axis] if value == "*" else
+                       [v.strip() for v in value[1:-1].split(",")] if value.startswith("[") else
+                       [value] for axis, value in zip(axes, fields)]
             combinations = list(itertools.product(*options))
             if len(combinations) != int(fields[-1]):
                 raise ValueError("Native compact cross bin count mismatch")
             for values in combinations:
-                result.append([report, group, instance, point, " / ".join(values), None, None, "Uncovered"] + ([""] if test_runs is not None else []))
+                count = int(fields[count_index]) if fields[count_index].isdigit() else None
+                goal = int(fields[count_index+1]) if fields[count_index+1].isdigit() else None
+                result.append([report, group, instance, point, " / ".join(values), count, goal, "Uncovered"] + ([""] if test_runs is not None else []))
             continue
         if len(fields) > count_index + 1 and fields[count_index].isdigit() and fields[count_index+1].isdigit():
             count, goal = int(fields[count_index]), int(fields[count_index+1])
@@ -129,6 +135,10 @@ def export(campaign, out, data_dir=None):
         match = re.search(r"/(P[0-9]{2})_", schedule["stim_dir"])
         if not match:
             raise ValueError("Pattern ID missing: " + run_id)
+        record = json.loads((ROOT / run["run_record"]).read_text())
+        profile = yaml.safe_load(record["profile"])
+        run["configuration"] = "R_ROB_EN={}, NUM_DAT_VC={}".format(
+            profile.get("r_rob_en", "not recorded"), profile.get("num_dat_vc", "not recorded"))
         run["pattern_id"] = match[1]
         run["stimulus_conditions"] = stimulus_settings(schedule)
         run_summary.append([run_id,run["pattern_id"],run["case"],run["config"],run["run_result"],int(run["cycles"]),run["stimulus_conditions"],run["run_record"]])
@@ -144,13 +154,10 @@ def export(campaign, out, data_dir=None):
             targets=TARGETS[item][1]
             if item == "P09" and r["direction"] == "read":
                 targets="transaction_cg.cp_size (read lane coverage not implemented)"
-            applicable=config
+            applicable=run["configuration"]
             if item in ("P17", "P18") and r["direction"] == "read":
                 if r["config"].startswith("r0_"):
-                    applicable = "R_ROB_EN=0; NUM_DAT_VC=1/2; default depths"
                     targets = "ordering_cg; outstanding_cg (read ordering without read reorder storage)"
-                else:
-                    applicable = "R_ROB_EN=1; NUM_DAT_VC=1/2; default depths"
             matrix.append([TARGETS[item][0],item,applicable]+fields+[int(r["run_seed"]),r["boundary"],run["stimulus_conditions"],targets,"size × lane: not implemented" if item=="P09" else "",r["config"]])
     report=campaign+"/functional_fresh"
     report_dir = ROOT / "build" / campaign / "evidence/reports/functional_fresh"

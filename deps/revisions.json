@@ -21,7 +21,8 @@
     "name": "axi-0.39.7",
     "source_repository": "https://github.com/changlukas/noc_project.git",
     "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
-    "source_path": "sim/dv/axi-0.39.7"
+    "source_path": "sim/dv/axi-0.39.7",
+    "local_changes": "Parser supports null interface; scoreboard read-error reporting hook for UVM adapter"
   },
   {
     "name": "common_cells-1.37.0",
@@ -39,13 +40,14 @@
     "name": "floonoc-dv",
     "url": "https://github.com/pulp-platform/FlooNoC.git",
     "revision": "6ea0648407e7d989b7ec3a1ce6eaa2045b7cd114",
-    "source_path": "hw/test/axi_reorder_compare.sv"
+    "source_path": "hw/test/axi_reorder_compare.sv",
+    "local_changes": "Region-aware matching, W-before-AW, ID mapping, reset flush, active byte lanes; shared transaction-driven class core and SV sampling wrapper"
   },
   {
     "name": "tvip-axi",
     "url": "https://github.com/taichi-ishitani/tvip-axi.git",
     "revision": "955ca0f1be5265614859e7e187a6e93f41523361",
-    "local_changes": "AWUSER, AxREGION and AxLOCK transport and sampling; sample delay forwarding"
+    "local_changes": "AWUSER, AxREGION and AxLOCK transport and sampling; sample delay forwarding; passive monitor extension analysis port"
   },
   {
     "name": "tue",

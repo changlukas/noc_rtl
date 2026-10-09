@@ -9,6 +9,8 @@ virtual class tvip_axi_agent_base #(
   .CONFIGURATION  (tvip_axi_configuration ),
   .STATUS         (tvip_axi_status        )
 );
+  // Local extension: passive beat-level observations for external checkers.
+  uvm_analysis_port #(uvm_sequence_item) transfer_port;
   uvm_analysis_port #(tvip_axi_item)  item_port;
   SEQUENCER                           sequencer;
 
@@ -18,6 +20,7 @@ virtual class tvip_axi_agent_base #(
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
+    transfer_port = new("transfer_port", this);
 
     item_port = new("item_port", this);
     if (is_active_agent()) begin
@@ -41,6 +44,7 @@ virtual class tvip_axi_agent_base #(
     super.connect_phase(phase);
 
     write_monitor.item_port.connect(item_port);
+    write_monitor.transfer_port.connect(transfer_port);
     if (is_active_agent()) begin
       write_monitor.address_item_port.connect(sequencer.address_item_export);
       write_monitor.request_item_port.connect(sequencer.request_item_export);

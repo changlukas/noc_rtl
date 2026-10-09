@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Directed stress uses the existing file master and checkers.
+// Stress observations and reset checks share the integration interfaces.
     `define STRESS_ORDER dut.i_response_path.i_ordering
     bit [1:0] cov_same_id_seen = 0, cov_cross_id_seen = 0;
     bit cov_b_stall_inversion = 0, cov_r_stall_inversion = 0;
@@ -86,17 +86,6 @@
         return -1;
     endfunction
 
-    task automatic start_scoreboard();
-        fork
-            begin
-                scoreboard.enable_all_checks();
-                scoreboard.monitor();
-                wait (!axi_rst_n);
-                disable fork;
-            end
-        join_none
-    endtask
-
     task automatic start_response_hold(input bit is_read);
         if (response_hold_cycles != 0) begin
             if (is_read) block_r = 1;
@@ -113,30 +102,16 @@
     endtask
 
     task automatic run_reset_recovery(input string directory);
-        master_t warmup;
         int seed, reset_delay, pending_writes, pending_reads;
-        warmup = new(vip);
-        warmup.read_fd = $fopen({directory, "/read.txt"}, "r");
-        warmup.write_fd = $fopen({directory, "/write.txt"}, "r");
-        warmup.parse_read();
-        warmup.parse_write();
-        $fclose(warmup.read_fd);
-        $fclose(warmup.write_fd);
+        uvm_event reset_begin = uvm_event_pool::get_global("ni_reset_begin");
+        uvm_event reset_done = uvm_event_pool::get_global("ni_reset_done");
         seed = 1;
         void'($value$plusargs("reset_seed=%d", seed));
         void'($urandom(seed));
         reset_delay = $urandom_range(2, 24);
-        fork : reset_traffic
-            begin
-                fork warmup.run_aw(); warmup.run_w(); warmup.run_ar(); join
-                wait (0);
-            end
-            begin
-                wait (peak_w != 0 && peak_r != 0);
-                repeat (reset_delay) @(negedge clk);
-            end
-        join_any
-        disable reset_traffic;
+        wait (peak_w != 0 && peak_r != 0);
+        repeat (reset_delay) @(negedge clk);
+        reset_begin.trigger();
         pending_writes = 0;
         pending_reads = 0;
         foreach (live_w[id]) begin
@@ -148,7 +123,7 @@
         $display("RESET_PENDING time=%0t seed=%0d delay=%0d writes=%0d reads=%0d",
             $time, seed, reset_delay, pending_writes, pending_reads);
         rst_n = 0;
-        warmup.reset();
+
         repeat (5) @(negedge clk);
     `ifndef TB_DIRECT_LINK
         // A fresh model instance flushes the router; the session is finalized only once.
@@ -165,30 +140,20 @@
         peak_w = 0; peak_r = 0; peak_unique_w = 0; peak_unique_r = 0;
         expected_beats = 0;
         expect_reads(master);
-        scoreboard = new(vip);
-        scoreboard.preload({directory, "/preload.mem"});
         rst_n = 1;
         wait (axi_rst_n && noc_rst_n);
-        start_scoreboard();
         // No requests during this interval: any old response is unsolicited.
         fork : stale_check
             begin
-                master_t::b_beat_t b;
-                master.drv.recv_b(b);
-                $fatal(1, "Stale B response after reset");
-            end
-            begin
-                master_t::r_beat_t r;
-                master.drv.recv_r(r);
-                $fatal(1, "Stale R response after reset");
+                wait (vip.b_valid || vip.r_valid);
+                $fatal(1, "Stale response after reset");
             end
             begin
                 repeat (2*IO_FIFO_DEPTH+2*CREDIT_DEPTH) @(negedge clk);
             end
         join_any
         disable stale_check;
-        master.reset();
-        @(posedge clk);
+        reset_done.trigger();
         reset_complete = 1;
     endtask
 

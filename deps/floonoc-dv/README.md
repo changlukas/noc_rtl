@@ -16,3 +16,5 @@ The TB removes NI-local AWUSER metadata from the source monitor view; WUSER/ARUS
 When IDs are remapped, simultaneously reorderable requests must be distinguishable by the remaining AXI header fields. Identical headers across different source IDs are ambiguous at this observation boundary; current generated cases use distinct addresses.
 
 Run `make check_ordering_checker` in the prepared co-simulation directory for the focused positive and negative tests.
+
+The comparison queues and algorithms are shared in `axi_reorder_compare.svh`. The SV module samples interfaces for legacy/self-tests. The UVM scoreboard calls the same core using monitor observations and reports failures through UVM.

@@ -43,8 +43,10 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         raise ValueError("io_fifo_depth must be at least 2 for CDC")
     if profile.get("reg_type", 0) not in (0, 1, 2) or profile.get("r_rob_en", 1) not in (0, 1):
         raise ValueError("invalid register or read ROB mode")
-    source_list = []
+    source_list = ["+incdir+repo/deps/floonoc-dv"]
+    copied = set()
     def copy(source, relative):
+        copied.add(relative)
         target = out / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists() or target.read_bytes() != source.read_bytes():
@@ -68,7 +70,9 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         if Path(relative).name == "topology_pkg.sv":
             source_list.append("topology_pkg.sv")
             continue
-        source = ROOT / relative[5:] if relative.startswith("repo/") else rtl_stage / relative
+        source = ROOT / relative[5:] if relative.startswith("repo/") else ROOT / relative
+        if not source.is_file():
+            source = rtl_stage / relative
         copy(source, relative)
         source_list.append(flag + relative)
     nsu_sources = [ROOT / "deps/common_cells-v2.0.0-beta.3/src" / name
@@ -80,13 +84,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         copy(source, "repo/" + relative)
         source_list.append("repo/" + relative)
     for relative in (f"specgen/generated/sv/noc_types_pkg_vc{vc_count}.sv",
-                     "ref_model/top/router_wrap.sv", "ref_model/top/nsu_wrap.sv",
-                     "deps/common_cells-1.37.0/src/delta_counter.sv",
-                     "deps/common_cells-1.37.0/src/counter.sv",
-                     "deps/common_cells-1.37.0/src/stream_delay.sv",
-                     "deps/common_cells-1.37.0/src/lfsr_16bit.sv",
-                     "deps/axi-0.39.7/src/axi_delayer.sv",
-                     "deps/axi-0.39.7/src/axi_sim_mem.sv",
+                     "ref_model/top/router_wrap.sv",
                      "deps/floonoc-dv/axi_reorder_compare.sv",
                      "sim/tb_top.sv"):
         if direct and relative.startswith("ref_model/top/"):
@@ -122,6 +120,25 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
             copy(path, "repo/" + str(path.relative_to(ROOT)))
     topo = ROOT / "sim/topology.yml"
     (out / "topology_pkg.sv").write_text(emit_sam_pkg(yaml.safe_load(topo.read_text())))
+    (out / "ni_tb_params.svh").write_text(
+        f"localparam int NI_INPUT_ID_WIDTH = {pattern_id_width};\n"
+        f"localparam int NI_MON_ID_WIDTH = {max(pattern_id_width, device_id_width)};\n")
+    uvm_sources = ["+incdir+."]
+    copy(ROOT / "deps/revisions.json", "deps/revisions.json")
+    for dependency in ("tue", "tvip-common", "tvip-axi"):
+        copy(ROOT / "deps" / dependency / "LICENSE", f"deps/{dependency}/LICENSE")
+        for path in (ROOT / "deps" / dependency / "src").rglob("*"):
+            if path.is_file():
+                copy(path, str(path.relative_to(ROOT)))
+        uvm_sources += [f"+incdir+deps/{dependency}/src"]
+        package = {"tue": "tue_pkg.sv", "tvip-common": "tvip_common_pkg.sv", "tvip-axi": "tvip_axi_pkg.sv"}[dependency]
+        uvm_sources.append(f"deps/{dependency}/src/{package}")
+    for path in (ROOT / "sim/uvm").glob("*"):
+        if path.is_file():
+            copy(path, "repo/" + str(path.relative_to(ROOT)))
+    uvm_sources += ["+incdir+repo/deps/floonoc-dv", "+incdir+repo/sim/uvm", "repo/sim/uvm/ni_noc_if.sv", "repo/sim/uvm/ni_test_pkg.sv"]
+    top_index = source_list.index("repo/sim/tb_top.sv")
+    source_list[top_index:top_index] = uvm_sources
     (out / "files.f").write_text("\n".join(source_list) + "\n")
     patterns = (out / "generated_patterns") if profile_path else ROOT / f"sim/test_patterns/cosim/generated/i{pattern_id_width}"
     hardware = dict(response_fifo_depth=profile.get("io_fifo_depth", 32),
@@ -224,6 +241,13 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     retired = out / "repo/rtl/nmu/request_path/id_remap.sv"
     if retired.exists():
         retired.unlink()
+    # Source staging owns repo/ and deps/. Retain generated contracts and build outputs.
+    for directory in ("repo", "deps"):
+        for path in (out / directory).rglob("*"):
+            relative = path.relative_to(out).as_posix()
+            if (path.is_file() and relative not in copied and
+                    not relative.startswith("repo/specgen/generated/")):
+                path.unlink()
     names = [path for path in out.rglob("*") if path.is_file() and
              path.name != "SHA256SUMS" and "build" not in path.relative_to(out).parts]
     (out / "SHA256SUMS").write_text("".join(

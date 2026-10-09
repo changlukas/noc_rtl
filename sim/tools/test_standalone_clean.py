@@ -131,3 +131,29 @@ def test_cosim_clean_preserves_inputs(tmp_path):
     subprocess.run(["bash", str(stage / "clean.sh")], check=True)
     assert all((stage / name).read_text() == name for name in keep)
     assert all(not (stage / name).exists() for name in remove)
+
+
+def test_sync_removes_only_unmodified_retired_sources(tmp_path):
+    import hashlib
+    import importlib.util
+    import json
+    import subprocess
+    import sys
+    script = Path(__file__).with_name("sync_nmu_workstation.py")
+    spec = importlib.util.spec_from_file_location("sync_workstation", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    digest = hashlib.sha256(b"original").hexdigest()
+    (tmp_path / "obsolete.sv").write_bytes(b"original")
+    (tmp_path / "edited.sv").write_bytes(b"user edit")
+    (tmp_path / "wave.fsdb").write_bytes(b"wave")
+    (tmp_path / "SHA256SUMS").write_text(
+        digest + "  obsolete.sv\n" + digest + "  edited.sv\n")
+    result = subprocess.run([sys.executable, "-c", module.REMOTE],
+        input=json.dumps({"root": str(tmp_path), "files": []}),
+        text=True, capture_output=True, check=True)
+    assert not (tmp_path / "obsolete.sv").exists()
+    assert (tmp_path / "edited.sv").read_bytes() == b"user edit"
+    assert (tmp_path / "wave.fsdb").read_bytes() == b"wave"
+    assert '"removed": 1' in result.stdout
+    assert '"retained_modified": ["edited.sv"]' in result.stdout

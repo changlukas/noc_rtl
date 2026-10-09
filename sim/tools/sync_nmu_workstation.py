@@ -16,6 +16,13 @@ payload = json.load(sys.stdin)
 root = os.path.realpath(payload["root"])
 if not os.path.isdir(root):
     os.makedirs(root)
+previous = {}
+manifest = os.path.join(root, "SHA256SUMS")
+if os.path.isfile(manifest):
+    with open(manifest) as stream:
+        for line in stream:
+            digest, name = line.rstrip("\n").split("  ", 1)
+            previous[name] = digest
 updated = 0
 unchanged = 0
 for entry in payload["files"]:
@@ -54,8 +61,26 @@ for entry in payload["files"]:
     with open(os.path.join(root, entry["path"]), "rb") as current:
         if hashlib.sha256(current.read()).hexdigest() != entry["sha256"]:
             raise RuntimeError("readback checksum mismatch: " + entry["path"])
+removed = 0
+retained_modified = []
+current = {entry["path"] for entry in payload["files"]}
+for name, digest in previous.items():
+    if name in current:
+        continue
+    target = os.path.realpath(os.path.join(root, name))
+    if not target.startswith(root + os.sep) or "build" in name.split("/"):
+        raise RuntimeError("retired file escapes source scope: " + name)
+    if os.path.isfile(target):
+        with open(target, "rb") as stream:
+            unchanged_source = hashlib.sha256(stream.read()).hexdigest() == digest
+        if unchanged_source:
+            os.unlink(target)
+            removed += 1
+        else:
+            retained_modified.append(name)
 print("NOC_SYNC_RESULT=" + json.dumps({"root": root, "updated": updated,
-    "unchanged": unchanged, "verified": len(payload["files"])}))
+    "unchanged": unchanged, "verified": len(payload["files"]),
+    "removed": removed, "retained_modified": retained_modified}))
 '''
 
 

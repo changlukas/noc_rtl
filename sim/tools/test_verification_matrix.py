@@ -53,6 +53,54 @@ direction event COUNT AT LEAST NUMBER
         self.assertIsNone(rows[-1][5])
         self.assertEqual(rows[-1][-1],"Uncovered")
 
+    def test_compact_cross_domains_are_per_instance(self):
+        block = """Group Instance : {name}
+Summary for Variable direction
+NAME COUNT AT LEAST
+read 1 1
+write 1 1
+---
+Summary for Variable event
+NAME COUNT AT LEAST NUMBER
+observed 0 1 1
+---
+Summary for Cross combined
+direction event COUNT AT LEAST NUMBER
+* * -- -- 2
+---
+"""
+        text = "Group : top::cg\n" + block.format(name="source") + block.format(name="device")
+        rows = coverage_bins(text, "fresh")
+        self.assertEqual(len(rows), 10)
+        self.assertEqual([r[4] for r in rows if r[2] == "source"],
+                         [r[4] for r in rows if r[2] == "device"])
+
+    def test_element_holes_expand_native_bin_lists(self):
+        text = """Group : top::cg
+Group Instance : cov
+Summary for Variable direction
+NAME COUNT AT LEAST
+read 1 1
+write 1 1
+---
+Summary for Variable length
+NAME COUNT AT LEAST
+short 0 1
+medium 0 1
+long 0 1
+---
+Summary for Cross combined
+direction length COUNT AT LEAST NUMBER
+* [medium , long] -- -- 4
+[read] [short] 0 1 1
+---
+"""
+        rows = coverage_bins(text, "fresh")
+        self.assertEqual(len(rows), 10)
+        self.assertEqual({r[4] for r in rows if r[3] == "combined"},
+                         {"read / medium", "read / long", "write / medium", "write / long", "read / short"})
+        self.assertEqual(rows[-1][5:8], [0, 1, "Uncovered"])
+
     def test_native_test_attribution(self):
         text = """Group : top::cg
 Group Instance : cov

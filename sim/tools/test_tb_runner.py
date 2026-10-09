@@ -58,3 +58,32 @@ def test_stale_optional_files_ignored(tmp_path):
     subprocess.run(command, cwd=tmp_path, check=True, capture_output=True)
     args = json.loads((tmp_path / "args.json").read_text())
     assert not any(flag in args for flag in ("+preload", "+init_phase", "+readback"))
+
+
+def test_uvm_error_cannot_pass_with_completion_markers(tmp_path):
+    _, command = prepare(tmp_path)
+    binary = tmp_path / "simv"
+    with binary.open("a") as stream:
+        stream.write("print('UVM_ERROR vip.svh(1) @ 10: monitor [CHECK] failure')\n")
+    result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode != 0
+
+
+def test_zero_uvm_summary_passes(tmp_path):
+    _, command = prepare(tmp_path)
+    with (tmp_path / "simv").open("a") as stream:
+        stream.write("print('UVM_ERROR : 0\\nUVM_FATAL : 0')\n")
+    subprocess.run(command, cwd=tmp_path, check=True, capture_output=True)
+
+
+def test_corruption_requires_both_checkers(tmp_path):
+    _, command = prepare(tmp_path)
+    with (tmp_path / "simv").open("a") as stream:
+        stream.write("print('UVM_ERROR checker.svh(1) @ 10: checker [AXI_ORDER] R mismatch')\n")
+    assert subprocess.run(command + ["--corrupt"], cwd=tmp_path, capture_output=True).returncode != 0
+    with (tmp_path / "simv").open("a") as stream:
+        stream.write("print('UVM_ERROR checker.svh(2) @ 10: checker [AXI_DATA] Unexpected RData ID: 0')\n")
+    subprocess.run(command + ["--corrupt"], cwd=tmp_path, check=True, capture_output=True)
+    with (tmp_path / "simv").open("a") as stream:
+        stream.write("print('UVM_ERROR checker.svh(3) @ 10: checker [CREDIT] unrelated error')\n")
+    assert subprocess.run(command + ["--corrupt"], cwd=tmp_path, capture_output=True).returncode != 0
