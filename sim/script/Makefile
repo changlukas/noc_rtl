@@ -35,7 +35,7 @@ INPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"AXI_ID_WIDTH\
 OUTPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NOC_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 MAX_OUTSTANDING_PER_ID ?= 32
 WAVE_RC ?= $(ROOT)/signals.rc
-CXX = g++
+CXX ?= g++
 VCS ?= vcs
 VCS_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(command -v $(VCS)))))
 VERDI_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(command -v verdi))))
