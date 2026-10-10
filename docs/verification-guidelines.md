@@ -8,13 +8,13 @@
 | [Verification Report](verification-integration-results.md) | 各 plan item 的證據、未涵蓋項目、原生 coverage 與執行紀錄 |
 | 本文件 | 撰寫、取樣、證據維護與驗收規則 |
 
-本目錄其他 verification 文件為歷史紀錄。現行範圍與結果以上述三份文件為準。Logs、VDB、URG reports、manifests 放在 `build/`，逐筆執行與輸入條件放在 `docs/data/`。
+現行範圍與結果以上述三份文件為準。Logs、VDB、URG reports、執行清單與生成的 input patterns 放在所選 simulation stage，交付結果保留一份 Excel 與原生 report。歷史開發紀錄不放在 release source。
 
-Plan 使用 Feature → Sub-feature → Item。每項分列 Feature Description、Verification Goals、Pass/Fail Criteria、Test Type、Coverage Method、Applicable Configurations、Link to Coverage。Test Conditions 獨立列出。Report 使用相同 Item ID 對照證據與限制。功能定義須核對協定、核准規格與 RTL，參考資料不取代專案的支援範圍。
+Plan 先列 Feature Description 與 Verification Goals，再列 Coverage Traceability、coverage model 與 input pattern matrix。Stimulus 與 hardware parameters 分欄。Report 使用 P01–P22 對照執行紀錄。功能定義須核對協定、核准規格與 RTL，參考資料不取代專案的支援範圍。
 
 ## 功能分類與用語
 
-NI Functions 分為 Address Decoding / Translation、Packetization / Depacketization、ID Mapping、Response Reordering。Ready/valid、credit、容量限制、arbitration、CDC 與 reset 放在 Architecture and Interface Requirements。測試條件不列為功能。
+NI Functions 分為 Address Decoding / Translation、Packetization / Depacketization、ID Mapping、Outstanding Transactions、Response Reordering。Ready/valid、credit、容量限制、arbitration、CDC 與 reset 放在 Architecture and Interface Requirements。測試條件不列為功能。
 
 | 用語 | 定義／撰寫重點 |
 |---|---|
@@ -76,13 +76,13 @@ Address-derived destination 只代表預期 routing。要證明實際 destinatio
 
 ## 文件與 coverage model 對齊
 
-1. Plan 的 Link to Coverage 與 Coverage Source Index 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「未實作」，不得填預期存在的物件。是否需要新增，由功能目標與現有證據決定。
+1. Plan 的 Coverage Traceability 與 coverage source list 填實際檔案、covergroup／coverpoint／cross 或 assertion 名稱。尚未實作填「未實作」，不得填預期存在的物件。是否需要新增，由功能目標與現有證據決定。
 2. 對照 sample code，確認訊號來源、clock、reset、bin 範圍、ignore bins 與 cross。列出外部與內部觀察的差異。
 3. Report 使用相同 Item ID，記錄已驗證條件與剩餘範圍。區分 case PASS、coverage hit、checker self-test 與 input records。
 4. 每次 coverage model 修改後，重新核對 model version 與 VDB 來源。不同模型分母不得直接比較。URG merge 無 warning 仍須人工確認語意一致。
 5. Git 保存 plan、model、checker 版本。每筆 run 另保留 build manifest 與 stimulus digest，不能把歷史 runs 全部標成目前 HEAD。
 
-以上是 review 流程。目前沒有自動證明 requirement 完整性或文件語意一致的工具。本輪核對紀錄見 report，尚未實作的 interface coverage 保留為缺口。
+文件 review 核對 coverage source 與原生 report，不以 coverage 百分比推定 requirement 已完整列出。
 
 ## Coverage closure 與驗收
 

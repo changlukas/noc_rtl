@@ -10,7 +10,7 @@ not router RTL.
 |---|---|
 | `rtl/` | NMU, NSU and shared RTL |
 | `specgen/` | Signal/packet definitions and SV/C++ generation |
-| `ref_model/` | C++ router and DPI support |
+| `ref_model/` | C++ reference models and router DPI support |
 | `deps/` | Vendored dependencies, licenses and pinned revisions |
 | `sim/` | UVM testbench, pattern generation and simulation commands |
 | `docs/` | Verification plan, guidelines and accepted results |
