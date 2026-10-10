@@ -16,7 +16,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
     parser.add_argument("--profile")
-    parser.add_argument("--capacity", choices=("per_id", "context", "rob"))
+    parser.add_argument("--capacity", choices=("all", "per_id", "context", "rob"), default="all",
+                        help="Prepare the full matrix by default, or only one capacity test")
     args = parser.parse_args()
     out = Path(args.out).resolve()
     prepare(ROOT / "sim/standalone/nmu/output/i8_n5_b128_r1/stage", out, args.profile)
@@ -35,7 +36,13 @@ def main():
             add_run(item, variant, mode, seed)
 
     def add_run(item, case, mode="auto", seed=1):
-        tag = item + "_" + mode + "_s" + str(seed) + "_" + str(len(rows))
+        index = len(rows)
+        suffix = ""
+        if args.capacity == "all" and case["name"] == "capacity_reuse":
+            target = case["capacity_target"]
+            index = sum(row["case"] == "capacity_reuse" and row["target"] == target for row in rows)
+            suffix = "_" + target
+        tag = item + "_" + mode + "_s" + str(seed) + "_" + str(index) + suffix
         directory = out / "verification" / tag
         directory.mkdir(parents=True, exist_ok=True)
         catalog = directory / "cases.json"
@@ -50,7 +57,7 @@ def main():
                          **metadata(item),
                          cwd=str(directory.relative_to(out)), target=case.get("capacity_target", "per_id")))
 
-    if args.capacity:
+    if args.capacity != "all":
         case = dict(name="capacity_reuse", count=320, burst_beats=1, ids="multiple",
                     sequence="capacity_reuse", capacity_target=args.capacity,
                     response_hold_cycles=4096)
@@ -101,6 +108,13 @@ def main():
         for seed in (1, 17, 29):
             add("P22", dict(name="reset_recovery", count=8, burst_beats=4, ids="multiple",
                            destinations="alternate", sequence="reset_recovery"), seed=seed)
+    if args.capacity == "all":
+        for target, item in (("per_id", "P14"), ("context", "P15"), ("rob", "P18")):
+            case = dict(name="capacity_reuse", count=320, burst_beats=1, ids="multiple",
+                        sequence="capacity_reuse", capacity_target=target,
+                        response_hold_cycles=4096)
+            for mode in ("control", "data"):
+                add(item, case, mode)
     shutil.copyfile(ROOT / "sim/script/run_verification.py", out / "run_verification.py")
     (out / "verification-runs.json").write_text(json.dumps(rows, indent=2) + "\n")
     files = sorted(p for p in out.rglob("*") if p.is_file() and p.name != "SHA256SUMS" and "build" not in p.relative_to(out).parts)
