@@ -1,7 +1,29 @@
 import unittest
-from verification_matrix import coverage_bins, TARGETS, metadata, stimulus_settings
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from verification_matrix import coverage_bins, TARGETS, metadata, stimulus_settings, export
 
 class MatrixExportTest(unittest.TestCase):
+    def test_export_rejects_incomplete_results(self):
+        with TemporaryDirectory() as directory:
+            stage = Path(directory)
+            (stage / "verification_results").mkdir()
+            (stage / "verification-runs.json").write_text(json.dumps([{"tag": "P01"}]))
+            (stage / "verification_results/results.json").write_text("[]")
+            with self.assertRaisesRegex(ValueError, "results do not match"):
+                export(stage, stage / "matrix.json")
+            self.assertFalse((stage / "matrix.json").exists())
+
+    def test_export_rejects_duplicate_run_tags(self):
+        with TemporaryDirectory() as directory:
+            stage = Path(directory)
+            (stage / "verification_results").mkdir()
+            (stage / "verification-runs.json").write_text(json.dumps([{"tag": "P01"}] * 2))
+            (stage / "verification_results/results.json").write_text("[]")
+            with self.assertRaisesRegex(ValueError, "Duplicate run tag"):
+                export(stage, stage / "matrix.json")
+
     def test_all_pattern_ids(self):
         self.assertEqual(set(TARGETS), {f"P{i:02d}" for i in range(1,23)})
         self.assertIn("write_strobe_cg",metadata("P09")["coverage_targets"])

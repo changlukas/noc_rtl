@@ -1,6 +1,6 @@
 # NI simulation
 
-The default environment is Source AXI ? NMU RTL ? C++ router ? four NSU RTL ?
+The default environment is Source AXI -> NMU RTL -> C++ router -> four NSU RTL ->
 Device AXI memories. One active master and four active slave UVM agents drive AXI.
 Their monitor analysis ports feed the scoreboard and five AXI coverage subscribers.
 Ten passive NoC views feed credit coverage. Ordering/reset observations and bound
@@ -69,17 +69,27 @@ From the repository root:
 ```sh
 python3 sim/tools/prepare_ni_verification.py --profile sim/profile.yml --out build/sim/stage
 cd build/sim/stage
-make verification
+make verification JOBS=3
 make report
 ```
 
-The default preparation produces 168 runs covering P01?P22, including the six
+The default preparation produces 168 runs covering P01-P22, including the six
 capacity variants. `make regress` runs the default CASE list only and is not this
 expanded matrix. `verification_results/results.json` records results and
 `coverage-tests.txt` selects only successful runs from this invocation for URG.
 Open `build/coverage/dashboard.html`. Code/assertion and functional coverage remain
 separate report metrics. A high group score does not establish every instance bin
 was hit. Existing unhit bins are retained.
+
+For the existing Excel matrix, export its data from the same stage and native report:
+
+```sh
+python3 sim/tools/verification_matrix.py --stage build/sim/stage --out build/sim/matrix.json
+```
+
+Run this command from the repository root after retaining the stage results locally.
+It verifies the run list, stimulus hashes and native test attribution. The JSON is
+an intermediate for the existing workbook, not a second verification report.
 
 ## Hardware profiles
 

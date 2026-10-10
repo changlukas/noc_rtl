@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Export current-campaign stimulus and native coverage for the verification matrix."""
 import argparse
-import csv
+import hashlib
 import json
 import itertools
 import re
 import yaml
+from axi_file_parser import _parse_read, _parse_write
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -121,75 +122,108 @@ def stimulus_settings(schedule):
                     if schedule.get(k) not in (None, "", 0, "0", False))
 
 
-def export(campaign, out, data_dir=None):
-    data_dir = data_dir or ROOT / "docs/data"
-    runs = list(csv.DictReader((data_dir / "verification-runs.csv").open()))
-    runs = {r["run_id"]: r for r in runs if ("build/" + campaign + "/") in r["run_record"]}
-    if not runs:
-        raise ValueError("Campaign has no run records")
-    raw = [r for r in csv.DictReader((data_dir / "verification-transactions.csv").open()) if r["run_id"] in runs]
-    matrix, transactions, run_summary = [], [], []
-    config = "R_ROB_EN=0/1 × NUM_DAT_VC=1/2; default depths"
-    for run_id, run in runs.items():
-        schedule = json.loads(run["schedule"])
-        match = re.search(r"/(P[0-9]{2})_", schedule["stim_dir"])
-        if not match:
-            raise ValueError("Pattern ID missing: " + run_id)
-        record = json.loads((ROOT / run["run_record"]).read_text())
-        profile = yaml.safe_load(record["profile"])
-        run["configuration"] = "R_ROB_EN={}, NUM_DAT_VC={}".format(
-            profile.get("r_rob_en", "not recorded"), profile.get("num_dat_vc", "not recorded"))
-        run["pattern_id"] = match[1]
-        run["stimulus_conditions"] = stimulus_settings(schedule)
-        run_summary.append([run_id,run["pattern_id"],run["case"],run["config"],run["run_result"],int(run["cycles"]),run["stimulus_conditions"],run["run_record"]])
-    for r in raw:
-        run = runs[r["run_id"]]
-        size = int(r["bytes_per_beat"]).bit_length()-1
-        fields = [r["run_id"],r["phase"],int(r["transaction_index"]),r["direction"],r["traffic"],int(r["axi_id"]),r["address"],int(r["beats"]),int(r["bytes_per_beat"]),size,int(r["burst"]),r["wstrb"],int(r["start_lane"]),r["destination"]]
-        transactions.append(fields+[r["pattern_file"],r["pattern_sha256"]])
-        items = [run["pattern_id"]]
-        if items[0] in ("P05","P06","P07","P08") and r["boundary"] not in ("", "interior"):
-            items.append("P11")
-        for item in items:
-            targets=TARGETS[item][1]
-            if item == "P09" and r["direction"] == "read":
-                targets="transaction_cg.cp_size (read lane coverage not implemented)"
-            applicable=run["configuration"]
-            if item in ("P17", "P18") and r["direction"] == "read":
-                if r["config"].startswith("r0_"):
-                    targets = "ordering_cg; outstanding_cg (read ordering without read reorder storage)"
-            matrix.append([TARGETS[item][0],item,applicable]+fields+[int(r["run_seed"]),r["boundary"],run["stimulus_conditions"],targets,"size × lane: not implemented" if item=="P09" else "",r["config"]])
-    report=campaign+"/functional_fresh"
-    report_dir = ROOT / "build" / campaign / "evidence/reports/functional_fresh"
-    test_runs = None
-    if (report_dir / "tests.txt").exists():
-        names = {}
-        for run_id, run in runs.items():
-            record = json.loads((ROOT / run["run_record"]).read_text())
-            command = record["command"]
-            name = str(Path(record["vdb"]).with_suffix("")) + "/" + command[command.index("-cm_name")+1]
-            if name in names:
-                raise ValueError("Duplicate native test: " + name)
-            names[name] = run_id
-        test_runs = {}
-        for line in (report_dir / "tests.txt").read_text().splitlines():
-            match = re.match(r"(T[0-9]+)\s+(\S+)", line)
-            if match:
-                test_runs[match[1]] = names[match[2]]
-        if set(test_runs.values()) != set(runs):
-            raise ValueError("Native report tests do not match campaign runs")
-    bins = coverage_bins((report_dir / "grpinfo.txt").read_text(), report, test_runs)
-    if set(r[1] for r in matrix)!=set(TARGETS):
+def export(stage, out, report_dir=None):
+    stage = stage.resolve()
+    report_dir = (report_dir or stage / "build/coverage").resolve()
+    runs = json.loads((stage / "verification-runs.json").read_text())
+    results = json.loads((stage / "verification_results/results.json").read_text())
+    if len({r["tag"] for r in runs}) != len(runs):
+        raise ValueError("Duplicate run tag")
+    completed = {r["tag"]: r for r in results}
+    if set(completed) != {r["tag"] for r in runs} or len(results) != len(runs):
+        raise ValueError("Regression results do not match the prepared matrix")
+    topology = yaml.safe_load((stage / "topology.yml").read_text())
+    regions = [(ep["name"], r) for ep in topology["endpoints"]
+               for r in ep.get("addr_range", [])]
+    params = dict(re.findall(r"localparam int NI_(\w+)\s*=\s*(\d+)",
+                            (stage / "ni_tb_params.svh").read_text()))
+    config = "R_ROB_EN={R_ROB_EN}, NUM_DAT_VC={NUM_DAT_VC}".format(**params)
+    data_width = int(re.search(r"AXI_DATA_WIDTH\s*=\s*(\d+)",
+        (stage / "repo/specgen/generated/sv/ni_params_pkg.sv").read_text())[1])
+    matrix, transactions, run_summary, names = [], [], [], {}
+    for number, run in enumerate(runs, 1):
+        tag, case = run["tag"], run["case"]
+        record_file = stage / "verification_results" / tag / (case + ".run.json")
+        record = json.loads(record_file.read_text())
+        if completed[tag]["returncode"] or not record["passed"]:
+            raise ValueError("Failed run: " + tag)
+        run_id = "r{}_vc{}-{:03d}".format(params["R_ROB_EN"], params["NUM_DAT_VC"], number)
+        if record["case"] != case or record["simulation_seed"] != run["seed"] or record["target"] != run["target"]:
+            raise ValueError("Run settings changed after simulation: " + tag)
+        if yaml.safe_load(record["profile"]) != yaml.safe_load((stage / "profile.yml").read_text()):
+            raise ValueError("Run hardware profile differs from stage: " + tag)
+        command = record["command"]
+        native_name = str(Path(record["vdb"]).with_suffix("")) + "/" + command[command.index("-cm_name")+1]
+        if native_name in names:
+            raise ValueError("Duplicate native test: " + native_name)
+        names[native_name] = run_id
+        stim = stage / run["cwd"] / "patterns" / (case + "_" + run["target"] if case == "capacity_reuse" else case)
+        if (stim / "ni_tb_params.svh").read_bytes() != (stage / "ni_tb_params.svh").read_bytes():
+            raise ValueError("Pattern hardware profile differs from stage: " + tag)
+        for filename, digest in record["stimulus_sha256"].items():
+            if hashlib.sha256((stim / filename).read_bytes()).hexdigest() != digest:
+                raise ValueError("Stimulus changed after simulation: " + str(stim / filename))
+        schedule = {}
+        for token in (stim / "schedule.txt").read_text().split():
+            key, _, value = token.lstrip("+").partition("=")
+            schedule[key] = value or True
+        settings = stimulus_settings(schedule)
+        log = record_file.with_name(case + ".log").read_text()
+        cycles = int(re.search(r"CAPACITY_PERF .*?cycles=(\d+)", log)[1])
+        run_summary.append([run_id, run["item"], case, config, "PASS", cycles, settings,
+                            str(record_file.relative_to(stage))])
+        index = 0
+        for filename, direction in (("init_write.txt", "write"), ("write.txt", "write"),
+                                    ("read.txt", "read"), ("verify_read.txt", "read")):
+            file = stim / filename
+            if not file.exists():
+                continue
+            parsed = (_parse_write if direction == "write" else _parse_read)(file)
+            for transaction in parsed:
+                index += 1
+                addr, size = transaction["addr"], transaction["size"]
+                destination, region = next((name, r) for name, r in regions
+                    if int(r["base"]) <= addr < int(r["base"]) + int(r["size"]))
+                traffic = "control" if region["space"] == "config" else "data"
+                strobe = " ".join("h" + beat.split()[1].removeprefix("0x")
+                                  for beat in transaction.get("beats", []))
+                fields = [run_id, index, direction, traffic, transaction["id"], "h{:x}".format(addr),
+                          transaction["len"], size, transaction["burst"], strobe,
+                          addr % (data_width // 8), destination]
+                transactions.append(fields[:7] + [1 << size] + fields[7:] +
+                    [str(file.relative_to(stage)), record["stimulus_sha256"][filename]])
+                items = [run["item"]]
+                end = addr + ((transaction["len"] + 1) << size)
+                if items[0] in ("P05", "P06", "P07", "P08") and (
+                        addr == int(region["base"]) or end == int(region["base"]) + int(region["size"]) or end % 4096 == 0):
+                    items.append("P11")
+                for item in items:
+                    target = TARGETS[item][1]
+                    if item == "P09" and direction == "read":
+                        target = "transaction_cg.cp_size (read lane coverage not implemented)"
+                    matrix.append([item, config] + fields + [run["seed"], settings, target,
+                        "size × lane: not implemented" if item == "P09" else "", config])
+    test_runs = {}
+    for line in (report_dir / "tests.txt").read_text().splitlines():
+        match = re.match(r"(T[0-9]+)\s+(\S+)", line)
+        if match:
+            test_runs[match[1]] = names[match[2]]
+    if set(test_runs.values()) != set(names.values()):
+        raise ValueError("Native report tests do not match the regression")
+    bins = coverage_bins((report_dir / "grpinfo.txt").read_text(), "r{}_vc{}".format(
+        params["R_ROB_EN"], params["NUM_DAT_VC"]), test_runs)
+    if {r[0] for r in matrix} != set(TARGETS):
         raise ValueError("Not all P01-P22 patterns are represented")
-    out.mkdir(parents=True,exist_ok=True)
-    payload=dict(matrix=matrix,transactions=transactions,bins=bins,runs=run_summary,campaign=campaign)
-    (out/"matrix.json").write_text(json.dumps(payload,ensure_ascii=False))
-    print(json.dumps({k:len(payload[k]) for k in ("matrix","transactions","bins","runs")}))
+    payload = dict(matrix=matrix, transactions=transactions, bins=bins, runs=run_summary)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, ensure_ascii=False))
+    print(json.dumps({key: len(rows) for key, rows in payload.items()}))
+
 
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--campaign",required=True)
-    parser.add_argument("--out",type=Path,required=True)
-    parser.add_argument("--data-dir",type=Path)
-    args=parser.parse_args()
-    export(args.campaign,args.out,args.data_dir)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--stage", type=Path, required=True)
+    parser.add_argument("--report", type=Path)
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args()
+    export(args.stage, args.out, args.report)

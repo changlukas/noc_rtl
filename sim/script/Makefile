@@ -4,6 +4,7 @@ SHELL := /bin/bash
 ROOT := $(CURDIR)
 -include profile.mk
 CASE ?= ctrl_write_single
+JOBS ?= 1
 WAVE ?= 0
 COVERAGE ?= 0
 ifneq ($(filter verification report,$(MAKECMDGOALS)),)
@@ -125,7 +126,7 @@ check_ordering_checker:
 .PHONY: verification report
 verification:
 	$(MAKE) --no-print-directory compile COVERAGE=1
-	python3 run_verification.py
+	python3 run_verification.py --jobs $(JOBS)
 report:
 	@test -s verification_results/coverage-tests.txt || { echo 'Run make verification first' >&2; exit 1; }
 	urg -full64 -dir "$(SIM)/simv.vdb" -tests verification_results/coverage-tests.txt -report "$(BUILD)/coverage" -format both -show tests
