@@ -2,33 +2,39 @@
   {
     "name": "common_cells-v2.0.0-beta.3",
     "url": "https://github.com/pulp-platform/common_cells.git",
-    "revision": "63b7c50d43e462b59506f69d341ff1e40202866d"
+    "revision": "63b7c50d43e462b59506f69d341ff1e40202866d",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "tech_cells_generic-v0.2.14",
     "url": "https://github.com/pulp-platform/tech_cells_generic.git",
-    "revision": "3a3de73632a06826b1bd9c65a0a2e92b32016845"
+    "revision": "3a3de73632a06826b1bd9c65a0a2e92b32016845",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "yaml-cpp",
-    "revision": "56e3bb550c91fd7005566f19c079cb7a503223cf"
+    "revision": "56e3bb550c91fd7005566f19c079cb7a503223cf",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "googletest",
-    "revision": "f8d7d77c06936315286eb55f8de22cd23c188571"
+    "revision": "f8d7d77c06936315286eb55f8de22cd23c188571",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "axi-0.39.7",
     "source_repository": "https://github.com/changlukas/noc_project.git",
     "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
     "source_path": "sim/dv/axi-0.39.7",
-    "local_changes": "Parser supports null interface; scoreboard read-error reporting hook for UVM adapter"
+    "local_changes": "Parser supports null interface; scoreboard read-error reporting hook for UVM adapter",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "common_cells-1.37.0",
     "source_repository": "https://github.com/changlukas/noc_project.git",
     "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
-    "source_path": "sim/dv/common_cells-1.37.0"
+    "source_path": "sim/dv/common_cells-1.37.0",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "common_verification-0.2.5",
@@ -47,16 +53,19 @@
     "name": "tvip-axi",
     "url": "https://github.com/taichi-ishitani/tvip-axi.git",
     "revision": "955ca0f1be5265614859e7e187a6e93f41523361",
-    "local_changes": "AWUSER, AxREGION and AxLOCK transport and sampling; sample delay forwarding; passive monitor extension analysis port"
+    "local_changes": "AWUSER, AxREGION and AxLOCK transport and sampling; sample delay forwarding; passive monitor extension analysis port",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "tue",
     "url": "https://github.com/taichi-ishitani/tue.git",
-    "revision": "b49856a47ed162fd0eea4509f2495465d0091e7f"
+    "revision": "b49856a47ed162fd0eea4509f2495465d0091e7f",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
     "name": "tvip-common",
     "url": "https://github.com/taichi-ishitani/tvip-common.git",
-    "revision": "be09036727aac5be4c483536b12e7a1e3c0c8b8b"
+    "revision": "be09036727aac5be4c483536b12e7a1e3c0c8b8b",
+    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   }
 ]

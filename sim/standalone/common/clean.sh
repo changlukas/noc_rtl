@@ -13,7 +13,7 @@ fi
 }
 
 # Fixed locations, independent of command-line run_dir or other Make overrides.
-rm -rf -- "$package_dir/build"
+rm -rf -- "$package_dir/build" "$package_dir/verification_results" "$package_dir/urgReport"
 cache_key=$(printf '%s' "$package_dir" | cksum | cut -d' ' -f1)
 cache_root="/tmp/noc-vcs-$(id -u)-$cache_key"
 if [[ -e "$cache_root" || -L "$cache_root" ]]; then
@@ -47,4 +47,5 @@ for directory in "$package_dir" "$script_dir"; do
         fi
     done
 done
+find "$package_dir" -type d \( -name __pycache__ -o -name .pytest_cache \) -prune -exec rm -rf -- {} +
 printf '%s\n' 'Cleaned build, waveforms, simulation reports and GUI artifacts; sources, patterns and signal RC files retained.'

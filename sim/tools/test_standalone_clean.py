@@ -123,7 +123,8 @@ def test_cosim_clean_preserves_inputs(tmp_path):
     stage.mkdir()
     shutil.copy2(ROOT / "sim/standalone/common/clean.sh", stage / "clean.sh")
     keep = ["files.f", "Makefile", "patterns/read.txt", "signals.rc", "signals_nsu.rc", "repo/source.sv"]
-    remove = ["build/dpi_cache/model.so", "build/report_wave1/read.fsdb", "novas.conf", "verdiLog/run.log"]
+    remove = ["build/dpi_cache/model.so", "build/report_wave1/read.fsdb", "novas.conf", "verdiLog/run.log",
+              "verification_results/results.json", "urgReport/dashboard.html", "__pycache__/run.pyc"]
     for name in keep + remove:
         path = stage / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -157,3 +158,29 @@ def test_sync_removes_only_unmodified_retired_sources(tmp_path):
     assert (tmp_path / "wave.fsdb").read_bytes() == b"wave"
     assert '"removed": 1' in result.stdout
     assert '"retained_modified": ["edited.sv"]' in result.stdout
+
+
+def test_project_clean_all_outputs_preserves_sources_settings_and_symlinks(tmp_path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("project_clean", ROOT / "sim/tools/clean.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    keep = ["sim/standalone/common/clean.sh", "rtl/dut.sv", "specgen/generated/sv/types.sv",
+            "sim/test_patterns/cosim/cases.json", "build/backlog.md", "build/sim/stage/tools.mk"]
+    remove = ["build/sim/stage/verification/run/patterns/write.txt", "build/cmodel/object.o",
+              "sim/standalone/nmu/output/run/simv", "sim/test_patterns/standalone/generated/read.txt",
+              "sim/tools/__pycache__/generator.pyc", ".pytest_cache/state"]
+    for name in keep + remove:
+        p = tmp_path / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(name)
+    outside = tmp_path.parent / (tmp_path.name + "-external")
+    outside.mkdir()
+    (outside / "keep").write_text("external")
+    (tmp_path / "build/link").symlink_to(outside, target_is_directory=True)
+    for _ in range(2):
+        module.clean(tmp_path)
+    assert all((tmp_path / name).read_text() == name for name in keep)
+    assert all(not (tmp_path / name).exists() for name in remove)
+    assert (outside / "keep").read_text() == "external"
+    assert not (tmp_path / "build/link").is_symlink()

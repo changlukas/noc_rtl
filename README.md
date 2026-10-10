@@ -42,3 +42,40 @@ coverage closure are not claimed. See the [verification plan](docs/verification-
 and [results](docs/verification-integration-results.md) for remaining scope.
 
 Dependencies retain their own licenses. See `LICENSE` and `deps/revisions.json`.
+
+## File ownership and cleanup
+
+| Files | Required use |
+|---|---|
+| `rtl/` production modules, `Bender.yml` | NMU/NSU design and compile dependencies |
+| `rtl/**/tb_*.sv`, fixtures and `test_*.sh` | Focused RTL checks invoked by the adjacent test script |
+| `sim/uvm/`, `sim/dv/`, `sim/tb_top.sv` | UVM agents, checkers, coverage and integration TB |
+| `sim/script/`, `sim/tools/`, `sim/standalone/` | Preparation, execution, report export, cleanup and focused tests |
+| `sim/test_patterns/`, `sim/profiles/`, `sim/topology.yml` | Stimulus definitions, hardware settings and integration topology |
+| `sim/configs/` | SAM/topology fixtures used by model tests and standalone generation |
+| `ref_model/` | Router DPI and NI reference-model unit tests |
+| `specgen/source/`, `generated/`, `ni_spec/`, `tools/` | Protocol contracts, checked generated interfaces and code generation |
+| `specgen/tests/`, `examples/` | Contract tests, golden references and compile checks |
+| `deps/` | Required library sources, include files, focused VIP test inputs and licenses |
+| `docs/` | Verification rules, plan and accepted evidence |
+
+Dependency distributions omit unused upstream CI, examples and self-tests. Pinned
+revisions and subset notes are in `deps/revisions.json`. Project model tests use
+GoogleTest, not GoogleMock. They can be configured with
+`cmake -S ref_model/c_model -B build/cmodel` and run with CTest after building.
+
+From the repository root:
+
+```sh
+make clean
+```
+
+This removes generated stages, all builds under `build/`, standalone `output/`,
+generated pattern directories, logs, waves, coverage and Python caches. Tracked
+sources, specgen contracts, `tools.mk` and the local `build/backlog.md` are retained.
+Save any required reports outside these output directories before cleaning.
+
+On the offline workstation, run `make clean` inside the deployed simulation
+stage. It removes VCS/Verdi products, coverage and run results, while retaining the
+supplied source and stimulus files. An explicitly selected output directory outside
+the checkout must be cleaned from its own stage.

@@ -142,6 +142,8 @@ for integration. Direct-link cycle counts are not router performance results.
 
 ## Clean
 
-`make clean` in a prepared stage removes simulator/GUI products, not source patterns.
+Root `make clean` removes all default generated outputs and Python caches.
+`make clean` in a prepared stage removes simulator/GUI products and regression
+results, not source patterns.
 A stage can be removed and regenerated after its required results are retained.
 Historical development artifacts are not needed for the commands above.

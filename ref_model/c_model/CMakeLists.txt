@@ -54,6 +54,7 @@ if(BUILD_TESTING)
     googletest
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/googletest"
   )
+  set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
   # Windows MSVC compatibility
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
