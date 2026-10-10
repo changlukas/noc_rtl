@@ -28,6 +28,7 @@ R_ROB_DEPTH ?= $(shell python3 -c 'import re; print(re.search(r"NMU_ROB_R_DEPTH\
 R_ROB_EN ?= $(shell python3 -c 'import re; print(re.search(r"NMU_R_ROB_EN\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 IO_FIFO_DEPTH ?= 32
 -include environment.mk
+-include tools.mk
 DIRECT_LINK ?= 0
 DEVICE_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NSU_AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 CONTEXT_DEPTH ?= 32
@@ -74,7 +75,9 @@ help:
 	 'make run_wave CASE=<case>   Compile and simulate with FSDB' \
 	 'make view CASE=<case>       Open existing FSDB and signal groups' \
 	 'make clean                 Remove simulation and GUI output' \
-	 'make list                  List the 18 test cases'
+	 'make list                  List the 18 test cases' \
+	 'make verification JOBS=3   Run the prepared coverage matrix' \
+	 'make report                Generate the native URG report'
 list:
 	@cat pattern_list.txt
 ifeq ($(DIRECT_LINK),0)

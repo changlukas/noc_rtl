@@ -47,7 +47,8 @@ Hardware parameter overrides that disagree with the include are rejected by the 
 
 On the simulator machine, set the tool environment first. `vcs`, `urg` and `g++`
 must be on PATH. Set `CXX`, `VCS_HOME`, `VERDI_HOME` or `PLI_DIR` when installation
-paths require them.
+paths require them. These machine-local settings may be saved in the stage's
+`tools.mk` and are preserved by source synchronization.
 
 ```sh
 cd build/sim/stage

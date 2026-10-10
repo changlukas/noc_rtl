@@ -48,5 +48,5 @@ with ThreadPoolExecutor(max_workers=a.jobs) as pool:
         print(result["tag"], "PASS" if result["returncode"] == 0 else "FAIL", flush=True)
 failed = any(result["returncode"] != 0 for result in results.values())
 if not failed:
-    (report / "coverage-tests.txt").write_text("".join(prefix + run["tag"] + "\n" for run in runs))
+    (report / "coverage-tests.txt").write_text("".join(binary + "/" + prefix + run["tag"] + "\n" for run in runs))
 raise SystemExit(int(failed))
