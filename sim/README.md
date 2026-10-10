@@ -97,6 +97,16 @@ an intermediate for the existing workbook, not a second verification report.
 python3 sim/tools/prepare_ni_verification.py --profile sim/profiles/robless.yml --out build/robless
 ```
 
+| Profile | Verification purpose |
+|---|---|
+| `profile.yml` | Default integration configuration |
+| `profiles/single_vc_no_read_reorder.yml` | Single VC without read reorder storage |
+| `profiles/robless.yml` | No read reorder storage, registered outputs and shallow context |
+| `profiles/small_rob.yml` | Reorder storage capacity and recovery |
+| `profiles/split.yml` | Separate read/write VC pools and skid-buffer outputs |
+| `profiles/id1.yml` | One-bit Source, NoC and Device IDs |
+| `profiles/id8_to_id3.yml` | Eight-bit Source/NoC IDs mapped to three-bit Device IDs |
+
 Each profile uses a separate stage. Existing profile files are regression settings,
 not recommendations for area or performance. Depth defaults are not changed by the
 preparation flow. Each generated pattern carries its own `ni_tb_params.svh`.
