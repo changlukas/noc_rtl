@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare co-simulation sources using the existing standalone RTL dependency list."""
+"""Prepare the NI integration testbench from tracked sources."""
 import argparse
 import hashlib
 from pathlib import Path
@@ -14,8 +14,15 @@ from gen_tb_top import emit_sam_pkg, num_vc
 from gen_standalone_patterns import generate as generate_patterns
 
 
-def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False):
-    rtl_stage, out = Path(rtl_stage).resolve(), Path(out).resolve()
+def attach_hardware(stage, patterns):
+    """Keep the compiled parameter include alongside each generated input set."""
+    header = (stage / "ni_tb_params.svh").read_bytes()
+    for manifest in patterns.rglob("manifest.json"):
+        (manifest.parent / "ni_tb_params.svh").write_bytes(header)
+
+
+def prepare(out, profile_path=None, extra_catalog=None, direct=False):
+    out = Path(out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     profile = yaml.safe_load(Path(profile_path or ROOT / "sim/profile.yml").read_text())
     noc_id_width = profile.get("output_id_width", 3)
@@ -51,13 +58,13 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists() or target.read_bytes() != source.read_bytes():
             shutil.copyfile(source, target)
-    for line in (rtl_stage / "files.f").read_text().splitlines():
+    for line in (ROOT / "sim/rtl.f").read_text().splitlines():
         if line.startswith("+define+"):
             source_list.append(line)
             continue
         if line.startswith("+incdir+"):
             relative = line[len("+incdir+"):]
-            source = ROOT / relative[5:] if relative.startswith("repo/") else rtl_stage / relative
+            source = ROOT / relative[5:] if relative.startswith("repo/") else ROOT / relative
             for path in source.rglob("*"):
                 if path.is_file():
                     copy(path, str(Path(relative) / path.relative_to(source)))
@@ -71,8 +78,6 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
             source_list.append("topology_pkg.sv")
             continue
         source = ROOT / relative[5:] if relative.startswith("repo/") else ROOT / relative
-        if not source.is_file():
-            source = rtl_stage / relative
         copy(source, relative)
         source_list.append(flag + relative)
     nsu_sources = [ROOT / "deps/common_cells-v2.0.0-beta.3/src" / name
@@ -117,11 +122,12 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     for path in (ROOT / "deps/floonoc-dv").rglob("*"):
         if path.is_file() and path.suffix != ".sv":
             copy(path, "repo/" + str(path.relative_to(ROOT)))
+    for license_file in (ROOT / "deps").glob("*/LICENSE*"):
+        for path in ([license_file] if license_file.is_file() else license_file.rglob("*")):
+            if path.is_file():
+                copy(path, str(path.relative_to(ROOT)))
     topo = ROOT / "sim/topology.yml"
     (out / "topology_pkg.sv").write_text(emit_sam_pkg(yaml.safe_load(topo.read_text())))
-    (out / "ni_tb_params.svh").write_text(
-        f"localparam int NI_INPUT_ID_WIDTH = {pattern_id_width};\n"
-        f"localparam int NI_MON_ID_WIDTH = {max(pattern_id_width, device_id_width)};\n")
     uvm_sources = ["+incdir+."]
     copy(ROOT / "deps/revisions.json", "deps/revisions.json")
     for dependency in ("tue", "tvip-common", "tvip-axi"):
@@ -139,7 +145,7 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     top_index = source_list.index("repo/sim/tb_top.sv")
     source_list[top_index:top_index] = uvm_sources
     (out / "files.f").write_text("\n".join(source_list) + "\n")
-    patterns = (out / "generated_patterns") if profile_path else ROOT / f"sim/test_patterns/cosim/generated/i{pattern_id_width}"
+    patterns = out / "patterns"
     hardware = dict(response_fifo_depth=profile.get("io_fifo_depth", 32),
                     context_depth=profile.get("context_depth", 32))
     def generate(*args, **kwargs):
@@ -181,9 +187,6 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
         extra = generate(directory, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
                          catalog=variant_catalog)
         (directory / "cases.list").write_text("\n".join(existing+extra)+"\n")
-    for path in patterns.rglob("*"):
-        if path.is_file():
-            copy(path, str(Path("patterns") / path.relative_to(patterns)))
     for name in ("signals.rc", "topology.yml", "README.md", "pattern_list.txt"):
         copy(ROOT / "sim" / name, name)
     if not direct:
@@ -215,15 +218,23 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
     from tools.elaborate.profile import emit as emit_profile
     emit_profile(ROOT, out, constants, noc_id_width)
     (out / "profile.yml").write_text(yaml.safe_dump(profile, sort_keys=False))
-    (out / "profile.mk").write_text(f"INPUT_ID_WIDTH ?= {pattern_id_width}\nOUTPUT_ID_WIDTH ?= {noc_id_width}\n")
-    with (out / "profile.mk").open("a") as stream:
-        for key, symbol in (("device_id_width", "DEVICE_ID_WIDTH"),
-                            ("context_depth", "CONTEXT_DEPTH"), ("io_fifo_depth", "IO_FIFO_DEPTH"),
-                            ("reg_type", "REG_TYPE"), ("max_outstanding_per_id", "MAX_OUTSTANDING_PER_ID"),
-                            ("b_rob_depth", "B_ROB_DEPTH"), ("r_rob_depth", "R_ROB_DEPTH"),
-                            ("r_rob_en", "R_ROB_EN")):
-            if key in profile:
-                stream.write(f"{symbol} ?= {profile[key]}\n")
+    parameters = dict(
+        INPUT_ID_WIDTH=pattern_id_width, OUTPUT_ID_WIDTH=noc_id_width,
+        DEVICE_ID_WIDTH=device_id_width, CONTEXT_DEPTH=profile.get("context_depth", 32),
+        IO_FIFO_DEPTH=profile.get("io_fifo_depth", 32),
+        OUTPUT_REG_TYPE=profile.get("reg_type", 0),
+        MAX_OUTSTANDING_PER_ID=profile.get("max_outstanding_per_id", 32),
+        B_ROB_DEPTH=profile.get("b_rob_depth", constants["nmu"]["ROB_B_DEPTH"]["default"]),
+        R_ROB_DEPTH=profile.get("r_rob_depth", constants["nmu"]["ROB_R_DEPTH"]["default"]),
+        R_ROB_EN=profile.get("r_rob_en", constants["nmu"]["READ_ROB_ENABLED"]["default"]),
+        NUM_DAT_VC=vc_count, DAT_VC_MODE=vc_mode, CREDIT_DEPTH=depth,
+        DIRECT_LINK=int(direct), MON_ID_WIDTH=max(pattern_id_width, device_id_width))
+    (out / "ni_tb_params.svh").write_text("".join(
+        f"localparam int NI_{key:<26} = {value};\n" for key, value in parameters.items()))
+    attach_hardware(out, patterns)
+    (out / "profile.mk").write_text("".join(
+        f"{('REG_TYPE' if key == 'OUTPUT_REG_TYPE' else key)} ?= {value}\n"
+        for key, value in parameters.items() if key not in ("MON_ID_WIDTH", "DIRECT_LINK")))
     (out / "environment.mk").write_text("DIRECT_LINK := %d\n" % int(direct))
     if direct:
         (out / "signals.rc").write_text((out / "signals.rc").read_text().replace("Router Links", "Direct Links"))
@@ -247,8 +258,12 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
             if (path.is_file() and relative not in copied and
                     not relative.startswith("repo/specgen/generated/")):
                 path.unlink()
-    names = [path for path in out.rglob("*") if path.is_file() and
-             path.name != "SHA256SUMS" and "build" not in path.relative_to(out).parts]
+    names = {out / relative for relative in copied}
+    names.update(out / name for name in (
+        "topology_pkg.sv", "ni_tb_params.svh", "files.f", "profile.yml", "profile.mk",
+        "environment.mk", "pattern.txt", "stress-variants.json"))
+    names.update(path for path in patterns.rglob("*") if path.is_file())
+    names.update(path for path in (out / "repo/specgen/generated").rglob("*") if path.is_file())
     (out / "SHA256SUMS").write_text("".join(
         hashlib.sha256(path.read_bytes()).hexdigest() + "  " +
         str(path.relative_to(out)) + "\n" for path in sorted(names)))
@@ -257,9 +272,8 @@ def prepare(rtl_stage, out, profile_path=None, extra_catalog=None, direct=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rtl-stage", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--profile")
     parser.add_argument("--extra-catalog")
     args = parser.parse_args()
-    prepare(args.rtl_stage, args.out, args.profile, args.extra_catalog)
+    prepare(args.out, args.profile, args.extra_catalog)

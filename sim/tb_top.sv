@@ -6,18 +6,18 @@ module tb_top #(
     parameter int unsigned AXI_CLK_PERIOD_PS         = 1000,
     parameter int unsigned NOC_CLK_PERIOD_PS         = 1000,
     parameter int unsigned NOC_CLK_PHASE_PS          = 0,
-    parameter int unsigned INPUT_ID_WIDTH            = ni_params_pkg::AXI_ID_WIDTH,
-    parameter int unsigned OUTPUT_ID_WIDTH           = ni_params_pkg::NOC_ID_WIDTH,
-    parameter int unsigned MAX_OUTSTANDING_PER_ID    = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
+    parameter int unsigned INPUT_ID_WIDTH            = ni_test_pkg::NI_INPUT_ID_WIDTH,
+    parameter int unsigned OUTPUT_ID_WIDTH           = ni_test_pkg::NI_OUTPUT_ID_WIDTH,
+    parameter int unsigned MAX_OUTSTANDING_PER_ID    = ni_test_pkg::NI_MAX_OUTSTANDING_PER_ID,
     parameter int unsigned SOURCE_RESPONSE_DELAY_CYCLES = 4,
     parameter int unsigned RSP_DELAY_CYCLES          = 0,
-    parameter int unsigned OUTPUT_REG_TYPE           = 0,
-    parameter int unsigned IO_FIFO_DEPTH             = 32,
-    parameter int unsigned B_ROB_DEPTH               = ni_params_pkg::NMU_ROB_B_DEPTH,
-    parameter int unsigned R_ROB_DEPTH               = ni_params_pkg::NMU_ROB_R_DEPTH,
-    parameter bit          R_ROB_EN                  = bit'(ni_params_pkg::NMU_R_ROB_EN),
-    parameter int unsigned DEVICE_ID_WIDTH           = ni_params_pkg::NSU_AXI_ID_WIDTH,
-    parameter int unsigned CONTEXT_DEPTH             = ni_params_pkg::NSU_MAX_OUTSTANDING
+    parameter int unsigned OUTPUT_REG_TYPE           = ni_test_pkg::NI_OUTPUT_REG_TYPE,
+    parameter int unsigned IO_FIFO_DEPTH             = ni_test_pkg::NI_IO_FIFO_DEPTH,
+    parameter int unsigned B_ROB_DEPTH               = ni_test_pkg::NI_B_ROB_DEPTH,
+    parameter int unsigned R_ROB_DEPTH               = ni_test_pkg::NI_R_ROB_DEPTH,
+    parameter bit          R_ROB_EN                  = ni_test_pkg::NI_R_ROB_EN,
+    parameter int unsigned DEVICE_ID_WIDTH           = ni_test_pkg::NI_DEVICE_ID_WIDTH,
+    parameter int unsigned CONTEXT_DEPTH             = ni_test_pkg::NI_CONTEXT_DEPTH
 );
     import ni_params_pkg::*;
     import uvm_pkg::*;
@@ -38,6 +38,21 @@ module tb_top #(
     localparam int NMU_ID   = (ROUTER_Y << ni_flit_pkg::X_WIDTH) | ROUTER_X;
     localparam int NUM_WR_VC = NOC_DAT_VC_MODE == 1 ? NUM_DAT_VC/2 : NUM_DAT_VC;
     initial begin
+        if (INPUT_ID_WIDTH != NI_INPUT_ID_WIDTH ||
+            OUTPUT_ID_WIDTH != NI_OUTPUT_ID_WIDTH ||
+            MAX_OUTSTANDING_PER_ID != NI_MAX_OUTSTANDING_PER_ID ||
+            OUTPUT_REG_TYPE != NI_OUTPUT_REG_TYPE ||
+            IO_FIFO_DEPTH != NI_IO_FIFO_DEPTH ||
+            B_ROB_DEPTH != NI_B_ROB_DEPTH ||
+            R_ROB_DEPTH != NI_R_ROB_DEPTH ||
+            R_ROB_EN != NI_R_ROB_EN ||
+            DEVICE_ID_WIDTH != NI_DEVICE_ID_WIDTH ||
+            CONTEXT_DEPTH != NI_CONTEXT_DEPTH ||
+            NUM_DAT_VC != NI_NUM_DAT_VC ||
+            CREDIT_DEPTH != NI_CREDIT_DEPTH ||
+            NOC_DAT_VC_MODE != NI_DAT_VC_MODE) begin
+            $fatal(1, "Hardware parameters differ from ni_tb_params.svh; regenerate the profile");
+        end
         if (AXI_CLK_PERIOD_PS < 2 || NOC_CLK_PERIOD_PS < 2)
             $fatal(1, "Clock periods must be at least 2 ps");
         $display("PARAM_CONFIG device_id=%0d context=%0d per_id=%0d io_fifo=%0d reg_type=%0d b_rob=%0d r_rob=%0d r_rob_en=%0d vc=%0d vc_mode=%0d credit=%0d",

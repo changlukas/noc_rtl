@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the prepared verification matrix through the existing case runner."""
 import argparse
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 from pathlib import Path
@@ -20,12 +21,16 @@ binary = str(Path(a.binary).resolve()) if a.binary else str(Path(subprocess.chec
 report = Path(a.report).resolve()
 report.mkdir(parents=True, exist_ok=True)
 runs = json.loads((stage / "verification-runs.json").read_text())
+prefix = datetime.utcnow().strftime("reg_%Y%m%d_%H%M%S_")
+selection = report / "coverage-tests.txt"
+if selection.exists():
+    selection.unlink()
 
 
 def run_case(run):
     command = ["python3", str(stage / "run.py"), "--binary", binary,
                "--case", run["case"], "--seed", str(run["seed"]),
-               "--target", run["target"], "--coverage", "--coverage-name", "spec_" + run["tag"],
+               "--target", run["target"], "--coverage", "--coverage-name", prefix + run["tag"],
                "--report", str(report / run["tag"])]
     result = subprocess.run(command, cwd=str(stage / run["cwd"]), stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, universal_newlines=True)
@@ -41,4 +46,7 @@ with ThreadPoolExecutor(max_workers=a.jobs) as pool:
         (report / "results.json").write_text(json.dumps(
             [results[r["tag"]] for r in runs if r["tag"] in results], indent=2) + "\n")
         print(result["tag"], "PASS" if result["returncode"] == 0 else "FAIL", flush=True)
-raise SystemExit(int(any(result["returncode"] != 0 for result in results.values())))
+failed = any(result["returncode"] != 0 for result in results.values())
+if not failed:
+    (report / "coverage-tests.txt").write_text("".join(prefix + run["tag"] + "\n" for run in runs))
+raise SystemExit(int(failed))

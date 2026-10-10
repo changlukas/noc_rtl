@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import shutil
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from prepare import prepare, ROOT
+from prepare import prepare, attach_hardware, ROOT
 from gen_standalone_patterns import generate
 from verification_matrix import metadata
 
@@ -20,7 +20,7 @@ def main():
                         help="Prepare the full matrix by default, or only one capacity test")
     args = parser.parse_args()
     out = Path(args.out).resolve()
-    prepare(ROOT / "sim/standalone/nmu/output/i8_n5_b128_r1/stage", out, args.profile)
+    prepare(out, args.profile)
     import yaml
     profile = yaml.safe_load((out / "profile.yml").read_text())
     cases = {c["name"]: c for c in json.loads((ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]}
@@ -51,6 +51,7 @@ def main():
                  catalog, mode, seed, profile="cosim")
         if case["name"] == "capacity_reuse":
             shutil.copytree(directory / "patterns" / case["name"], directory / "patterns" / (case["name"] + "_" + case["capacity_target"]), dirs_exist_ok=True)
+        attach_hardware(out, directory / "patterns")
         shutil.copyfile(out / "profile.yml", directory / "profile.yml")
         rows.append(dict(item=item, coverage_items=[item] + (["P11"] if item in ("P05", "P06", "P07", "P08") else []),
                          tag=tag, case=case["name"], seed=seed, conditions=case, mode=mode,
@@ -117,8 +118,11 @@ def main():
                 add(item, case, mode)
     shutil.copyfile(ROOT / "sim/script/run_verification.py", out / "run_verification.py")
     (out / "verification-runs.json").write_text(json.dumps(rows, indent=2) + "\n")
-    files = sorted(p for p in out.rglob("*") if p.is_file() and p.name != "SHA256SUMS" and "build" not in p.relative_to(out).parts)
-    (out / "SHA256SUMS").write_text("".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + str(p.relative_to(out)) + "\n" for p in files))
+    files = {out / line.split("  ", 1)[1] for line in (out / "SHA256SUMS").read_text().splitlines()}
+    files.update(out / name for name in ("run_verification.py", "verification-runs.json"))
+    for row in rows:
+        files.update(path for path in (out / row["cwd"]).rglob("*") if path.is_file())
+    (out / "SHA256SUMS").write_text("".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + str(p.relative_to(out)) + "\n" for p in sorted(files)))
     print("Prepared", len(rows), "runs")
 
 

@@ -1,181 +1,124 @@
-# Simulation environments
+# NI simulation
 
-Workstation directories under `/home/mingwei/noc_project/`:
+The default environment is Source AXI ? NMU RTL ? C++ router ? four NSU RTL ?
+Device AXI memories. One active master and four active slave UVM agents drive AXI.
+Their monitor analysis ports feed the scoreboard and five AXI coverage subscribers.
+Ten passive NoC views feed credit coverage. Ordering/reset observations and bound
+arbitration assertions retain their existing checks.
 
-| Directory | DUT / environment | Cases |
-| --- | --- | --- |
-| `nmu-standalone/` | NMU RTL with request/response loopback | Existing 15 patterns |
-| `nsu-standalone/` | NMU RTL, direct TB links, four NSU RTL and AXI memories | 15 baseline + 3 stress cases |
-| `sim/` | NMU RTL, one C++ router, four NSU RTL and AXI memories | 15 baseline + 3 stress cases |
+## Prepare
 
-NSU standalone and router integration share the same stimulus, memories and checkers. Direct TB links use per-VC FIFOs and downstream credit counters to connect the four destinations without a router model. Direct-link cycle counts are not router performance measurements.
+Run from the repository root:
 
 ```sh
-cd /home/mingwei/noc_project/sim
-make run CASE=request_rand
+make prepare
+```
+
+This reads `sim/profile.yml` and writes `build/sim/stage/`. It does not depend on a
+standalone build. `sim/rtl.f` supplies the compile order. Both SV and C++ parameters
+come from the selected profile.
+
+```text
+sim/profile.yml                       Hardware settings
+sim/test_patterns/*/*.json            Input pattern definitions
+sim/tools/gen_standalone_patterns.py  Shared pattern generator
+                 |
+                 v
+build/sim/stage/
+|-- ni_tb_params.svh                  Compiled hardware parameters
+|-- patterns/<case>/
+|   |-- ni_tb_params.svh              Same parameters beside the input files
+|   |-- write.txt / read.txt          AXI transactions
+|   |-- schedule.txt                  Stimulus timing
+|   `-- manifest.json                 File list and acceptance checks
+|-- verification/<run>/patterns/      Expanded regression inputs
+|-- verification-runs.json            Generated execution list
+`-- build/                           Binaries, logs, waves and coverage
+```
+
+A pattern may also contain memory preload, initialization writes, readback or
+response files. Their use follows its manifest. Generated files are not edited by
+hand. Change the source pattern definition or hardware profile and prepare again.
+`ni_tb_params.svh` is included by the UVM package and supplies TB hardware defaults.
+The runner rejects patterns whose header differs from the compiled binary's copy.
+Hardware parameter overrides that disagree with the include are rejected by the TB.
+
+## Run
+
+On the simulator machine, set the tool environment first. `vcs`, `urg` and `g++`
+must be on PATH. Set `CXX`, `VCS_HOME`, `VERDI_HOME` or `PLI_DIR` when installation
+paths require them.
+
+```sh
+cd build/sim/stage
+make run CASE=ctrl_write_single
 make run_wave CASE=single_id_reorder MODE=data
 make view CASE=single_id_reorder MODE=data
 make list
-make clean
 ```
 
-`view` opens an existing waveform. `clean` removes simulation products only in the selected environment.
+`view` opens an existing FSDB. CASE names and options are in [pattern_list.txt](pattern_list.txt).
+Normal directed traffic has zero inserted delay, except the destination delays
+needed by ordering tests. Reset, capacity and delayed-response tests retain their
+explicit acceptance checks. Data and ordering checkers must drain before PASS.
 
-Repository source entry points: `sim/standalone/nmu/`, `sim/standalone/nsu/`, and `sim/`. Run `make prepare` or `make sync` from the repository root to prepare or synchronize all three environments. Shared patterns remain under `sim/test_patterns/`.
+## Full input matrix
 
-## UVM structure
-
-The shared integration/direct-link testbench uses an active Source AXI agent and
-four active Device AXI agents. The agents own all AXI stimulus and responses.
-Monitor analysis ports feed `ni_scoreboard` and per-interface AXI coverage. The scoreboard reuses
-independent memory/history and end-to-end ordering algorithms. Each observation
-contains the clock's channel handshakes, retaining W-before-AW and per-beat R checks.
-The five AXI agents share ACLK. The scoreboard processes same-clock observations
-in source-request, device-request, device-response, source-response order.
-The file-master parser reads existing patterns without driving a bus.
-NoC monitors observe ten unidirectional views of the five bidirectional NI links.
-Internal ROB/FIFO/arbitration observations remain supplemental static coverage/SVA.
-
-```text
-sim/
-|-- tb_top.sv                    Clock/reset, DUT, interfaces, static checks
-|-- uvm/
-|   |-- ni_test_pkg.sv           Package
-|   |-- ni_test.svh              Sequences, reset coordination, end-of-test
-|   |-- ni_env.svh               Agents, scoreboard and coverage connections
-|   |-- ni_axi_monitor.svh       Upstream monitor extension for channel observations
-|   |-- ni_scoreboard.svh        Data and end-to-end ordering checks
-|   |-- ni_data_checker.svh      Existing data checker adapter
-|   |-- ni_axi_coverage.svh      AXI coverage subscriber
-|   |-- ni_noc_if.sv             Passive NoC interface views
-|   |-- ni_noc_monitor.svh       NoC monitor and credit coverage
-|   |-- ni_pattern_sequence.svh  Existing pattern records to upstream items
-|   |-- ni_slave_sequence.svh    Finite response hold through upstream hook
-|   `-- axi_vip_connect.svh      Interface signal-name assignments
-|-- dv/                         Existing checkers and covergroups, VIP self-test
-|-- test_patterns/              Shared input patterns
-|-- profiles/                   Hardware configurations
-|-- script/                     VCS build/run/coverage
-|-- tools/                      Pattern generation and result export
-`-- standalone/                 NMU loopback and direct NMU/NSU environment
-```
-
-Upstream agents, driver, monitors, memory and response scheduling remain under
-`deps/tvip-axi`, `deps/tue` and `deps/tvip-common`, with pinned revisions and licenses.
-UVM completion waits for sequence completion, UVM scoreboard drain and scenario checks.
-The UVM integration regression passed 60/60 runs with R_ROB_EN=1 and NUM_DAT_VC=2.
-Checker self-tests passed 10/10. Deliberate R-data corruption was detected by both
-data and ordering checks. Other hardware configurations are not covered by this run.
-
-## Coverage
-
-Use the existing commands with `COVERAGE=1`, for example:
+From the repository root:
 
 ```sh
-make run CASE=request_rand COVERAGE=1
+python3 sim/tools/prepare_ni_verification.py --profile sim/profile.yml --out build/sim/stage
+cd build/sim/stage
+make verification
+make report
 ```
 
-VCS collects SystemVerilog covergroups and code/assertion coverage in the selected
-build's `simv.vdb`. Functional covergroups use per-instance bins and focused crosses.
-Existing scoreboards still determine functional PASS/FAIL. The default is coverage off.
+The default preparation produces 168 runs covering P01?P22, including the six
+capacity variants. `make regress` runs the default CASE list only and is not this
+expanded matrix. `verification_results/results.json` records results and
+`coverage-tests.txt` selects only successful runs from this invocation for URG.
+Open `build/coverage/dashboard.html`. Code/assertion and functional coverage remain
+separate report metrics. A high group score does not establish every instance bin
+was hit. Existing unhit bins are retained.
 
-Use the VDB path recorded in `build/report_coverage_wave0/request_rand.run.json`
-(or the selected wave/mode directory) with the native report generator:
+## Hardware profiles
 
 ```sh
-urg -full64 -dir <path-to-simv.vdb> -report build/coverage -format both
+python3 sim/tools/prepare_ni_verification.py --profile sim/profiles/robless.yml --out build/robless
 ```
 
-Open `build/coverage/dashboard.html` for the native report. Group/instance/bin
-coverage is separate from RTL line/branch/condition/toggle/FSM coverage.
-Verdi Coverage can also inspect the VDB; nWave's FSDB is the waveform database.
+Each profile uses a separate stage. Existing profile files are regression settings,
+not recommendations for area or performance. Depth defaults are not changed by the
+preparation flow. Each generated pattern carries its own `ni_tb_params.svh`.
+Changing only patterns does not invalidate a C++ build. Changing SV hardware
+parameters invalidates the SV build. NoC transport changes regenerate both languages.
 
-The run JSON stores command, profile and source/stimulus digests only. It does not
-calculate coverage. The former event-count parser and HIT/MISS report are retired;
-old reports remain historical artifacts. See `docs/verification-testplan.md` for
-the model's scope, sampling conditions and remaining coverage gaps.
+## Offline workstation
 
-## Directed stress
-
-The original fifteen defaults remain stall-free except for the existing destination
-response delay in reorder tests. These options use the shared integration/direct-link TB:
+Prepare locally, then use the existing SHA256-verified SSH synchronization:
 
 ```sh
-make run COVERAGE=1 CASE=single_id_reorder BACKPRESSURE=1 MODE=control
-make run COVERAGE=1 CASE=multi_id_out_of_order BACKPRESSURE=1 MODE=data
-make run COVERAGE=1 CASE=capacity_reuse TARGET=per_id MODE=control
-make run COVERAGE=1 CASE=capacity_reuse TARGET=context MODE=control
-make run COVERAGE=1 CASE=capacity_reuse TARGET=rob MODE=data
-make run COVERAGE=1 CASE=hol_blocking MODE=data
-make run COVERAGE=1 CASE=reset_recovery MODE=control SEED=17
+python3 sim/tools/sync_nmu_workstation.py --source build/sim/stage \
+  --host <user>@<host> --remote-dir <work-directory>/sim --key <private-key>
 ```
 
-`BACKPRESSURE=1` selects 64 transactions, a source response hold, and Device AW/W/AR ready delays through the upstream VIP.
-Ordinary directed tests configure zero request delay. Native cover properties record stall/recovery at each NSU slave AXI port.
-The same-ID variant first fills 31 of the default 32 response FIFO entries, then
-delays the next destination while later responses arrive. Acceptance requires the
-same inverted transaction to encounter ROB output backpressure in both directions.
-`capacity_reuse` uses 320 single-beat writes followed by reads; TARGET selects
-per-ID admission, NSU context storage, or NMU ROB storage. The stimulus must reach
-and recover from the selected resource limit or the test fails. It does not change
-hardware depths. Larger configurations may require more stimulus.
+`--ssh` selects a different SSH executable. The workstation does not need Git or
+internet access. Sync updates manifest-owned sources, preserves modified retired
+files and retains existing build/report directories. Run the same Make commands
+inside the remote stage. No separate simulation archive is needed.
 
-`hol_blocking` sends 80 single-beat transactions. It withholds north memory
-responses until that NSU context is full, then requires a west response to complete
-at source AXI while north remains blocked. It finally releases north and drains.
-IDs use separate destinations; shared-resource HoL and arbitrary-VC isolation are
-not implied.
+## Other environments
 
-`reset_recovery` resets the whole test system with pending reads/writes, discards
-pre-reset checker records, checks a quiet interval for stale responses, then runs
-fresh writes/readback. The C++ router instance is recreated during reset; this is
-NI reset acceptance, not a Router RTL reset test. Memory bytes persist across reset.
-SEED changes reset timing only; transaction stimulus keeps its manifest seed.
+| Source entry | Environment |
+|---|---|
+| `sim/standalone/nmu/` | NMU RTL request/response loopback |
+| `sim/standalone/nsu/` | Same UVM TB with direct NMU/four-NSU links |
 
-Run variants retain separate report directories and native coverage test names.
-The three new stress cases are not added to the NMU-only response-loopback TB.
+Prepare these explicitly with `make -C <entry> prepare`. They are not prerequisites
+for integration. Direct-link cycle counts are not router performance results.
 
-## Parameter profiles
+## Clean
 
-`sim/profiles/` holds the three approved parameter variants; `sim/profile.yml`
-retains the baseline. Pass a profile to `sim/prepare.py --profile <file> --out <stage>`
-and synchronize that isolated stage. Prepared `profile.mk` supplies the existing
-Make variables; `make run CASE=... COVERAGE=1` stays unchanged.
-
-Profiles select device ID width, context and per-ID capacity, IO FIFO depth,
-REG_TYPE, B/R ROB depths and read ROB enable. DAT VC count/mode and credit depth
-are emitted together into SV/C++ sources and the matching credit interface package.
-The RTL device width is selected at the TB; the Router transports unchanged NoC IDs.
-IO_FIFO_DEPTH controls both NI AXI CDC FIFOs and NMU REQ/RSP FIFOs; NSU REQ/RSP
-FIFOs retain their defaults. REG_TYPE controls packetize/depacketize outputs; SAM
-register settings retain their defaults.
-All capacity values in this campaign are powers of two. Production defaults are
-unchanged. Parameterized response-prefill patterns are generated in the profile
-stage, preserving the baseline patterns.
-
-Use separate report/VDB directories per profile. A read-ROB-disabled same-ID
-reorder run requires admission wait and recovery, while ordinary data/order checks
-remain enabled. See `docs/verification-parameter-plan.md` for scope and case selection.
-
-The Split VC profile currently fails Router integration because Router VC reassignment
-does not preserve the NI read/write VC pools. The identical NI profile passes the
-existing direct-link environment. See `docs/verification-parameter-results.md`;
-this is an open integration issue, not a waived check.
-
-### Stimulus and acceptance
-
-Generated `schedule.txt` contains timing and sequence controls. `manifest.json`
-contains acceptance criteria such as minimum outstanding count, response arrival
-order, and the capacity to exercise. The runner applies these checks automatically.
-Regenerate patterns when updating the TB. Old manifests without acceptance criteria
-are rejected.
-
-Memory preload, initialization writes, and readback follow the generated file list
-in the manifest. Unlisted files left by previous synchronizations are ignored. Read/write concurrency does not implicitly enable readback. Source response
-hold and Device response hold are independent. Device hold uses a fixed number of
-AXI clocks and does not wait for DUT buffer state.
-
-Source B/R per-beat delay uses the upstream UVM master configuration. Normal
-directed cases use zero delay. The AXI file master is used only to parse existing
-pattern files. Generator seed is recorded in the manifest. The run record
-separately records the simulation seed used by UVM randomization and reset timing.
+`make clean` in a prepared stage removes simulator/GUI products, not source patterns.
+A stage can be removed and regenerated after its required results are retained.
+Historical development artifacts are not needed for the commands above.

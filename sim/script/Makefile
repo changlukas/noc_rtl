@@ -6,6 +6,9 @@ ROOT := $(CURDIR)
 CASE ?= ctrl_write_single
 WAVE ?= 0
 COVERAGE ?= 0
+ifneq ($(filter verification report,$(MAKECMDGOALS)),)
+override COVERAGE := 1
+endif
 COVERAGE_METRICS := line+cond+fsm+tgl+branch+assert
 ifneq ($(filter run_wave view,$(MAKECMDGOALS)),)
 override WAVE := 1
@@ -31,10 +34,10 @@ INPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"AXI_ID_WIDTH\
 OUTPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NOC_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 MAX_OUTSTANDING_PER_ID ?= 32
 WAVE_RC ?= $(ROOT)/signals.rc
-CXX := /cadtools/centos/spe21.1/tools.lnx86/cdsgcc/gcc/9.3/bin/g++
+CXX = g++
 VCS ?= vcs
-VCS_HOME ?= /home/mingwei/.toolsmgr/vcs
-VERDI_HOME ?= /cadtools/synopsys/verdi/M-2017.03-SP1
+VCS_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(command -v $(VCS)))))
+VERDI_HOME ?= $(shell dirname $$(dirname $$(readlink -f $$(command -v verdi))))
 PLI_DIR ?= $(VERDI_HOME)/share/PLI/VCS/linux64
 export LD_LIBRARY_PATH := $(PLI_DIR)$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
 export VCS_ARCH_OVERRIDE ?= linux
@@ -90,6 +93,7 @@ $(SIM)/simv: $(DPI_DEP)
 	@mkdir -p $(SIM) $(REPORT)
 	@cp SHA256SUMS $(REPORT)/source-SHA256SUMS
 	$(VCS) $(VCS_FLAGS) -Mdir=$(SIM)/csrc -o $@ $(DPI_LINK) $(WAVE_FLAGS) -l $(REPORT)/compile.log
+	@cp ni_tb_params.svh $(SIM)/ni_tb_params.svh
 compile: $(SIM)/simv
 run: compile sim
 sim:
@@ -117,3 +121,11 @@ print-build-dirs:
 .PHONY: check_ordering_checker
 check_ordering_checker:
 	python3 test_ordering_checker.py
+
+.PHONY: verification report
+verification:
+	$(MAKE) --no-print-directory compile COVERAGE=1
+	python3 run_verification.py
+report:
+	@test -s verification_results/coverage-tests.txt || { echo 'Run make verification first' >&2; exit 1; }
+	urg -full64 -dir "$(SIM)/simv.vdb" -tests verification_results/coverage-tests.txt -report "$(BUILD)/coverage" -format both -show tests

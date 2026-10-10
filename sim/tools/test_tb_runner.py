@@ -23,6 +23,8 @@ def prepare(tmp_path, acceptance=True):
                       "Path('args.json').write_text(json.dumps(sys.argv[1:]))\n"
                       "print('NMU_COSIM_COUNTS AXI_ORDERING_CHECK_DRAINED')\n")
     binary.chmod(0o755)
+    (pattern / "ni_tb_params.svh").write_text("localparam int NI_NUM_DAT_VC = 2;\n")
+    (tmp_path / "ni_tb_params.svh").write_bytes((pattern / "ni_tb_params.svh").read_bytes())
     return pattern, [sys.executable, str(RUNNER), "--binary", str(binary),
                      "--case", "example", "--report", str(tmp_path / "report")]
 
@@ -87,3 +89,11 @@ def test_corruption_requires_both_checkers(tmp_path):
     with (tmp_path / "simv").open("a") as stream:
         stream.write("print('UVM_ERROR checker.svh(3) @ 10: checker [CREDIT] unrelated error')\n")
     assert subprocess.run(command + ["--corrupt"], cwd=tmp_path, capture_output=True).returncode != 0
+
+
+def test_wrong_hardware_binary_rejected_before_execution(tmp_path):
+    pattern, command = prepare(tmp_path)
+    (pattern / "ni_tb_params.svh").write_text("localparam int NI_NUM_DAT_VC = 1;\n")
+    result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode != 0 and "does not match" in result.stderr
+    assert not (tmp_path / "args.json").exists()

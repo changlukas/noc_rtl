@@ -1,4 +1,4 @@
-目前 `sim/` 與 `nsu-standalone/` 共 **18 個 test cases**：原本 15 組，加上 3 組 coverage 補強測試。
+目前 `sim/` 與 `nsu-standalone/` 提供 **18 個預設 CASE**。P01–P22 的完整 regression 由 `prepare_ni_verification.py` 展開為 168 次執行。
 
 | # | CASE | 測試內容 |
 |---:|---|---|
@@ -21,7 +21,7 @@
 | 17 | `hol_blocking` | 阻塞一個 destination，確認另一個 destination 仍可完成 response |
 | 18 | `reset_recovery` | 有 pending transactions 時隨機 reset，確認清除舊交易並恢復新交易 |
 
-Burst length 實際測試點：
+預設 CASE 的 burst length 測試點（完整 matrix 另掃描 control 2–256、data 2–64 的每個 length）：
 
 - **Control：** 2、3、4、7、8、15、16、31、32、63、64、127、128、255、256。
 - **Data：** 2、3、4、7、8、15、16、31、32、63、64。
@@ -33,7 +33,7 @@ Burst length 實際測試點：
 | `capacity_reuse` | `TARGET=per_id` | Per-ID outstanding 滿載與恢復 |
 | `capacity_reuse` | `TARGET=context` | NSU AW／AR context buffer 滿載與恢復 |
 | `capacity_reuse` | `TARGET=rob` | B／R ROB 滿載與重新配置 |
-| `multi_id_out_of_order`、`single_id_reorder` | `BACKPRESSURE=1` | 亂序 response 搭配 AXI response backpressure |
+| `multi_id_out_of_order`、`single_id_reorder` | `BACKPRESSURE=1` | 亂序 response 搭配 source B/R backpressure 與 slave AW/W/AR stall |
 | `reset_recovery` | `SEED=<n>` | 改變 reset 發生時機 |
 
 `nmu-standalone/` 目前仍維持原本 **15 組**。

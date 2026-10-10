@@ -8,6 +8,7 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -118,9 +119,9 @@ def sync(source, host, remote_dir, ssh, key):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", required=True)
-    parser.add_argument("--host", default="mingwei@172.16.16.16")
+    parser.add_argument("--host", default=os.environ.get("REMOTE_HOST", "mingwei@172.16.16.16"))
     parser.add_argument("--remote-dir", default="/home/mingwei/noc_project/nmu-standalone")
-    parser.add_argument("--ssh", default="/mnt/c/Windows/System32/OpenSSH/ssh.exe")
-    parser.add_argument("--key", default=r"C:\Users\user\.ssh\noc_workstation_ed25519")
+    parser.add_argument("--ssh", default=os.environ.get("SSH", "ssh"))
+    parser.add_argument("--key", default=os.environ.get("SSH_KEY", str(Path.home() / ".ssh/id_ed25519")))
     args = parser.parse_args()
     sync(args.source, args.host, args.remote_dir, args.ssh, args.key)

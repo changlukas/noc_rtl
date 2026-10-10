@@ -44,6 +44,12 @@ for name in ("schedule.txt", "read.txt", "write.txt"):
     if not (stim / name).is_file():
         p.error("Incomplete co-simulation pattern '{}': missing {}. "
                 "Prepare and synchronize the co-simulation environment again.".format(a.case, stim / name))
+hardware = stim / "ni_tb_params.svh"
+compiled_hardware = Path(a.binary).resolve().parent / "ni_tb_params.svh"
+if not hardware.is_file() or not compiled_hardware.is_file():
+    p.error("Missing ni_tb_params.svh for pattern or binary; prepare and compile the hardware profile")
+if hardware.read_bytes() != compiled_hardware.read_bytes():
+    p.error("Pattern hardware profile does not match the compiled binary")
 report = Path(a.report)
 report.mkdir(parents=True, exist_ok=True)
 args = [str(Path(a.binary).resolve()), "+stim_dir=" + str(stim.resolve())]
