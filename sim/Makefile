@@ -11,7 +11,8 @@ help:
 	@echo 'make run CASE=<case> | make run_wave CASE=<case> | make view CASE=<case> | make clean'
 prepare:
 	python3 prepare.py --out "$(OUT)" --profile "$(PROFILE)"
-sync: prepare
+sync:
+	@test -s "$(OUT)/SHA256SUMS" || { echo 'Prepare the stage before sync' >&2; exit 1; }
 	python3 "$(ROOT)/sim/tools/sync_nmu_workstation.py" --source "$(OUT)" --remote-dir "$(REMOTE_ROOT)/sim"
 
 compile run regress run_wave: prepare

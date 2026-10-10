@@ -115,7 +115,9 @@ parameters invalidates the SV build. NoC transport changes regenerate both langu
 
 ## Offline workstation
 
-Prepare locally, then use the existing SHA256-verified SSH synchronization:
+Prepare locally, then use the existing SHA256-verified SSH synchronization.
+`make sync` transfers the prepared stage without regenerating or replacing its
+selected input matrix:
 
 ```sh
 python3 sim/tools/sync_nmu_workstation.py --source build/sim/stage \
