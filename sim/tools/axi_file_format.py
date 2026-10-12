@@ -1,4 +1,4 @@
-"""Shared axi_file_master field/beat encoding (Python standard library only)."""
+"""Shared AXI text field/beat encoding (Python standard library only)."""
 
 def encode_write_beats(addr, axi_size, axi_len, data_width):
     """file_master W-beat lines: "0x<data> 0x<strb> 0", INCR, full strobe,
@@ -25,9 +25,9 @@ def encode_write_beats(addr, axi_size, axi_len, data_width):
 
 def _ax_fields(axid, addr, axi_len, axi_size, include_atop, user=0):
     """The AW/AR field lines in parse_write/parse_read order. Write includes atop
-    (12 fields); read omits it (11 fields, matching axi_file_master.parse_read).
+    (12 fields); read omits it (11 fields, matching the read transaction format).
 
-    user: AWUSER value (58 b, decimal in the file; axi_file_master parses %d).
+    user: AWUSER value (58 b, decimal in the file; decimal encoding).
     Nonzero only for collective writes: [9:8] collective_op, [57:10] the
     address mask (docs/noc-target-spec.md AWUSER layout). Reads keep 0."""
     lines = [str(axid), f"0x{addr:x}", str(axi_len), str(axi_size),

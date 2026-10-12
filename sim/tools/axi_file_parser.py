@@ -2,7 +2,7 @@
 from pathlib import Path
 
 def _parse_write(path):
-    """Parse a write.txt back into txns. Mirrors axi_file_master.parse_write field order."""
+    """Parse a write.txt back into txns. Mirrors the write transaction field order."""
     toks = open(path).read().split("\n")
     it = iter([t for t in toks if t != ""])
     txns = []

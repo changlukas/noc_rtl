@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -23,7 +24,8 @@ def execute(args, log, expected="PASS", failure=False):
         run = subprocess.run(args, stdout=stream, stderr=subprocess.STDOUT, timeout=300)
     text = log.read_text()
     passed = expected in text and (failure or (run.returncode == 0 and
-        not any(mark in text for mark in ("Fatal:", "Error:", "ASSERT FAILED"))))
+        not any(mark in text for mark in ("Fatal:", "Error:", "ASSERT FAILED")) and
+        not re.search(r"(?m)^UVM_(?:ERROR|FATAL)(?!\s*:)|^UVM_(?:ERROR|FATAL)\s*:\s*[1-9]", text)))
     results.append(dict(command=args, log=str(log), passed=passed,
                         expected_failure=failure, coverage=[line for line in text.splitlines()
                         if line.startswith(("COVER", "CLOCK", "RESET_RECOVERY", "PASS"))]))
@@ -39,7 +41,7 @@ for rob in (1, 0):
     work = Path("/tmp") / ("noc-verification-%d-%s-r%d" % (os.getuid(), key, rob))
     work.mkdir(parents=True, exist_ok=True)
     binary = work / "simv"
-    cmd = ["vcs", "-full64", "-sverilog", "-assert", "svaext",
+    cmd = ["vcs", "-full64", "-sverilog", "-ntb_opts", "uvm-1.2", "-lca", "-assert", "svaext",
            "-override_timescale=1ns/1ps", "-f", "files.f", "-top", "tb_nmu_standalone",
            "-pvalue+tb_nmu_standalone.R_ROB_EN=" + str(rob),
            "-Mdir=" + str(work / "csrc"), "-o", str(binary)]
@@ -77,7 +79,7 @@ work = Path("/tmp") / ("noc-verification-%d-%s-fifo" % (os.getuid(), key))
 work.mkdir(parents=True, exist_ok=True)
 binary = work / "simv"
 if not binary.exists():
-    execute(["vcs", "-full64", "-sverilog", "-assert", "svaext",
+    execute(["vcs", "-full64", "-sverilog", "-ntb_opts", "uvm-1.2", "-lca", "-assert", "svaext",
         "-override_timescale=1ns/1ps", "-f", "files.f",
         "repo/rtl/nmu/response_path/tb_response_path.sv", "-top", "tb_nmu_response_path",
         "-Mdir=" + str(work / "csrc"), "-o", str(binary)],

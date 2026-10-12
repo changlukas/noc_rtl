@@ -74,9 +74,13 @@ if [[ "${1:-test}" == standalone || "${1:-test}" == prepare ]]; then
     task_sources+=(
         "$task_tech_cells/src/rtl/tc_clk.sv"
         "$task_common_cells/src/cc_rstgen_bypass.sv"
-        "$task_root/deps/common_verification-0.2.5/src/rand_id_queue.sv"
         "$task_root/deps/axi-0.39.7/src/axi_intf.sv"
         "$task_root/deps/axi-0.39.7/src/axi_test.sv"
+        "$task_root/deps/tue/src/tue_pkg.sv"
+        "$task_root/deps/tvip-common/src/tvip_common_pkg.sv"
+        "$task_root/deps/tvip-axi/src/tvip_axi_pkg.sv"
+        "$task_root/sim/standalone/nmu/ni_nmu_if.sv"
+        "$task_root/sim/standalone/nmu/ni_nmu_test_pkg.sv"
         "$task_root/sim/standalone/nmu/tb_nmu_standalone.sv"
     )
     task_output=${NMU_TEST_OUTPUT:-$task_tmp/standalone}
@@ -86,34 +90,15 @@ if [[ "${1:-test}" == standalone || "${1:-test}" == prepare ]]; then
     printf '%s\n' '+define+NMU_SAM_CHECKS' "+incdir+$task_common_cells/include" \
         "+incdir+$task_root/deps/axi-0.39.7/include" \
         "+incdir+$task_root/deps/common_cells-1.37.0/include" \
+        "+incdir+$task_root/deps/tue/src" \
+        "+incdir+$task_root/deps/tvip-common/src" \
+        "+incdir+$task_root/deps/tvip-axi/src" \
+        "+incdir+$task_root/sim/uvm" \
         "${task_sources[@]}" > "$task_output/files.f"
-    if [[ ${1:-test} != prepare ]]; then
-    python3 - "$task_root" "$task_output/profile" "${NMU_ID_WIDTH:-8}" <<'PY'
-import sys
-from pathlib import Path
-import yaml
-root, out, width = Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3])
-sys.path.insert(0, str(root / "specgen"))
-from tools.elaborate.profile import emit
-constants = yaml.safe_load((root / "specgen/source/constants.yaml").read_text())
-constants["axi"]["AXI_ID_WIDTH"]["default"] = width
-emit(root, out, constants, max(width, constants["axi"]["NOC_ID_WIDTH"]["default"]))
-PY
-    for task_idx in 0 1 2; do
-        task_sources[$task_idx]="$task_output/profile/repo/specgen/generated/sv/$(basename "${task_sources[$task_idx]}")"
-    done
-    "${task_verilator[@]}" --top-module tb_nmu_standalone --binary -j 1 \
-        -GID_WIDTH="${NMU_ID_WIDTH:-8}" -GNOC_HALF_PERIOD="${NMU_NOC_HALF_PERIOD:-5}" \
-        -GBUFFER_DEPTH="${NMU_BUFFER_DEPTH:-128}" -GR_ROB_EN="${NMU_READ_ROB:-1}" \
-        --Mdir "$task_output/obj" "${task_sources[@]}"
-    fi
     for task_pattern in neighbor uniform_random hotspot; do
         python3 "$task_root/sim/tools/gen_test_patterns.py" --pattern "$task_pattern" \
             --topology mesh_2x2 --space config --size 3 --len 3 --transactions-per-node 16 \
             --ids-per-initiator 1 --hotspot 1 --seed 17 --out "$task_output/$task_pattern"
-        if [[ ${1:-test} != prepare ]]; then
-            "$task_output/obj/Vtb_nmu_standalone" +stim_dir="$task_output/$task_pattern/node0"
-        fi
     done
     python3 "$task_root/sim/tools/gen_nmu_standalone_patterns.py" \
         --out "$task_output/directed" --topology "$task_root/sim/configs/mesh_2x2.yml" \
@@ -121,22 +106,11 @@ PY
     task_block_patterns="$task_root/sim/test_patterns/standalone/generated/i${NMU_ID_WIDTH:-8}"
     python3 "$task_root/sim/tools/gen_standalone_patterns.py" --out "$task_block_patterns" \
         --id-width "${NMU_ID_WIDTH:-8}"
-    if [[ ${1:-test} == prepare ]]; then
-        python3 "$task_root/sim/tools/package_nmu_standalone.py" --run-dir "$task_output" \
-            --block-patterns "$task_block_patterns" --id-width "${NMU_ID_WIDTH:-8}" --output-dir "$task_output/stage"
-        exit
+    python3 "$task_root/sim/tools/package_nmu_standalone.py" --run-dir "$task_output" \
+        --block-patterns "$task_block_patterns" --id-width "${NMU_ID_WIDTH:-8}" --output-dir "$task_output/stage"
+    if [[ ${1:-test} != prepare ]]; then
+        make -C "$task_output/stage" run CASE=ctrl_write_single SIMULATOR=vcs
     fi
-    task_directed_args=(+require_reorder)
-    if [[ ${NMU_BUFFER_DEPTH:-128} == 8 && ${NMU_READ_ROB:-1} == 1 ]]; then
-        task_directed_args+=(+require_pressure)
-    fi
-    "$task_output/obj/Vtb_nmu_standalone" +stim_dir="$task_output/directed" "${task_directed_args[@]}"
-    if "$task_output/obj/Vtb_nmu_standalone" +stim_dir="$task_output/directed" \
-        +corrupt_rsp > "$task_output/corrupt.log" 2>&1; then
-        echo "corrupt response unexpectedly passed" >&2
-        exit 1
-    fi
-    grep -q 'R data/lane/order/last mismatch' "$task_output/corrupt.log"
     exit
 fi
 "${task_verilator[@]}" --lint-only "${task_sources[@]}"

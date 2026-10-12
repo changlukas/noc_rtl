@@ -18,9 +18,19 @@ class ni_scoreboard extends uvm_scoreboard;
     ni_mon_ar_chan_t pending_read[NI_NUM_IDS][$];
     int read_beat[NI_NUM_IDS];
     int pending_write[NI_NUM_IDS];
-    int checked_bytes, b_count, r_count, r_beats;
-    int response_error;
-    bit active;
+    int checked_bytes = 0, b_count = 0, r_count = 0, r_beats = 0;
+    int response_error = 0;
+    bit active, concurrent_active;
+    int expected_writes = 0, expected_reads = 0, expected_beats = 0;
+    int peak_w = 0, peak_r = 0, peak_unique_w = 0, peak_unique_r = 0;
+    int b_stall_cnt = 0, r_stall_cnt = 0, aw_stall_cnt = 0, ar_stall_cnt = 0;
+    int overlap_cnt = 0, w_during_read_cnt = 0, r_during_write_cnt = 0;
+    function int outstanding(bit is_read);
+        int count = 0;
+        foreach (pending_read[id]) count += is_read ? pending_read[id].size() : pending_write[id];
+        return count;
+    endfunction
+
     function new(string name, uvm_component parent); super.new(name, parent); endfunction
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
@@ -43,27 +53,32 @@ class ni_scoreboard extends uvm_scoreboard;
             pending_read[i].delete(); read_beat[i] = 0; pending_write[i] = 0;
         end
         checked_bytes = 0; b_count = 0; r_count = 0; r_beats = 0;
+        peak_w = 0; peak_r = 0; peak_unique_w = 0; peak_unique_r = 0;
         data_check.start();
     endtask
     task check_source(ni_axi_sample s);
         ni_mon_ar_chan_t ar;
         ni_mon_addr_t address;
         logic [7:0] expected;
-        int lo, hi;
+        int lo, hi, total_w, total_r, unique_w = 0, unique_r = 0;
         if (s.req.aw_valid && s.rsp.aw_ready) pending_write[s.req.aw.id]++;
         if (s.req.ar_valid && s.rsp.ar_ready) pending_read[s.req.ar.id].push_back(s.req.ar);
-        if (s.rsp.b_valid && s.req.b_ready) begin
+        if (s.rsp.b_valid) begin
             if ($isunknown(s.rsp.b.id) || s.rsp.b.id >= NI_NUM_IDS)
                 `uvm_fatal("AXI_B_ID", "Invalid BID")
             if (!pending_write[s.rsp.b.id]) `uvm_fatal("AXI_B", "Unsolicited B response")
+        end
+        if (s.rsp.b_valid && s.req.b_ready) begin
             if (s.rsp.b.resp !== axi_pkg::resp_t'(response_error))
                 `uvm_error("AXI_BRESP", "Invalid BRESP")
             pending_write[s.rsp.b.id]--; b_count++;
         end
-        if (s.rsp.r_valid && s.req.r_ready) begin
+        if (s.rsp.r_valid) begin
             if ($isunknown(s.rsp.r.id) || s.rsp.r.id >= NI_NUM_IDS)
                 `uvm_fatal("AXI_R_ID", "Invalid RID")
             if (!pending_read[s.rsp.r.id].size()) `uvm_fatal("AXI_R", "Unsolicited R response")
+        end
+        if (s.rsp.r_valid && s.req.r_ready) begin
             ar = pending_read[s.rsp.r.id][0];
             if (s.rsp.r.resp !== axi_pkg::resp_t'(response_error) ||
                     s.rsp.r.last !== (read_beat[s.rsp.r.id] == int'(ar.len)))
@@ -83,6 +98,24 @@ class ni_scoreboard extends uvm_scoreboard;
                 void'(pending_read[s.rsp.r.id].pop_front());
                 read_beat[s.rsp.r.id] = 0; r_count++;
             end else read_beat[s.rsp.r.id]++;
+        end
+        total_w = outstanding(0); total_r = outstanding(1);
+        foreach (pending_read[id]) begin
+            if (pending_write[id]) unique_w++;
+            if (pending_read[id].size()) unique_r++;
+        end
+        if (total_w > peak_w) peak_w = total_w;
+        if (total_r > peak_r) peak_r = total_r;
+        if (unique_w > peak_unique_w) peak_unique_w = unique_w;
+        if (unique_r > peak_unique_r) peak_unique_r = unique_r;
+        if (s.rsp.b_valid && !s.req.b_ready) b_stall_cnt++;
+        if (s.rsp.r_valid && !s.req.r_ready) r_stall_cnt++;
+        if (s.req.aw_valid && !s.rsp.aw_ready) aw_stall_cnt++;
+        if (s.req.ar_valid && !s.rsp.ar_ready) ar_stall_cnt++;
+        if (concurrent_active) begin
+            if (total_w && total_r) overlap_cnt++;
+            if (total_r && s.req.w_valid && s.rsp.w_ready) w_during_read_cnt++;
+            if (total_w && s.rsp.r_valid && s.req.r_ready) r_during_write_cnt++;
         end
     endtask
     task run_phase(uvm_phase phase);
@@ -123,8 +156,34 @@ class ni_scoreboard extends uvm_scoreboard;
         return 1;
     endfunction
     function void check_phase(uvm_phase phase);
+        int min_outstanding = 1, min_unique = 1, source_hold = 0;
         super.check_phase(phase);
+        void'($value$plusargs("check_min_outstanding=%d", min_outstanding));
+        void'($value$plusargs("check_min_unique=%d", min_unique));
+        void'($value$plusargs("source_response_hold_cycles=%d", source_hold));
         if (!drained()) `uvm_error("PENDING", "Scoreboard has pending transactions")
+        if (b_count != expected_writes || r_count != expected_reads || r_beats != expected_beats ||
+                (expected_reads != 0 && checked_bytes == 0))
+            `uvm_error("COUNT", $sformatf("B=%0d/%0d R=%0d/%0d beats=%0d/%0d", b_count, expected_writes,
+                r_count, expected_reads, r_beats, expected_beats))
+        if ((expected_writes && (peak_w < min_outstanding || peak_unique_w < min_unique)) ||
+                (expected_reads && (peak_r < min_outstanding || peak_unique_r < min_unique)))
+            `uvm_error("OUTSTANDING", "Outstanding/ID coverage not reached")
+        if (($test$plusargs("source_response_delay") || source_hold != 0) && (!b_stall_cnt || !r_stall_cnt))
+            `uvm_error("STALL", "Response backpressure was not exercised")
+        if ($test$plusargs("check_fifo_capacity") && (!aw_stall_cnt || !ar_stall_cnt))
+            `uvm_error("CAPACITY", "Required admission stall was not reached")
+        if ($test$plusargs("concurrent_rw") && (!overlap_cnt || !w_during_read_cnt || !r_during_write_cnt))
+            `uvm_error("CONCURRENT", "Read/write concurrency was not exercised")
+    endfunction
+    function void report_phase(uvm_phase phase);
+        super.report_phase(phase);
+        $display("COVERAGE peak_w=%0d peak_r=%0d unique_w=%0d unique_r=%0d", peak_w, peak_r, peak_unique_w, peak_unique_r);
+        $display("STALL b=%0d r=%0d aw=%0d ar=%0d", b_stall_cnt, r_stall_cnt, aw_stall_cnt, ar_stall_cnt);
+        $display("CONCURRENT live=%0d w_during_read=%0d r_during_write=%0d", overlap_cnt, w_during_read_cnt, r_during_write_cnt);
+        if (drained()) $display("AXI_ORDERING_CHECK_DRAINED");
+        $display("RESPONSE_CHECK expected=%0d writes=%0d read_beats=%0d", response_error, b_count, r_beats);
+        $display("NMU_COSIM_COUNTS writes=%0d reads=%0d r_beats=%0d checked_bytes=%0d", b_count, r_count, r_beats, checked_bytes);
     endfunction
     `uvm_component_utils(ni_scoreboard)
 endclass

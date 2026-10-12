@@ -100,8 +100,11 @@ module tb_top #(
         endcase
     endfunction
     bit corrupt_rsp = 0;
-    logic clk = 0, noc_clk = 0, rst_n = 0;
+    logic clk = 0, noc_clk = 0;
+    wire rst_n = control.rst_n;
     wire axi_rst_n, noc_rst_n;
+    ni_tb_if control(clk, axi_rst_n, noc_rst_n);
+    int source_response_hold_cycles = 0;
     tvip_axi_if source_axi(clk, axi_rst_n);
     tvip_axi_if device_axi[4](clk, axi_rst_n);
 
@@ -481,53 +484,7 @@ module tb_top #(
         if (noc_rst_n && tx_req_valid[NMU_PORT])
             $fatal(1, "Request routed back to LOCAL");
     end
-    typedef axi_test::axi_file_master #(
-        .AW(AXI_ADDR_WIDTH), .DW(AXI_DATA_WIDTH), .IW(INPUT_ID_WIDTH),
-        .UW(AXI_AWUSER_WIDTH), .TA(APPL_DELAY), .TT(ACQ_DELAY)
-    ) master_t;
-    function automatic tvip_axi_master_item convert_address(master_t::ax_beat_t address, bit is_read);
-        tvip_axi_master_item item = new();
-        item.access_type = is_read ? TVIP_AXI_READ_ACCESS : TVIP_AXI_WRITE_ACCESS;
-        item.id = address.ax_id;
-        item.address = address.ax_addr;
-        item.burst_length = int'(address.ax_len) + 1;
-        item.burst_size = 1 << address.ax_size;
-        item.burst_type = tvip_axi_burst_type'(address.ax_burst);
-        item.lock = address.ax_lock;
-        item.put_cache(address.ax_cache);
-        item.protection = tvip_axi_protection'(address.ax_prot);
-        item.qos = address.ax_qos;
-        item.region = address.ax_region;
-        item.awuser = is_read ? 0 : address.ax_user;
-        item.need_response = 0;
-        return item;
-    endfunction
-
-    function automatic void load_sequence(master_t source, ni_pattern_sequence seq);
-        int beat = 0;
-        foreach (source.aw_queue[i]) begin
-            tvip_axi_master_item item = convert_address(source.aw_queue[i], 0);
-            if (source.aw_queue[i].ax_atop != 0) $fatal(1, "AXI VIP adapter does not carry AWATOP");
-            item.data = new[item.burst_length];
-            item.strobe = new[item.burst_length];
-            foreach (item.data[j]) begin
-                if (source.w_queue[beat].w_user != 0) $fatal(1, "AXI VIP adapter does not carry WUSER");
-                item.data[j] = source.w_queue[beat].w_data;
-                item.strobe[j] = source.w_queue[beat].w_strb;
-                beat++;
-            end
-            seq.writes.push_back(item);
-        end
-        foreach (source.ar_queue[i]) begin
-            if (source.ar_queue[i].ax_user != 0) $fatal(1, "AXI VIP adapter does not carry ARUSER");
-            seq.reads.push_back(convert_address(source.ar_queue[i], 1));
-        end
-    endfunction
-
     `NI_AXI_UVM_MASTER(vip, source_axi)
-    uvm_event stimulus_start = uvm_event_pool::get_global("ni_start");
-    uvm_event stimulus_done = uvm_event_pool::get_global("ni_done");
-    uvm_event checks_done = uvm_event_pool::get_global("ni_checked");
 `ifndef TB_DIRECT_LINK
     import "DPI-C" context function int cmodel_check_error(output string message);
     always @(negedge noc_clk) begin : check_model_error
@@ -536,19 +493,6 @@ module tb_top #(
             $fatal(1, "C++ model error: %s", message);
     end
 `endif
-    int b_count = 0, r_count = 0, r_beats = 0, checked_bytes = 0;
-    int expected_writes, expected_reads, expected_beats;
-    int live_w[2**INPUT_ID_WIDTH] = '{default:0};
-    int live_r[2**INPUT_ID_WIDTH] = '{default:0};
-    int peak_w = 0, peak_r = 0, peak_unique_w = 0, peak_unique_r = 0;
-    int min_outstanding = 1, min_unique = 1;
-    master_t::ax_beat_t expected_ar[2**INPUT_ID_WIDTH][$];
-    int read_beat[2**INPUT_ID_WIDTH] = '{default:0};
-    master_t master, init_master, verify_master;
-    ni_scoreboard scoreboard;
-    bit init_phase = 0, concurrent_rw = 0, readback = 0;
-    int source_response_hold_cycles = 0;
-    int b_stall_cnt = 0, r_stall_cnt = 0, aw_stall_cnt = 0, ar_stall_cnt = 0;
     int tx_req_peak = 0;
     int tx_dat_peak[NUM_DAT_VC] = '{default:0};
     int tx_req_beats = 0, tx_dat_beats = 0;
@@ -570,16 +514,6 @@ module tb_top #(
     end
     int b_full_cnt = 0, r_full_cnt = 0, dat_full_cnt = 0;
     int wr_limit_cnt = 0, rd_limit_cnt = 0;
-    int overlap_cnt = 0, w_during_read_cnt = 0, r_during_write_cnt = 0;
-    bit concurrent_active = 0;
-
-    function automatic void expect_reads(input master_t source);
-        foreach (source.ar_queue[i]) begin
-            expected_ar[source.ar_queue[i].ax_id].push_back(source.ar_queue[i]);
-            expected_beats += int'(source.ar_queue[i].ax_len) + 1;
-        end
-    endfunction
-
     assert property (@(posedge clk) disable iff (!axi_rst_n)
         bus.bvalid && !bus.bready |=> bus.bvalid && $stable({bus.bid, bus.bresp}))
         else $fatal(1, "B response changed under backpressure");
@@ -608,8 +542,6 @@ module tb_top #(
         end
     end
     initial begin : run
-        string stim_dir;
-        int first_char;
 `ifndef TB_DIRECT_LINK
         cmodel_init();
         router_ctx = cmodel_router_create("router", ROUTER_X, ROUTER_Y,
@@ -634,60 +566,10 @@ module tb_top #(
             response_random_delay, response_hold_cycles, response_hold_port, response_delay_port, RSP_DELAY_CYCLES);
         $display("DAT_CREDIT_DEPTH router=%0d nmu_rx=%0d nsu_rx=%0d",
             CREDIT_DEPTH, CREDIT_DEPTH, CREDIT_DEPTH);
-        master = new(null);
-        if (!$value$plusargs("stim_dir=%s", stim_dir)) $fatal(1, "Missing stim_dir");
-        master.read_fd = $fopen({stim_dir, "/read.txt"}, "r");
-        master.write_fd = $fopen({stim_dir, "/write.txt"}, "r");
-        if (!master.read_fd || !master.write_fd) $fatal(1, "Missing AXI stimulus file");
-        first_char = $fgetc(master.read_fd);
-        if (first_char != -1) begin
-            void'($ungetc(first_char, master.read_fd));
-            master.parse_read();
-        end
-        first_char = $fgetc(master.write_fd);
-        if (first_char != -1) begin
-            void'($ungetc(first_char, master.write_fd));
-            master.parse_write();
-        end
-        $fclose(master.read_fd);
-        $fclose(master.write_fd);
-        master.num_reads = master.ar_queue.size();
-        master.num_writes = master.aw_queue.size();
-        corrupt_rsp = $test$plusargs("corrupt_rsp");
-        void'($value$plusargs("check_min_outstanding=%d", min_outstanding));
-        void'($value$plusargs("check_min_unique=%d", min_unique));
-        expected_writes = master.num_writes;
-        expected_reads = master.num_reads;
-        expected_beats = 0;
-        expect_reads(master);
-        init_phase = $test$plusargs("init_phase");
-        concurrent_rw = $test$plusargs("concurrent_rw");
-        readback = $test$plusargs("readback");
         source_response_delay = $test$plusargs("source_response_delay");
         void'($value$plusargs("source_response_hold_cycles=%d", source_response_hold_cycles));
-        if (init_phase) begin
-            init_master = new(null);
-            init_master.write_fd = $fopen({stim_dir, "/init_write.txt"}, "r");
-            if (!init_master.write_fd) $fatal(1, "Missing initialization writes");
-            init_master.parse_write();
-            $fclose(init_master.write_fd);
-            init_master.num_writes = init_master.aw_queue.size();
-            expected_writes += init_master.num_writes;
-        end
-        if (readback) begin
-            verify_master = new(null);
-            verify_master.read_fd = $fopen({stim_dir, "/verify_read.txt"}, "r");
-            if (!verify_master.read_fd) $fatal(1, "Missing verification reads");
-            verify_master.parse_read();
-            $fclose(verify_master.read_fd);
-            verify_master.num_reads = verify_master.ar_queue.size();
-            expected_reads += verify_master.num_reads;
-            expect_reads(verify_master);
-        end
-        if (expected_writes == 0 && expected_reads == 0)
-            $fatal(1, "Empty memory test");
+        corrupt_rsp = $test$plusargs("corrupt_rsp");
         begin
-            ni_pattern_sequence seq;
             tvip_axi_configuration cfg;
             uvm_config_db #(int)::set(null, "uvm_test_top.env.*", "clock_period_ps", AXI_CLK_PERIOD_PS);
             cfg = tvip_axi_configuration::type_id::create("source_cfg");
@@ -704,147 +586,34 @@ module tb_top #(
                 rready_delay.max_delay == (source_response_delay ? SOURCE_RESPONSE_DELAY_CYCLES : 0);
             }) $fatal(1, "Source VIP configuration failed");
             uvm_config_db #(tvip_axi_configuration)::set(null, "uvm_test_top.env", "source_cfg", cfg);
-            seq = new("requests");
-            load_sequence(master, seq);
-            seq.concurrent_rw = concurrent_rw;
-            seq.first_response_delay = source_response_hold_cycles;
-            uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "sequence1", seq);
-            if (reset_recovery) begin
-                seq = new("warmup");
-                load_sequence(master, seq);
-                seq.concurrent_rw = 1;
-                // Keep warmup responses pending until reset aborts the sequence.
-                seq.first_response_delay = 100000;
-                uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "warmup", seq);
-            end
-            if (init_phase) begin
-                seq = new("initialization");
-                load_sequence(init_master, seq);
-                uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "sequence0", seq);
-            end
-            if (readback) begin
-                seq = new("readback");
-                load_sequence(verify_master, seq);
-                uvm_config_db #(tvip_axi_master_sequence_base)::set(null, "uvm_test_top", "sequence2", seq);
-            end
         end
-        fork
-            run_test("ni_test");
-        join_none
-        repeat (5) @(negedge clk);
-        rst_n = 1;
-        wait (axi_rst_n && noc_rst_n);
-        @(posedge clk);
-        if (!uvm_config_db #(ni_scoreboard)::get(null, "", "ni_scoreboard", scoreboard))
-            $fatal(1, "Missing UVM scoreboard");
-        stimulus_start.trigger();
-        if (reset_recovery) run_reset_recovery(stim_dir);
-        concurrent_active = concurrent_rw;
-        stimulus_done.wait_on();
-        concurrent_active = 0;
-        repeat (10) @(posedge clk);
-        checked_bytes = scoreboard.checked_bytes;
-        if (b_count != expected_writes || r_count != expected_reads ||
-            r_beats != expected_beats || (expected_reads != 0 && checked_bytes == 0))
-            $fatal(1, "Transaction count mismatch B=%0d/%0d R=%0d/%0d beats=%0d/%0d",
-                b_count, expected_writes, r_count, expected_reads, r_beats, expected_beats);
-        foreach (expected_ar[id])
-            if (expected_ar[id].size() != 0) $fatal(1, "Unreturned read ID %0d", id);
-        if ((expected_writes != 0 && (peak_w < min_outstanding || peak_unique_w < min_unique)) ||
-            (expected_reads != 0 && (peak_r < min_outstanding || peak_unique_r < min_unique)))
-            $fatal(1, "Outstanding/ID coverage not reached");
-        $display("TX_BUFFER req_peak=%0d req_beats=%0d dat_beats=%0d", tx_req_peak, tx_req_beats, tx_dat_beats);
-        for (int vc = 0; vc < NUM_DAT_VC; vc++) $display("TX_DAT_BUFFER vc=%0d peak=%0d", vc, tx_dat_peak[vc]);
-        $display("COVERAGE peak_w=%0d peak_r=%0d unique_w=%0d unique_r=%0d",
-            peak_w, peak_r, peak_unique_w, peak_unique_r);
-        $display("STALL b=%0d r=%0d aw=%0d ar=%0d", b_stall_cnt, r_stall_cnt, aw_stall_cnt, ar_stall_cnt);
-        $display("CAPACITY b_full=%0d r_full=%0d dat_full=%0d wr_limit=%0d rd_limit=%0d",
-            b_full_cnt, r_full_cnt, dat_full_cnt, wr_limit_cnt, rd_limit_cnt);
-        $display("CONCURRENT live=%0d w_during_read=%0d r_during_write=%0d",
-            overlap_cnt, w_during_read_cnt, r_during_write_cnt);
-        if ((source_response_delay || source_response_hold_cycles != 0) &&
-                (b_stall_cnt == 0 || r_stall_cnt == 0))
-            $fatal(1, "Response backpressure was not exercised");
-        if (check_fifo_capacity != "" && (b_full_cnt == 0 || wr_limit_cnt == 0 || rd_limit_cnt == 0 ||
-                aw_stall_cnt == 0 || ar_stall_cnt == 0 ||
-                (check_fifo_capacity == "data" ? dat_full_cnt == 0 : r_full_cnt == 0)))
-            $fatal(1, "Required capacity saturation was not reached");
-        if (concurrent_rw && (overlap_cnt == 0 || w_during_read_cnt == 0 || r_during_write_cnt == 0))
-            $fatal(1, "Read/write concurrency was not exercised");
-        check_test_conditions();
-        if (!scoreboard.drained()) $fatal(1, "AXI ordering checker has pending transactions");
-        $display("AXI_ORDERING_CHECK_DRAINED");
-        $display("RESPONSE_CHECK expected=%0d writes=%0d read_beats=%0d", response_error, b_count, r_beats);
-
-        $display("NMU_COSIM_COUNTS writes=%0d reads=%0d r_beats=%0d checked_bytes=%0d",
-            b_count, r_count, r_beats, checked_bytes);
+        uvm_config_db #(virtual ni_tb_if)::set(null, "uvm_test_top", "control", control);
+        uvm_config_db #(int)::set(null, "uvm_test_top", "reset_drain_cycles", 2*IO_FIFO_DEPTH+2*CREDIT_DEPTH);
+        run_test("ni_test");
+    end
+    final begin
+        if (control.completed) begin
+            $display("TX_BUFFER req_peak=%0d req_beats=%0d dat_beats=%0d", tx_req_peak, tx_req_beats, tx_dat_beats);
+            for (int vc = 0; vc < NUM_DAT_VC; vc++) $display("TX_DAT_BUFFER vc=%0d peak=%0d", vc, tx_dat_peak[vc]);
+            $display("CAPACITY b_full=%0d r_full=%0d dat_full=%0d wr_limit=%0d rd_limit=%0d",
+                b_full_cnt, r_full_cnt, dat_full_cnt, wr_limit_cnt, rd_limit_cnt);
+            if (check_fifo_capacity != "" && (b_full_cnt == 0 || wr_limit_cnt == 0 || rd_limit_cnt == 0 ||
+                    (check_fifo_capacity == "data" ? dat_full_cnt == 0 : r_full_cnt == 0)))
+                $fatal(1, "Required capacity saturation was not reached");
+            check_test_conditions();
+        end
 `ifndef TB_DIRECT_LINK
         cmodel_finalize();
 `endif
-        checks_done.trigger();
     end
-    initial begin
-        repeat (100000) @(posedge clk);
-        $fatal(1, "NMU co-simulation timeout B=%0d R=%0d", b_count, r_count);
-    end
-    always @(posedge clk) begin : check_responses
-        master_t::ax_beat_t request;
-        logic [AXI_ADDR_WIDTH-1:0] address;
-        logic [7:0] expected_byte;
-        int lane, total_w, total_r, unique_w, unique_r;
-        #(ACQ_DELAY);
-        if (axi_rst_n && vip.aw_valid && vip.aw_ready) live_w[vip.aw_id]++;
-        if (axi_rst_n && vip.ar_valid && vip.ar_ready) live_r[vip.ar_id]++;
-        if (axi_rst_n && vip.b_valid && vip.b_ready) begin
-            if ($isunknown(vip.b_id) || vip.b_resp !== axi_pkg::resp_t'(response_error))
-                $fatal(1, "Invalid B response");
-            if (live_w[vip.b_id] == 0) $fatal(1, "Unsolicited B response");
-            live_w[vip.b_id]--;
-            b_count++;
-        end
-        if (axi_rst_n && vip.r_valid && vip.r_ready) begin
-            if ($isunknown(vip.r_id) || expected_ar[vip.r_id].size() == 0)
-                $fatal(1, "Unexpected read ID");
-            request = expected_ar[vip.r_id][0];
-            if (vip.r_resp !== axi_pkg::resp_t'(response_error) ||
-                vip.r_last !== (read_beat[vip.r_id] == int'(request.ax_len)))
-                $fatal(1, "Invalid RRESP/RLAST");
-            address = request.ax_addr + AXI_ADDR_WIDTH'(read_beat[vip.r_id] << request.ax_size);
-            r_beats++;
-            if (vip.r_last) begin
-                void'(expected_ar[vip.r_id].pop_front());
-                read_beat[vip.r_id] = 0;
-                if (live_r[vip.r_id] == 0) $fatal(1, "Unsolicited R response");
-                live_r[vip.r_id]--;
-                r_count++;
-            end else read_beat[vip.r_id]++;
-        end
-        total_w = 0; total_r = 0; unique_w = 0; unique_r = 0;
-        foreach (live_w[id]) begin
-            total_w += live_w[id]; total_r += live_r[id];
-            if (live_w[id] != 0) unique_w++;
-            if (live_r[id] != 0) unique_r++;
-        end
+    always @(posedge clk) begin
         if (axi_rst_n) begin
-            if (vip.b_valid && !vip.b_ready) b_stall_cnt++;
-            if (vip.r_valid && !vip.r_ready) r_stall_cnt++;
-            if (vip.aw_valid && !vip.aw_ready) aw_stall_cnt++;
-            if (vip.ar_valid && !vip.ar_ready) ar_stall_cnt++;
-            if ((dut.i_response_path.i_rx_credit_buffer.ctrl_full && !dut.i_response_path.i_rx_vc_arbiter.is_r)) b_full_cnt++;
-            if ((dut.i_response_path.i_rx_credit_buffer.ctrl_full && dut.i_response_path.i_rx_vc_arbiter.is_r)) r_full_cnt++;
+            if (dut.i_response_path.i_rx_credit_buffer.ctrl_full && !dut.i_response_path.i_rx_vc_arbiter.is_r) b_full_cnt++;
+            if (dut.i_response_path.i_rx_credit_buffer.ctrl_full && dut.i_response_path.i_rx_vc_arbiter.is_r) r_full_cnt++;
             if (|dut.i_response_path.i_rx_credit_buffer.dat_full) dat_full_cnt++;
             if (wr_order_full) wr_limit_cnt++;
             if (rd_order_full) rd_limit_cnt++;
-            if (concurrent_active) begin
-                if (total_w != 0 && total_r != 0) overlap_cnt++;
-                if (total_r != 0 && vip.w_valid && vip.w_ready) w_during_read_cnt++;
-                if (total_w != 0 && vip.r_valid && vip.r_ready) r_during_write_cnt++;
-            end
         end
-        if (total_w > peak_w) peak_w = total_w;
-        if (total_r > peak_r) peak_r = total_r;
-        if (unique_w > peak_unique_w) peak_unique_w = unique_w;
-        if (unique_r > peak_unique_r) peak_unique_r = unique_r;
     end
 `ifdef DUMP_WAVE
     initial begin : dump_wave
@@ -852,6 +621,13 @@ module tb_top #(
         if (!$value$plusargs("wave_file=%s", wave_file)) wave_file = "ni.fsdb";
         $fsdbDumpfile(wave_file);
         $fsdbDumpvars(0, tb_top, "+all");
+    end
+`endif
+`ifndef TB_DIRECT_LINK
+    always @(negedge rst_n) begin
+        repeat (4) @(negedge clk);
+        router_ctx = cmodel_router_create("router_after_reset", ROUTER_X, ROUTER_Y,
+            MESH_DIM, MESH_DIM, NUM_DAT_VC);
     end
 `endif
     int perf_cycle = 0, perf_start = -1, perf_end = -1;

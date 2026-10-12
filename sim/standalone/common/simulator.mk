@@ -1,4 +1,4 @@
-# One source/config/pattern snapshot; only simulator and waveform backends differ.
+# NMU loopback using the tvip AXI UVM agent.
 .DEFAULT_GOAL := run
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
@@ -15,7 +15,6 @@ MODE ?= auto
 SEED ?= 1
 PYTHON ?= python3
 VCS ?= vcs
-VERILATOR ?= verilator
 NWAVE ?= nWave
 WAVE_RC ?= $(script_dir)/nWaveLog/signals.rc
 VERDI_HOME ?= /cadtools/synopsys/verdi/M-2017.03-SP1
@@ -24,7 +23,6 @@ PLI_DIR ?= $(VERDI_HOME)/share/PLI/VCS/linux64
 export LD_LIBRARY_PATH := $(PLI_DIR)$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
 export VCS_ARCH_OVERRIDE ?= linux
 VCS_EXTRA ?=
-VERILATOR_EXTRA ?=
 SIM_EXTRA ?=
 top := tb_nmu_standalone
 run_dir ?= $(package_dir)/build/$(SIMULATOR)_i$(ID_WIDTH)_n$(NOC_HALF_PERIOD)_b$(BUFFER_DEPTH)_r$(R_ROB_EN)_wave$(WAVE)
@@ -36,27 +34,17 @@ report_dir := $(run_dir)/report
 wave_dir := $(run_dir)/waves
 filelist := $(package_dir)/files.f
 wave_ext := fsdb
-ifeq ($(SIMULATOR),verilator)
-wave_ext := fst
-endif
 case_label := $(if $(CASE),$(CASE)_$(MODE)_s$(SEED),$(PATTERN))
 wave_file ?= $(wave_dir)/$(case_label).$(wave_ext)
 
-VCS_FLAGS := -full64 -sverilog -assert svaext -override_timescale=1ns/1ps -debug_access+all \
+VCS_FLAGS := -ntb_opts uvm-1.2 -lca -full64 -sverilog -assert svaext -override_timescale=1ns/1ps -debug_access+all \
     +lint=TFIPC-L +lint=PCWM -Mdir=$(vcs_work_dir)/csrc -f $(filelist) -top $(top) \
     -pvalue+$(top).ID_WIDTH=$(ID_WIDTH) \
     -pvalue+$(top).NOC_HALF_PERIOD=$(NOC_HALF_PERIOD) \
     -pvalue+$(top).BUFFER_DEPTH=$(BUFFER_DEPTH) \
     -pvalue+$(top).R_ROB_EN=$(R_ROB_EN) -o $(vcs_work_dir)/simv
-VERILATOR_FLAGS := --binary --timing --assert -j 1 -Wno-fatal \
-    -Werror-WIDTHEXPAND -Werror-WIDTHTRUNC -Werror-LATCH \
-    $(package_dir)/repo/rtl/nmu/top/nmu_lint.vlt \
-    --top-module $(top) -f $(filelist) --Mdir $(run_dir)/csrc -o $(run_dir)/simv \
-    -GID_WIDTH=$(ID_WIDTH) -GNOC_HALF_PERIOD=$(NOC_HALF_PERIOD) \
-    -GBUFFER_DEPTH=$(BUFFER_DEPTH) -GR_ROB_EN=$(R_ROB_EN)
 ifeq ($(WAVE),1)
 VCS_FLAGS += +define+DUMP_WAVE -P $(PLI_DIR)/novas.tab $(PLI_DIR)/pli.a
-VERILATOR_FLAGS += +define+DUMP_WAVE --trace-fst
 endif
 
 .PHONY: help sanity_check compile run sim regress block_regress legacy_regress run_wave view fault report clean list
@@ -76,7 +64,7 @@ case_list := $(firstword $(wildcard $(package_dir)/cases.list $(package_dir)/cas
 sanity_check:
 	@if [[ -n "$(CASE)" ]]; then grep -Fxq "$(CASE)" "$(package_dir)/cases/standalone/cases.list" || { echo "Unknown CASE" >&2; exit 1; }; fi
 	@test -f "$(filelist)" || { echo 'Use the synchronized simulation directory (files.f missing)' >&2; exit 1; }
-	@case "$(SIMULATOR)" in vcs|verilator) ;; *) echo 'SIMULATOR must be vcs or verilator' >&2; exit 1;; esac
+	@test "$(SIMULATOR)" = vcs || { echo 'The NMU UVM testbench requires VCS/UVM 1.2. Focused RTL checks remain available separately.' >&2; exit 1; }
 	@case "$(PATTERN)" in neighbor|uniform_random|hotspot|directed) ;; *) echo 'Invalid PATTERN' >&2; exit 1;; esac
 	@case "$(WAVE)" in 0|1) ;; *) echo 'WAVE must be 0 or 1' >&2; exit 1;; esac
 	@mkdir -p "$(report_dir)" "$(wave_dir)"
@@ -85,10 +73,8 @@ compile: sanity_check
 	@printf '%s\n' 'SIMULATOR=$(SIMULATOR)' 'WAVE=$(WAVE)' 'ID_WIDTH=$(ID_WIDTH)' \
 	 'NOC_HALF_PERIOD=$(NOC_HALF_PERIOD)' 'BUFFER_DEPTH=$(BUFFER_DEPTH)' \
 	 'R_ROB_EN=$(R_ROB_EN)' 'VCS_FLAGS=$(VCS_FLAGS)' \
-	 'VERILATOR_FLAGS=$(VERILATOR_FLAGS)' 'VCS_EXTRA=$(VCS_EXTRA)' \
-	 'VERILATOR_EXTRA=$(VERILATOR_EXTRA)' > "$(report_dir)/build-config.txt"
+	 'VCS_EXTRA=$(VCS_EXTRA)' > "$(report_dir)/build-config.txt"
 	@cp "$(package_dir)/SHA256SUMS" "$(report_dir)/source-SHA256SUMS"
-ifeq ($(SIMULATOR),vcs)
 	@command -v "$(VCS)" >/dev/null || { echo 'Initialize the workstation VCS environment first' >&2; exit 1; }
 ifeq ($(WAVE),1)
 	@test -r "$(PLI_DIR)/novas.tab" -a -r "$(PLI_DIR)/pli.a" || { echo 'Set VERDI_HOME or PLI_DIR to the installed Verdi PLI directory' >&2; exit 1; }
@@ -101,9 +87,6 @@ endif
 	@cp "$(vcs_work_dir)/simv" "$(run_dir)/simv"
 	@mkdir -p "$(run_dir)/simv.daidir"
 	@cp -a "$(vcs_work_dir)/simv.daidir/." "$(run_dir)/simv.daidir/"
-else
-	cd "$(package_dir)" && $(VERILATOR) $(VERILATOR_FLAGS) $(VERILATOR_EXTRA) 2>&1 | tee "$(report_dir)/compile.log"
-endif
 
 run: compile sim
 
@@ -123,6 +106,7 @@ sim: sanity_check
 	  +wave_file="$(wave_file)" "$${args[@]}" $(SIM_EXTRA) \
 	  2>&1 | tee "$(report_dir)/$(case_label).log"
 	@grep -q 'PASS NMU standalone' "$(report_dir)/$(case_label).log"
+	@! grep -Eq '^UVM_(ERROR|FATAL)[[:space:]]+[^[:space:]:]|UVM_(ERROR|FATAL)[[:space:]]*:[[:space:]]*[1-9]' "$(report_dir)/$(case_label).log"
 	@echo 'PASS: $(case_label)'
 
 regress: compile

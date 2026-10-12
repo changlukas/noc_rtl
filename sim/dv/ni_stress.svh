@@ -12,7 +12,7 @@
     bit hol_wr_progress = 0, hol_rd_progress = 0;
     bit b_output_stalled = 0, r_output_stalled = 0;
     bit read_order_wait_seen = 0, read_order_resumed = 0;
-    bit reset_pending_seen = 0, reset_complete = 0;
+
     int stress_wr_dst[NUM_IDS] = '{default:0};
     int stress_rd_dst[NUM_IDS] = '{default:0};
     wire b_storage_full = &`STRESS_ORDER.i_b_storage.alloc_reg;
@@ -101,63 +101,7 @@
         end
     endtask
 
-    task automatic run_reset_recovery(input string directory);
-        int seed, reset_delay, pending_writes, pending_reads;
-        uvm_event reset_begin = uvm_event_pool::get_global("ni_reset_begin");
-        uvm_event reset_done = uvm_event_pool::get_global("ni_reset_done");
-        seed = 1;
-        void'($value$plusargs("reset_seed=%d", seed));
-        void'($urandom(seed));
-        reset_delay = $urandom_range(2, 24);
-        wait (peak_w != 0 && peak_r != 0);
-        repeat (reset_delay) @(negedge clk);
-        reset_begin.trigger();
-        pending_writes = 0;
-        pending_reads = 0;
-        foreach (live_w[id]) begin
-            pending_writes += live_w[id];
-            pending_reads += live_r[id];
-        end
-        if (pending_writes == 0 || pending_reads == 0) $fatal(1, "Reset missed pending traffic");
-        reset_pending_seen = 1;
-        $display("RESET_PENDING time=%0t seed=%0d delay=%0d writes=%0d reads=%0d",
-            $time, seed, reset_delay, pending_writes, pending_reads);
-        rst_n = 0;
-
-        repeat (5) @(negedge clk);
-    `ifndef TB_DIRECT_LINK
-        // A fresh model instance flushes the router; the session is finalized only once.
-        router_ctx = cmodel_router_create("router_after_reset", ROUTER_X, ROUTER_Y,
-            MESH_DIM, MESH_DIM, NUM_DAT_VC);
-    `endif
-        foreach (live_w[id]) begin
-            live_w[id] = 0;
-            live_r[id] = 0;
-            read_beat[id] = 0;
-            expected_ar[id].delete();
-        end
-        b_count = 0; r_count = 0; r_beats = 0; checked_bytes = 0;
-        peak_w = 0; peak_r = 0; peak_unique_w = 0; peak_unique_r = 0;
-        expected_beats = 0;
-        expect_reads(master);
-        rst_n = 1;
-        wait (axi_rst_n && noc_rst_n);
-        // No requests during this interval: any old response is unsolicited.
-        fork : stale_check
-            begin
-                wait (vip.b_valid || vip.r_valid);
-                $fatal(1, "Stale response after reset");
-            end
-            begin
-                repeat (2*IO_FIFO_DEPTH+2*CREDIT_DEPTH) @(negedge clk);
-            end
-        join_any
-        disable stale_check;
-        reset_done.trigger();
-        reset_complete = 1;
-    endtask
-
-    task automatic check_test_conditions();
+    function automatic void check_test_conditions();
         if (!R_ROB_EN && check_order == "same_id") begin
             $display("READ_ORDER_RECOVERY wait=%0d resumed=%0d", read_order_wait_seen, read_order_resumed);
             if (!read_order_wait_seen || !read_order_resumed)
@@ -196,9 +140,9 @@
         end
         if (check_destination_progress && (!hol_wr_progress || !hol_rd_progress))
             $fatal(1, "Unblocked destination did not progress during blocking");
-        if (reset_recovery && (!reset_complete || !reset_pending_seen || b_count == 0 || r_count == 0))
+        if (reset_recovery && (!control.reset_complete || !control.reset_pending_seen))
             $fatal(1, "Reset recovery not exercised");
         if (check_capacity != "" || check_destination_progress || reset_recovery || check_response_stall)
             $display("TEST_CONDITIONS_PASS");
-    endtask
+    endfunction
     `undef STRESS_ORDER

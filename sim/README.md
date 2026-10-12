@@ -6,6 +6,15 @@ Their monitor analysis ports feed the scoreboard and five AXI coverage subscribe
 Ten passive NoC views feed credit coverage. Ordering/reset observations and bound
 arbitration assertions retain their existing checks.
 
+`ni_pattern_sequence` reads the text patterns and submits tvip items. `ni_test`
+manages reset recovery, sequences, timeout and objections. The scoreboard checks
+observed responses and transaction completion. The static top retains interface
+connections, clocks, model bindings and structural assertions.
+
+NMU loopback also uses the tvip master agent and the same file sequence. Its NoC
+responder and packet checks remain in the loopback fixture. UVM execution uses VCS
+with UVM 1.2. Focused RTL tests retain their existing simulator entry points.
+
 ## Prepare
 
 Run from the repository root:

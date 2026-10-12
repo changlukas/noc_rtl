@@ -22,7 +22,6 @@ class ni_env extends uvm_env;
         end
         scoreboard = ni_scoreboard::type_id::create("scoreboard", this);
         coverage = ni_axi_coverage::type_id::create("coverage", this);
-        uvm_config_db #(ni_scoreboard)::set(null, "", "ni_scoreboard", scoreboard);
         if (!uvm_config_db #(tvip_axi_configuration)::get(this, "", "source_cfg", cfg))
             `uvm_fatal("CONFIG", "Missing Source AXI configuration")
         source = tvip_axi_master_agent::type_id::create("source", this);

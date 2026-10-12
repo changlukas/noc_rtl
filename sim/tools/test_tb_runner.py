@@ -97,3 +97,16 @@ def test_wrong_hardware_binary_rejected_before_execution(tmp_path):
     result = subprocess.run(command, cwd=tmp_path, capture_output=True, text=True)
     assert result.returncode != 0 and "does not match" in result.stderr
     assert not (tmp_path / "args.json").exists()
+
+
+def test_corruption_allows_only_expected_pending_fatal(tmp_path):
+    _, command = prepare(tmp_path)
+    with (tmp_path / "simv").open("a") as stream:
+        for code, message in (("AXI_ORDER", "R mismatch"), ("AXI_DATA", "Unexpected RData ID: 0")):
+            stream.write(f"print('UVM_ERROR checker.svh(1) @ 10: checker [{code}] {message}')\n")
+        stream.write("print('UVM_FATAL test.svh(1) @ 20: test [PENDING] Scoreboard has pending transactions')\n")
+    subprocess.run(command + ["--corrupt"], cwd=tmp_path, check=True, capture_output=True)
+    assert subprocess.run(command, cwd=tmp_path, capture_output=True).returncode != 0
+    with (tmp_path / "simv").open("a") as stream:
+        stream.write("print('UVM_FATAL test.svh(2) @ 21: test [TIMEOUT] NI simulation timeout')\n")
+    assert subprocess.run(command + ["--corrupt"], cwd=tmp_path, capture_output=True).returncode != 0

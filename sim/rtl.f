@@ -47,6 +47,5 @@ repo/rtl/nmu/top/nmu.sv
 repo/sim/dv/nmu_sam_burst_checker.sv
 deps/tech_cells_generic-v0.2.14/src/rtl/tc_clk.sv
 deps/common_cells-v2.0.0-beta.3/src/cc_rstgen_bypass.sv
-deps/common_verification-0.2.5/src/rand_id_queue.sv
 -v deps/axi-0.39.7/src/axi_intf.sv
 deps/axi-0.39.7/src/axi_test.sv

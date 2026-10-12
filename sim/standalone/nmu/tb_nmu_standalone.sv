@@ -6,21 +6,21 @@ module tb_nmu_standalone #(
     parameter bit R_ROB_EN = 1
 );
     import ni_flit_pkg::*;
+    import uvm_pkg::*;
+    import tvip_axi_types_pkg::*;
+    import tvip_axi_pkg::*;
+    import ni_nmu_test_pkg::*;
 `ifdef DUMP_WAVE
     initial begin : dump_wave
         string wave_file;
-`ifdef VERILATOR
-        if (!$value$plusargs("wave_file=%s", wave_file)) wave_file = "nmu.fst";
-        $dumpfile(wave_file);
-        $dumpvars(0, tb_nmu_standalone);
-`else
         if (!$value$plusargs("wave_file=%s", wave_file)) wave_file = "nmu.fsdb";
         $fsdbDumpfile(wave_file);
         $fsdbDumpvars(0, tb_nmu_standalone, "+all");
-`endif
     end
 `endif
-    logic axi_clk = 0, noc_clk = 0, rst_n = 0;
+    logic axi_clk = 0, noc_clk = 0;
+    wire rst_n = control.rst_n;
+    ni_nmu_if control(axi_clk, axi_rst_n, noc_rst_n);
     wire axi_rst_n, noc_rst_n;
     cc_rstgen_bypass #(
         .NumRegs (2)
@@ -60,12 +60,12 @@ module tb_nmu_standalone #(
              dut.i_response_path.i_ordering.r_complete} !== '0)
             $fatal(1, "NMU control/storage reset waited for a clock edge");
     end
-    bit warmup          = 1;
+    wire warmup = control.warmup;
     bit block_case      = 0;
     bit perf_in_order   = 0;
     bit perf_out_of_order = 0;
     bit perf_mixed = 0;
-    bit perf_split_response = 0;
+    wire perf_split_response = perf_mixed && control.read_data;
     wire perf_active = perf_in_order || perf_out_of_order || perf_mixed;
     string case_name    = "legacy";
     int response_order  = 1, response_delay = 12, startup_delay = 0;
@@ -81,7 +81,7 @@ module tb_nmu_standalone #(
     realtime noc_phase = 0;
     bit clocks_ready = 0;
     bit read_interleave = 0;
-    int sent_r_beats[], previous_rx_txn = -1, previous_axi_r_id = -1;
+    int sent_r_beats[$], previous_rx_txn = -1, previous_axi_r_id = -1;
     int rx_interleave_count = 0, axi_interleave_count = 0, r_beat_count = 0;
     int aw_count = 0, w_count = 0, ar_count = 0, br_parallel_count = 0;
     initial begin : clock_configuration
@@ -111,24 +111,34 @@ module tb_nmu_standalone #(
         #(noc_phase);
         forever #(noc_half_period) noc_clk = ~noc_clk;
     end
-    AXI_BUS_DV #(.AXI_ADDR_WIDTH(48), .AXI_DATA_WIDTH(512),
-        .AXI_ID_WIDTH (ID_WIDTH),
-        .AXI_USER_WIDTH(58)) vip(axi_clk);
+    tvip_axi_if vip(axi_clk, axi_rst_n);
     axi_if #(.ADDR_W(48), .DATA_W(512), .ID_W(ID_WIDTH), .AWUSER_W(58)) bus();
-    typedef axi_test::axi_file_master #(.AW(48), .DW(512), .IW(ID_WIDTH),
-        .UW (58 ),
-        .TA (1ns),
-        .TT(2ns)) master_t;
-    master_t            master;
-    master_t::ax_beat_t expected_aw[$], expected_ar[$];
-    master_t::w_beat_t  expected_w[$];
+    typedef struct packed {
+        logic [ID_WIDTH-1:0] ax_id;
+        logic [47:0] ax_addr;
+        logic [7:0] ax_len;
+        logic [2:0] ax_size;
+        logic [1:0] ax_burst;
+        logic ax_lock;
+        logic [3:0] ax_cache;
+        logic [2:0] ax_prot;
+        logic [3:0] ax_qos, ax_region;
+        logic [57:0] ax_user;
+    } ax_beat_t;
+    typedef struct packed {
+        logic [511:0] w_data;
+        logic [63:0] w_strb;
+        logic w_last;
+    } w_beat_t;
+    ax_beat_t expected_aw[$], expected_ar[$];
+    w_beat_t expected_w[$];
     int expected_b_by_id[256][$], expected_r_by_id[256][$];
     int        read_beat[256];
     int        pending_b[$], pending_r[$];
     req_flit_t aw_packets[$], ar_packets[$];
     int aw_index = 0, ar_index = 0, w_index = 0;
     int aw_pending[2][$], active_aw[2] = '{-1, -1}, w_beat[2], w_offset[$];
-    bit b_sent[], r_sent[];
+    bit b_sent[$], r_sent[$];
     int b_count      = 0, r_count = 0, cycles = 0, axi_cycles = 0;
     int b_buffered   = 0, r_buffered = 0, reordered_sent = 0;
     int stall_cycles = 0;
@@ -154,52 +164,48 @@ module tb_nmu_standalone #(
             if (rx_dat_valid) rx_available[int'(rx_dat.header[VC_ID_LSB +: VC_ID_WIDTH])]--;
         end
     end
-    wire allow_b        = !warmup && (stall_enable == 0 || axi_cycles % 23 >= 7);
-    wire allow_r        = !warmup && (stall_enable == 0 || axi_cycles % 19 >= 6);
-    assign bus.awid     = vip.aw_id;
-    assign bus.awaddr   = vip.aw_addr;
-    assign bus.awlen    = vip.aw_len;
-    assign bus.awsize   = vip.aw_size;
-    assign bus.awburst  = vip.aw_burst;
-    assign bus.awlock   = vip.aw_lock;
-    assign bus.awcache  = vip.aw_cache;
-    assign bus.awprot   = vip.aw_prot;
-    assign bus.awqos    = vip.aw_qos;
-    assign bus.awregion = vip.aw_region;
-    assign bus.awuser   = vip.aw_user;
-    assign bus.awvalid  = vip.aw_valid;
-    assign vip.aw_ready = bus.awready;
-    assign bus.wdata    = vip.w_data;
-    assign bus.wstrb    = vip.w_strb;
-    assign bus.wlast    = vip.w_last;
-    assign bus.wvalid   = vip.w_valid;
-    assign vip.w_ready  = bus.wready;
-    assign bus.arid     = vip.ar_id;
-    assign bus.araddr   = vip.ar_addr;
-    assign bus.arlen    = vip.ar_len;
-    assign bus.arsize   = vip.ar_size;
-    assign bus.arburst  = vip.ar_burst;
-    assign bus.arlock   = vip.ar_lock;
-    assign bus.arcache  = vip.ar_cache;
-    assign bus.arprot   = vip.ar_prot;
-    assign bus.arqos    = vip.ar_qos;
-    assign bus.arregion = vip.ar_region;
-    assign bus.arvalid  = vip.ar_valid;
-    assign vip.ar_ready = bus.arready;
+    assign bus.awid     = vip.awid;
+    assign bus.awaddr   = vip.awaddr;
+    assign bus.awlen    = vip.awlen;
+    assign bus.awsize   = vip.awsize;
+    assign bus.awburst  = vip.awburst;
+    assign bus.awlock   = vip.awlock;
+    assign bus.awcache  = vip.awcache;
+    assign bus.awprot   = vip.awprot;
+    assign bus.awqos    = vip.awqos;
+    assign bus.awregion = vip.awregion;
+    assign bus.awuser   = vip.awuser;
+    assign bus.awvalid  = vip.awvalid;
+    assign vip.awready = bus.awready;
+    assign bus.wdata    = vip.wdata;
+    assign bus.wstrb    = vip.wstrb;
+    assign bus.wlast    = vip.wlast;
+    assign bus.wvalid   = vip.wvalid;
+    assign vip.wready  = bus.wready;
+    assign bus.arid     = vip.arid;
+    assign bus.araddr   = vip.araddr;
+    assign bus.arlen    = vip.arlen;
+    assign bus.arsize   = vip.arsize;
+    assign bus.arburst  = vip.arburst;
+    assign bus.arlock   = vip.arlock;
+    assign bus.arcache  = vip.arcache;
+    assign bus.arprot   = vip.arprot;
+    assign bus.arqos    = vip.arqos;
+    assign bus.arregion = vip.arregion;
+    assign bus.arvalid  = vip.arvalid;
+    assign vip.arready = bus.arready;
     assign bus.wuser    = '0;
     assign bus.aruser   = '0;
-    assign bus.bready   = vip.b_ready && allow_b;
-    assign vip.b_valid  = bus.bvalid && allow_b;
-    assign vip.b_id     = bus.bid;
-    assign vip.b_resp   = bus.bresp;
-    assign vip.b_user   = '0;
-    assign bus.rready   = vip.r_ready && allow_r;
-    assign vip.r_valid  = bus.rvalid && allow_r;
-    assign vip.r_id     = bus.rid;
-    assign vip.r_data   = bus.rdata;
-    assign vip.r_resp   = bus.rresp;
-    assign vip.r_last   = bus.rlast;
-    assign vip.r_user   = '0;
+    assign bus.bready   = vip.bready;
+    assign vip.bvalid  = bus.bvalid;
+    assign vip.bid     = bus.bid;
+    assign vip.bresp   = tvip_axi_response'(bus.bresp);
+    assign bus.rready   = vip.rready;
+    assign vip.rvalid  = bus.rvalid;
+    assign vip.rid     = bus.rid;
+    assign vip.rdata   = bus.rdata;
+    assign vip.rresp   = tvip_axi_response'(bus.rresp);
+    assign vip.rlast   = bus.rlast;
     nmu #(.INPUT_ID_WIDTH(ID_WIDTH), .R_ROB_EN(R_ROB_EN),
         .B_ROB_DEPTH (BUFFER_DEPTH),
         .R_ROB_DEPTH(BUFFER_DEPTH)) dut (
@@ -228,7 +234,7 @@ module tb_nmu_standalone #(
     function automatic logic [63:0] read_pattern(input int txn, input int beat);
         return 64'hcafe123400000000 | (64'(txn) << 16) | 64'(beat);
     endfunction
-    function automatic longint unsigned beat_address(input master_t::ax_beat_t ax, input int beat);
+    function automatic longint unsigned beat_address(input ax_beat_t ax, input int beat);
         longint unsigned step_size, span, address;
         step_size = 64'd1 << ax.ax_size;
         span      = (64'(ax.ax_len)+1)*step_size;
@@ -240,7 +246,7 @@ module tb_nmu_standalone #(
         end
         return address;
     endfunction
-    function automatic bit is_data(input master_t::ax_beat_t ax);
+    function automatic bit is_data(input ax_beat_t ax);
         for (int i = 0; i < topology_pkg::SAM_NUM_RULES; i++)
             if (ax.ax_addr >= topology_pkg::SAM[i].start_addr && ax.ax_addr < topology_pkg::SAM[i].end_addr)
                 return topology_pkg::SAM[i].idx.is_data;
@@ -258,7 +264,7 @@ module tb_nmu_standalone #(
         end
         return value;
     endfunction
-    task automatic check_address(input req_flit_t packet, input master_t::ax_beat_t ax);
+    task automatic check_address(input req_flit_t packet, input ax_beat_t ax);
         bit hit;
         hit = 0;
         if (packet.payload[AW_AWADDR_LSB +: AW_AWADDR_WIDTH] !== ax.ax_addr ||
@@ -396,11 +402,33 @@ module tb_nmu_standalone #(
             if (unique_r == 8 && bus.arvalid && !bus.arready && live_r[int'(bus.arid)] == 0)
                 id_exhaustion_r++;
             if (bus.awvalid && bus.awready) begin
+                ax_beat_t ax;
+                ax = {bus.awid, bus.awaddr, bus.awlen, bus.awsize, bus.awburst, bus.awlock,
+                      bus.awcache, bus.awprot, bus.awqos, bus.awregion, bus.awuser};
+                expected_b_by_id[int'(bus.awid)].push_back(expected_aw.size());
+                aw_pending[int'(is_data(ax))].push_back(expected_aw.size());
+                w_offset.push_back(expected_aw.size() == 0 ? 0 : w_offset[$] + int'(expected_aw[$].ax_len) + 1);
+                expected_aw.push_back(ax);
+                aw_packets.push_back('0);
+                b_sent.push_back(0);
                 live_w[int'(bus.awid)]++;
                 aw_count++;
             end
-            if (bus.wvalid && bus.wready) w_count++;
-            if (bus.arvalid && bus.arready) ar_count++;
+            if (bus.wvalid && bus.wready) begin
+                expected_w.push_back({bus.wdata, bus.wstrb, bus.wlast});
+                w_count++;
+            end
+            if (bus.arvalid && bus.arready) begin
+                ax_beat_t ax;
+                ax = {bus.arid, bus.araddr, bus.arlen, bus.arsize, bus.arburst, bus.arlock,
+                      bus.arcache, bus.arprot, bus.arqos, bus.arregion, 58'b0};
+                if (perf_mixed && is_data(ax) != perf_split_response)
+                    $fatal(1, "mixed measurement requires one read response channel");
+                expected_r_by_id[int'(bus.arid)].push_back(expected_ar.size());
+                expected_ar.push_back(ax);
+                r_sent.push_back(0); sent_r_beats.push_back(0);
+                ar_count++;
+            end
             if (bus.bvalid && bus.bready && bus.rvalid && bus.rready) br_parallel_count++;
             if (bus.arvalid && bus.arready) live_r[int'(bus.arid)]++;
             if ((bus.bvalid && !bus.bready) || (bus.rvalid && !bus.rready)) stall_cycles++;
@@ -451,7 +479,7 @@ module tb_nmu_standalone #(
         @(negedge noc_clk);
         rx_dat_valid = 0;
     endtask
-    function automatic logic [DST_ID_WIDTH+DST_PORT_ID_WIDTH:0] response_domain(input master_t::ax_beat_t ax);
+    function automatic logic [DST_ID_WIDTH+DST_PORT_ID_WIDTH:0] response_domain(input ax_beat_t ax);
         for (int i = 0; i < topology_pkg::SAM_NUM_RULES; i++)
             if (ax.ax_addr >= topology_pkg::SAM[i].start_addr && ax.ax_addr < topology_pkg::SAM[i].end_addr)
                 return {topology_pkg::SAM[i].idx.is_data, topology_pkg::SAM[i].idx.dst_id, topology_pkg::SAM[i].idx.dst_port_id};
@@ -459,7 +487,7 @@ module tb_nmu_standalone #(
         return '0;
     endfunction
     function automatic bit response_eligible(input bit read_rsp, input int txn);
-        master_t::ax_beat_t current_ax, previous_ax;
+        ax_beat_t current_ax, previous_ax;
         current_ax = read_rsp ? expected_ar[txn] : expected_aw[txn];
         for (int j = 0; j < txn; j++) begin
             previous_ax = read_rsp ? expected_ar[j] : expected_aw[j];
@@ -599,21 +627,10 @@ module tb_nmu_standalone #(
             join
         end else response_loop(2);
     end
-    initial begin : run
-        string              stim_dir;
-        int                 pattern_id_width, probe, offset, reset_seed, unused;
-        bit random_reset;
-        realtime reset_delay, reset_duration;
-        dat_flit_t warm_dat;
-        master_t::ax_beat_t warm_aw, warm_ar;
-        master_t::w_beat_t  warm_w;
-        rsp_flit_t          warm_rsp;
-        master = new(vip);
-        reset_seed = 1;
-        void'($value$plusargs("seed=%d", reset_seed));
-        unused = $urandom(reset_seed);
+    initial begin : configure_test
+        tvip_axi_configuration cfg;
+        int pattern_id_width;
         read_interleave = $test$plusargs("read_interleave");
-        if (!$value$plusargs("stim_dir=%s", stim_dir)) $fatal(1, "missing stim_dir");
         block_case = $test$plusargs("block_case");
         if (block_case) begin
             if (!$value$plusargs("case_id_width=%d", pattern_id_width) || pattern_id_width != ID_WIDTH)
@@ -630,200 +647,128 @@ module tb_nmu_standalone #(
             if (!$value$plusargs("require_buffered=%d", require_buffered)) $fatal(1, "missing require_buffered");
             if (!$value$plusargs("require_capacity=%d", require_capacity)) $fatal(1, "missing require_capacity");
             if (!$value$plusargs("require_stall=%d", require_stall)) $fatal(1, "missing require_stall");
-            // The upstream file parser assumes nonempty input. Probe empty
-            // directions before using its existing parse functions.
-            master.read_fd  = $fopen({stim_dir,"/read.txt"}, "r");
-            master.write_fd = $fopen({stim_dir,"/write.txt"}, "r");
-            if (master.read_fd == 0 || master.write_fd == 0) $fatal(1, "missing AXI input file");
-            probe = $fgetc(master.read_fd);
-            if (probe != -1) begin
-                probe = $ungetc(probe, master.read_fd);
-                master.parse_read();
-            end
-            probe = $fgetc(master.write_fd);
-            if (probe != -1) begin
-                probe = $ungetc(probe, master.write_fd);
-                master.parse_write();
-            end
-            $fclose(master.read_fd);
-            $fclose(master.write_fd);
-        end else begin
-            master.load_files({stim_dir,"/read.txt"}, {stim_dir,"/write.txt"});
         end
         perf_mixed = $test$plusargs("perf_mixed");
-        perf_split_response = perf_mixed && master.ar_queue.size() != 0 && is_data(master.ar_queue[0]);
-        if (perf_mixed) begin
-            if (!block_case || response_order != 0 || startup_delay != 0 ||
-                stall_enable != 0 || reset_warmup != 0 || NOC_HALF_PERIOD != 5 ||
-                $test$plusargs("perf_in_order") || $test$plusargs("perf_out_of_order") ||
-                master.aw_queue.size() == 0 || master.ar_queue.size() == 0)
-                $fatal(1, "mixed measurement requires both directions, in-order, no stalls, equal clocks");
-            foreach (master.ar_queue[i])
-                if (is_data(master.ar_queue[i]) != perf_split_response)
-                    $fatal(1, "mixed measurement requires one read response channel");
-        end
         perf_in_order = $test$plusargs("perf_in_order");
         perf_out_of_order = $test$plusargs("perf_out_of_order");
-        if (perf_out_of_order) begin
-            if (!block_case || perf_in_order || stall_enable != 0 || reset_warmup != 0 ||
-                NOC_HALF_PERIOD != 5 || !R_ROB_EN || response_order == 0)
-                $fatal(1, "out-of-order measurement requires reordering, no stalls, equal clocks");
-            if ((master.aw_queue.size() == 0) == (master.ar_queue.size() == 0))
-                $fatal(1, "out-of-order measurement requires one active direction");
-        end
-        if (perf_in_order) begin
-            if (!block_case || response_order != 0 || startup_delay != 0 ||
-                stall_enable != 0 || reset_warmup != 0 || NOC_HALF_PERIOD != 5)
-                $fatal(1, "performance baseline requires in-order, no stalls, equal clocks");
-            if ((master.aw_queue.size() == 0) == (master.ar_queue.size() == 0))
-                $fatal(1, "performance baseline requires one active direction");
-        end
-        random_reset = case_name == "reset_recovery" || $test$plusargs("reset_random");
-        if (random_reset) reset_warmup = 1;
-        expected_aw = master.aw_queue;
-        expected_ar = master.ar_queue;
-        expected_w  = master.w_queue;
-        b_sent      = new[expected_aw.size()];
-        r_sent      = new[expected_ar.size()];
-        sent_r_beats = new[expected_ar.size()];
-        offset      = 0;
-        foreach (expected_aw[i]) begin
-            aw_pending[int'(is_data(expected_aw[i]))].push_back(i);
-            aw_packets.push_back('0);
-            w_offset.push_back(offset);
-            offset += int'(expected_aw[i].ax_len)+1;
-        end
-        foreach (expected_aw[i]) expected_b_by_id[int'(expected_aw[i].ax_id)].push_back(i);
-        foreach (expected_ar[i]) expected_r_by_id[int'(expected_ar[i].ax_id)].push_back(i);
-        repeat (5) @(negedge axi_clk);
-        if ($test$plusargs("async_clocks")) #($urandom_range(1, 9999) * 1ps);
-        rst_n = 1;
-        wait(axi_rst_n && noc_rst_n);
-        @(negedge axi_clk);
-        if (reset_warmup != 0) begin
-        // Populate CDC and order-list state, then flush before the real run.
-        fork
-            master.drv.send_aw(expected_aw[0]);
-            begin
-                for (int i = 0; i <= int'(expected_aw[0].ax_len); i++) master.drv.send_w(expected_w[i]);
-            end
-            master.drv.send_ar(expected_ar[0]);
-        join
-        warm_aw       = new;
-        warm_ar       = new;
-        warm_w        = new;
-        warm_aw.ax_id = expected_aw[0].ax_id;
-        warm_ar.ax_id = expected_ar[0].ax_id;
-        // A second destination forces tagged responses in enabled mode.
-        warm_aw.ax_addr = expected_aw[0].ax_addr ^ 48'h100000000;
-        warm_ar.ax_addr = expected_ar[0].ax_addr ^ 48'h100000000;
-        warm_aw.ax_size = 3; warm_aw.ax_burst = 1;
-        warm_ar.ax_size = 3; warm_ar.ax_burst = 1;
-        warm_w.w_last   = 1;
+        control.read_reorder = R_ROB_EN;
+        cfg = tvip_axi_configuration::type_id::create("source_cfg");
+        cfg.vif = vip;
+        cfg.awuser_width = 58;
+        if (!cfg.randomize() with {
+            id_width == ID_WIDTH; address_width == 48; data_width == 512; max_burst_length == 256;
+            default_bready == (stall_enable == 0); default_rready == (stall_enable == 0);
+            bready_delay.min_delay == (stall_enable == 0 ? 0 : 7);
+            bready_delay.max_delay == (stall_enable == 0 ? 0 : 7);
+            rready_delay.min_delay == (stall_enable == 0 ? 0 : 6);
+            rready_delay.max_delay == (stall_enable == 0 ? 0 : 6);
+        }) $fatal(1, "Source VIP configuration failed");
+        uvm_config_db #(tvip_axi_configuration)::set(null, "uvm_test_top", "source_cfg", cfg);
+        uvm_config_db #(virtual ni_nmu_if)::set(null, "uvm_test_top", "control", control);
+        run_test("ni_nmu_test");
+    end
+    initial begin : reset_responses
+        rsp_flit_t value;
+        dat_flit_t data;
+        wait (warm_aw_packets.size() == (R_ROB_EN ? 2 : 1) && warm_ar_packets.size() == (R_ROB_EN ? 2 : 1));
+        repeat (10) @(negedge noc_clk);
         if (R_ROB_EN) begin
-            fork
-                master.drv.send_aw(warm_aw);
-                master.drv.send_w(warm_w);
-                master.drv.send_ar(warm_ar);
-            join
-            wait(warm_aw_packets.size() == 2 && warm_ar_packets.size() == 2);
-            repeat (10) @(negedge noc_clk);
-            warm_rsp                                    = '0;
-            warm_rsp.header                             = warm_aw_packets[1].header;
-            warm_rsp.header[AXI_CH_LSB +: AXI_CH_WIDTH] = AXI_CH_WIDTH'(is_data(warm_aw) ? AXI_CH_DataB : AXI_CH_NarrowB);
-            warm_rsp.header[FLIT_TAIL_LSB]              = 1;
-            warm_rsp.payload[B_BID_LSB +: B_BID_WIDTH]  = warm_aw_packets[1].payload[AW_AWID_LSB +: AW_AWID_WIDTH];
-            send_rsp(warm_rsp);
-            warm_rsp                                                 = '0;
-            warm_rsp.header                                          = warm_ar_packets[1].header;
-            warm_rsp.header[AXI_CH_LSB +: AXI_CH_WIDTH]              = AXI_CH_WIDTH'(AXI_CH_NarrowR);
-            warm_rsp.header[FLIT_TAIL_LSB]                           = 1;
-            warm_rsp.payload[NARROW_R_RID_LSB +: NARROW_R_RID_WIDTH] = warm_ar_packets[1].payload[AR_ARID_LSB +: AR_ARID_WIDTH];
-            warm_rsp.payload[NARROW_R_RLAST_LSB]                     = 1;
-            if (is_data(warm_ar)) begin
-                warm_dat                                             = '0;
-                warm_dat.header                                      = warm_rsp.header;
-                warm_dat.header[AXI_CH_LSB +: AXI_CH_WIDTH]          = AXI_CH_WIDTH'(AXI_CH_DataR);
-                warm_dat.payload[DATA_R_RID_LSB +: DATA_R_RID_WIDTH] = warm_ar_packets[1].payload[AR_ARID_LSB +: AR_ARID_WIDTH];
-                warm_dat.payload[DATA_R_RLAST_LSB]                   = 1;
-                send_dat(warm_dat);
-            end else send_rsp(warm_rsp);
+            value = '0;
+            value.header = warm_aw_packets[1].header;
+            value.header[AXI_CH_LSB +: AXI_CH_WIDTH] = AXI_CH_WIDTH'(AXI_CH_NarrowB);
+            value.header[FLIT_TAIL_LSB] = 1;
+            value.payload[B_BID_LSB +: B_BID_WIDTH] = warm_aw_packets[1].payload[AW_AWID_LSB +: AW_AWID_WIDTH];
+            send_rsp(value);
+            value = '0;
+            value.header = warm_ar_packets[1].header;
+            value.header[AXI_CH_LSB +: AXI_CH_WIDTH] = AXI_CH_WIDTH'(AXI_CH_NarrowR);
+            value.header[FLIT_TAIL_LSB] = 1;
+            value.payload[NARROW_R_RID_LSB +: NARROW_R_RID_WIDTH] = warm_ar_packets[1].payload[AR_ARID_LSB +: AR_ARID_WIDTH];
+            value.payload[NARROW_R_RLAST_LSB] = 1;
+            if (warm_ar_packets[1].header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_DataAr) begin
+                data = '0;
+                data.header = value.header;
+                data.header[AXI_CH_LSB +: AXI_CH_WIDTH] = AXI_CH_WIDTH'(AXI_CH_DataR);
+                data.payload[DATA_R_RID_LSB +: DATA_R_RID_WIDTH] = warm_ar_packets[1].payload[AR_ARID_LSB +: AR_ARID_WIDTH];
+                data.payload[DATA_R_RLAST_LSB] = 1;
+                send_dat(data);
+            end else send_rsp(value);
         end
         repeat (40) @(negedge noc_clk);
-        if (R_ROB_EN &&
-            (dut.i_response_path.i_ordering.b_complete == '0 || dut.i_response_path.i_ordering.r_complete == '0))
+        if (R_ROB_EN && (dut.i_response_path.i_ordering.b_complete == '0 ||
+                dut.i_response_path.i_ordering.r_complete == '0))
             $fatal(1, "reset did not cover occupied B/R reorder storage");
-        if (warm_requests == 0) $fatal(1, "reset warmup did not reach NMU egress");
-        reset_delay = random_reset ? $urandom_range(1, 199999) * 1ps : axi_half_period;
-        reset_duration = random_reset ? $urandom_range(40000, 199999) * 1ps : 20 * noc_half_period;
-        #(reset_delay);
-        $display("RESET_RECOVERY seed=%0d requests=%0d occupied_B=%0d occupied_R=%0d assert_ns=%0.3f duration_ns=%0.3f",
-            reset_seed, warm_requests, $countones(dut.i_response_path.i_ordering.b_complete),
-            $countones(dut.i_response_path.i_ordering.r_complete), $realtime, reset_duration);
-        rst_n = 0;
-        master.reset();
-        #(reset_duration);
-        rst_n = 1;
-        wait(axi_rst_n && noc_rst_n);
-        repeat (20) begin
-            @(negedge axi_clk);
-            if (bus.bvalid || bus.rvalid || req_valid || dat_valid)
-                $fatal(1, "pre-reset transaction reappeared after reset release");
-        end
-        warmup = 0;
-        end else begin
-            warmup = 0;
-        end
-        master.run();
-        repeat (20) @(negedge axi_clk);
-        if (b_count != expected_aw.size() || r_count != expected_ar.size() ||
-            aw_index != expected_aw.size() || ar_index != expected_ar.size() ||
-            w_index != expected_w.size() || pending_b.size() != 0 || pending_r.size() != 0)
-            $fatal(1, "incomplete transaction drain");
-        if ($test$plusargs("require_reorder") &&
-            (b_buffered == 0 || (R_ROB_EN && r_buffered == 0)))
-            $fatal(1, "reorder coverage was vacuous B=%0d R=%0d", b_buffered, r_buffered);
-        for (int i = 0; i < 256; i++)
-            if (live_w[i] != 0 || live_r[i] != 0) $fatal(1, "live ID leaked");
-        if ($test$plusargs("require_reorder") && ID_WIDTH == 8 &&
-            (id_exhaustion_w == 0 || id_exhaustion_r == 0)) $fatal(1, "ID exhaustion coverage missing");
-        if ($test$plusargs("require_pressure") && (b_full_cycles == 0 || r_full_cycles == 0))
-            $fatal(1, "buffer pressure coverage missing");
-        if (block_case) begin
-            if ((expected_aw.size() != 0 && (peak_w < min_outstanding || peak_unique_w < min_unique)) ||
-                (expected_ar.size() != 0 && (peak_r < min_outstanding || peak_unique_r < min_unique)))
-                $fatal(1, "outstanding coverage missing");
-            if (require_ooo != 0 && (reordered_b == 0 || reordered_r == 0))
-                $fatal(1, "cross-ID out-of-order coverage missing");
-            if (require_buffered != 0 && (b_buffered == 0 || (R_ROB_EN && r_buffered == 0)))
-                $fatal(1, "B/R reorder coverage missing");
-            if (require_stall != 0 && stall_cycles == 0) $fatal(1, "response stall coverage missing");
-            if (require_capacity != 0) begin
-                if (blocked_aw == 0 || blocked_ar == 0) $fatal(1, "admission pressure missing");
-                if (ID_WIDTH == 8 && (id_exhaustion_w == 0 || id_exhaustion_r == 0))
-                    $fatal(1, "ID exhaustion/recovery coverage missing");
-                if (BUFFER_DEPTH == 8 && R_ROB_EN && (b_full_cycles == 0 || r_full_cycles == 0))
-                    $fatal(1, "B/R pool capacity coverage missing");
+        if (!warm_requests) $fatal(1, "reset warmup did not reach NMU egress");
+        control.warm_ready = 1;
+    end
+    always @(posedge axi_clk) begin
+        if (axi_rst_n && control.warm_ready && warmup && (bus.bvalid || bus.rvalid))
+            $fatal(1, "pre-reset response reappeared");
+    end
+    final begin
+        if (control.completed) begin
+            if (perf_mixed && (!block_case || response_order != 0 || startup_delay != 0 ||
+                    stall_enable != 0 || reset_warmup != 0 || NOC_HALF_PERIOD != 5 ||
+                    perf_in_order || perf_out_of_order || !expected_aw.size() || !expected_ar.size()))
+                $fatal(1, "mixed measurement requires both directions, in-order, no stalls, equal clocks");
+            if (perf_in_order && (!block_case || response_order != 0 || startup_delay != 0 ||
+                    stall_enable != 0 || reset_warmup != 0 || NOC_HALF_PERIOD != 5))
+                $fatal(1, "performance baseline requires in-order, no stalls, equal clocks");
+            if (perf_out_of_order && (!block_case || perf_in_order || stall_enable != 0 ||
+                    reset_warmup != 0 || NOC_HALF_PERIOD != 5 || !R_ROB_EN || response_order == 0))
+                $fatal(1, "out-of-order measurement requires reordering, no stalls, equal clocks");
+            if ((perf_in_order || perf_out_of_order) &&
+                    ((!expected_aw.size()) == (!expected_ar.size())))
+                $fatal(1, "measurement requires one active direction");
+            if (b_count != control.expected_writes || r_count != control.expected_reads ||
+                expected_aw.size() != control.expected_writes || expected_ar.size() != control.expected_reads ||
+                aw_index != expected_aw.size() || ar_index != expected_ar.size() ||
+                w_index != expected_w.size() || pending_b.size() != 0 || pending_r.size() != 0)
+                $fatal(1, "incomplete transaction drain");
+            if ($test$plusargs("require_reorder") &&
+                (b_buffered == 0 || (R_ROB_EN && r_buffered == 0)))
+                $fatal(1, "reorder coverage was vacuous B=%0d R=%0d", b_buffered, r_buffered);
+            for (int i = 0; i < 256; i++)
+                if (live_w[i] != 0 || live_r[i] != 0) $fatal(1, "live ID leaked");
+            if ($test$plusargs("require_reorder") && ID_WIDTH == 8 &&
+                (id_exhaustion_w == 0 || id_exhaustion_r == 0)) $fatal(1, "ID exhaustion coverage missing");
+            if ($test$plusargs("require_pressure") && (b_full_cycles == 0 || r_full_cycles == 0))
+                $fatal(1, "buffer pressure coverage missing");
+            if (block_case) begin
+                if ((expected_aw.size() != 0 && (peak_w < min_outstanding || peak_unique_w < min_unique)) ||
+                    (expected_ar.size() != 0 && (peak_r < min_outstanding || peak_unique_r < min_unique)))
+                    $fatal(1, "outstanding coverage missing");
+                if (require_ooo != 0 && (reordered_b == 0 || reordered_r == 0))
+                    $fatal(1, "cross-ID out-of-order coverage missing");
+                if (require_buffered != 0 && (b_buffered == 0 || (R_ROB_EN && r_buffered == 0)))
+                    $fatal(1, "B/R reorder coverage missing");
+                if (require_stall != 0 && stall_cycles == 0) $fatal(1, "response stall coverage missing");
+                if (require_capacity != 0) begin
+                    if (blocked_aw == 0 || blocked_ar == 0) $fatal(1, "admission pressure missing");
+                    if (ID_WIDTH == 8 && (id_exhaustion_w == 0 || id_exhaustion_r == 0))
+                        $fatal(1, "ID exhaustion/recovery coverage missing");
+                    if (BUFFER_DEPTH == 8 && R_ROB_EN && (b_full_cycles == 0 || r_full_cycles == 0))
+                        $fatal(1, "B/R pool capacity coverage missing");
+                end
+                $display("COVER case=%s peak_W=%0d peak_R=%0d unique_W=%0d unique_R=%0d blocked_AW=%0d blocked_AR=%0d ooo_B=%0d ooo_R=%0d",
+                    case_name,peak_w,peak_r,peak_unique_w,peak_unique_r,blocked_aw,blocked_ar,reordered_b,reordered_r);
             end
-            $display("COVER case=%s peak_W=%0d peak_R=%0d unique_W=%0d unique_R=%0d blocked_AW=%0d blocked_AR=%0d ooo_B=%0d ooo_R=%0d",
-                case_name,peak_w,peak_r,peak_unique_w,peak_unique_r,blocked_aw,blocked_ar,reordered_b,reordered_r);
+            if (perf_out_of_order && reordered_sent == 0)
+                $fatal(1, "out-of-order measurement did not reorder responses");
+            if (perf_out_of_order && response_order == 1 && b_buffered == 0 && r_buffered == 0)
+                $fatal(1, "out-of-order measurement did not exercise ROB storage");
+            if ((perf_in_order || perf_mixed) && (b_buffered != 0 || r_buffered != 0 || reordered_sent != 0))
+                $fatal(1, "performance baseline used response reordering");
+            if (read_interleave && (rx_interleave_count == 0 || axi_interleave_count == 0))
+                $fatal(1, "read interleave coverage missing ingress=%0d AXI=%0d", rx_interleave_count, axi_interleave_count);
+            $display("COVER channels AW=%0d W=%0d AR=%0d B=%0d R_beats=%0d B_R_parallel=%0d",
+                aw_count, w_count, ar_count, b_count, r_beat_count, br_parallel_count);
+            $display("COVER read_interleave ingress=%0d AXI=%0d R_ROB_EN=%0d", rx_interleave_count, axi_interleave_count, R_ROB_EN);
+            $display("COVER buffer full B=%0d R=%0d", b_full_cycles, r_full_cycles);
+            $display("COVER ID exhaustion write=%0d read=%0d", id_exhaustion_w, id_exhaustion_r);
+            $display("PASS NMU standalone ID=%0d B=%0d R=%0d buffered_B=%0d buffered_R=%0d reordered=%0d stall=%0d",
+                ID_WIDTH,b_count,r_count,b_buffered,r_buffered,reordered_sent,stall_cycles);
         end
-        if (perf_out_of_order && reordered_sent == 0)
-            $fatal(1, "out-of-order measurement did not reorder responses");
-        if (perf_out_of_order && response_order == 1 && b_buffered == 0 && r_buffered == 0)
-            $fatal(1, "out-of-order measurement did not exercise ROB storage");
-        if ((perf_in_order || perf_mixed) && (b_buffered != 0 || r_buffered != 0 || reordered_sent != 0))
-            $fatal(1, "performance baseline used response reordering");
-        if (read_interleave && (rx_interleave_count == 0 || axi_interleave_count == 0))
-            $fatal(1, "read interleave coverage missing ingress=%0d AXI=%0d", rx_interleave_count, axi_interleave_count);
-        $display("COVER channels AW=%0d W=%0d AR=%0d B=%0d R_beats=%0d B_R_parallel=%0d",
-            aw_count, w_count, ar_count, b_count, r_beat_count, br_parallel_count);
-        $display("COVER read_interleave ingress=%0d AXI=%0d R_ROB_EN=%0d", rx_interleave_count, axi_interleave_count, R_ROB_EN);
-        $display("COVER buffer full B=%0d R=%0d", b_full_cycles, r_full_cycles);
-        $display("COVER ID exhaustion write=%0d read=%0d", id_exhaustion_w, id_exhaustion_r);
-        $display("PASS NMU standalone ID=%0d B=%0d R=%0d buffered_B=%0d buffered_R=%0d reordered=%0d stall=%0d",
-            ID_WIDTH,b_count,r_count,b_buffered,r_buffered,reordered_sent,stall_cycles);
-        $finish;
     end
     assert property (@(posedge noc_clk) disable iff (!noc_rst_n)
         req_valid && !req_ready |=> req_valid && $stable(req))
@@ -924,5 +869,4 @@ module tb_nmu_standalone #(
     final begin
         if (perf_fd != 0) $fclose(perf_fd);
     end
-    initial begin #2000000; $fatal(1, "NMU standalone timeout AW=%0d AR=%0d B=%0d R=%0d",aw_index,ar_index,b_count,r_count); end
 endmodule

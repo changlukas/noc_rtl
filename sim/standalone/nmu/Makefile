@@ -6,7 +6,7 @@ root := $(abspath ../../..)
 include config.mk
 output := $(CURDIR)/output/i$(ID_WIDTH)_n$(NOC_HALF_PERIOD)_b$(BUFFER_DEPTH)_r$(R_ROB_EN)
 stage := $(output)/stage
-SIMULATOR ?= verilator
+SIMULATOR ?= vcs
 CASE ?= ctrl_write_single
 .PHONY: help prepare compile run sim regress run_wave view list clean
 help:

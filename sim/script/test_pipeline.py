@@ -48,7 +48,7 @@ for top, params in cases:
     key = hashlib.sha256((top + repr(params)).encode() + (root / tb).read_bytes()).hexdigest()[:8]
     work = out / (top + "_" + key)
     work.mkdir(exist_ok=True)
-    args = ["vcs", "-full64", "-sverilog", "-assert", "svaext", "-override_timescale=1ns/1ps",
+    args = ["vcs", "-full64", "-sverilog", "-ntb_opts", "uvm-1.2", "-lca", "-assert", "svaext", "-override_timescale=1ns/1ps",
             "-f", str(filelist), tb, "-top", top, "-Mdir=" + str(work / "csrc"), "-o", str(work / "simv")]
     args += ["-pvalue+{}.{}={}".format(top, key, value) for key, value in params.items()]
     with (work / "compile.log").open("w") as log:

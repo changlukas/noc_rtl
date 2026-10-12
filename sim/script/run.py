@@ -87,13 +87,14 @@ if a.wave:
 passed = "NMU_COSIM_COUNTS" in log and "AXI_ORDERING_CHECK_DRAINED" in log and not failed
 if a.corrupt:
     errors = re.findall(r"(?m)^UVM_ERROR .*?\[([^]]+)\] ([^\n]*)", log)
-    fatals = re.findall(r"(?m)^Fatal: [^\n]*\n([^\n]*)", log)
+    fatals = re.findall(r"(?m)^UVM_FATAL(?!\s*:)[^\n]*", log)
     passed = (r.returncode in (0, 1) and "Unexpected RData" in log and
               {code for code, _ in errors} == {"AXI_ORDER", "AXI_DATA"} and
               all((code == "AXI_ORDER" and message == "R mismatch") or
                   (code == "AXI_DATA" and message.startswith("Unexpected RData")) for code, message in errors) and
-              not re.search(r"(?m)^UVM_FATAL(?!\s*:)|^Error:", log) and
-              all(message == "AXI ordering checker has pending transactions" for message in fatals))
+              not re.search(r"(?m)^(?:Fatal:|Error:)", log) and
+              all(re.search(r"\[PENDING\] Scoreboard has pending transactions$", line)
+                  for line in fatals))
 
 if passed:
     log += "NMU_COSIM_CORRUPTION_DETECTED\n" if a.corrupt else "NMU_COSIM_PASS\n"

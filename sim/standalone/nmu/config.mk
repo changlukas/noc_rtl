@@ -1,4 +1,4 @@
-# Shared test configuration for Verilator and VCS.
+# NMU loopback test configuration.
 ID_WIDTH ?= 8
 NOC_HALF_PERIOD ?= 5
 BUFFER_DEPTH ?= 128

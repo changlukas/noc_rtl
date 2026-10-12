@@ -141,7 +141,7 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False):
     for path in (ROOT / "sim/uvm").glob("*"):
         if path.is_file():
             copy(path, "repo/" + str(path.relative_to(ROOT)))
-    uvm_sources += ["+incdir+repo/deps/floonoc-dv", "+incdir+repo/sim/uvm", "repo/sim/uvm/ni_noc_if.sv", "repo/sim/uvm/ni_test_pkg.sv"]
+    uvm_sources += ["+incdir+repo/deps/floonoc-dv", "+incdir+repo/sim/uvm", "repo/sim/uvm/ni_noc_if.sv", "repo/sim/uvm/ni_tb_if.sv", "repo/sim/uvm/ni_test_pkg.sv"]
     top_index = source_list.index("repo/sim/tb_top.sv")
     source_list[top_index:top_index] = uvm_sources
     (out / "files.f").write_text("\n".join(source_list) + "\n")

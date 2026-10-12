@@ -26,7 +26,7 @@
     "source_repository": "https://github.com/changlukas/noc_project.git",
     "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
     "source_path": "sim/dv/axi-0.39.7",
-    "local_changes": "Parser supports null interface; scoreboard read-error reporting hook for UVM adapter",
+    "local_changes": "Retain scoreboard algorithms and beat types only; remove pin monitors; read-error reporting hook for UVM adapter",
     "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
@@ -35,12 +35,6 @@
     "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
     "source_path": "sim/dv/common_cells-1.37.0",
     "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
-  },
-  {
-    "name": "common_verification-0.2.5",
-    "source_repository": "https://github.com/changlukas/noc_project.git",
-    "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",
-    "source_path": "sim/dv/common_verification-0.2.5"
   },
   {
     "name": "floonoc-dv",

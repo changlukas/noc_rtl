@@ -43,7 +43,11 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             target = root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             if source.is_dir():
-                shutil.copytree(source, target, dirs_exist_ok=True)
+                if source == repo / "sim/uvm":
+                    target.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source / "ni_pattern_sequence.svh", target / "ni_pattern_sequence.svh")
+                else:
+                    shutil.copytree(source, target, dirs_exist_ok=True)
             else:
                 shutil.copy2(source, target)
                 if relative.parts[0] == "deps" and source.name == "cc_fifo.sv":
@@ -140,8 +144,8 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             "View existing waveform: make view CASE=ctrl_write_burst\n"
             "Display this list: make list\n\n"
             + "\n".join(f"{i:2d}. {name}\n    {descriptions[name]}" for i, name in enumerate(names, 1))
-            + "\n\nDefault simulator: VCS. Local override: SIMULATOR=verilator.\n"
-            "AW/W/AR use the original axi_file_master.run(); no TB outstanding cap.\n"
+            + "\n\nSimulator: VCS with UVM 1.2.\n"
+            "AXI requests use the tvip-axi UVM agent and file sequence; no TB outstanding cap.\n"
             "Changing CASE reuses the binary. Changing DUT settings or WAVE may need compilation.\n"
             "Pattern ID width must match the compiled DUT.\n"
 )
@@ -149,11 +153,6 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
 set -euo pipefail
 cd "$(dirname "$0")"
 make regress "$@"
-''')
-        (root / "run_verilator.sh").write_text(r'''#!/usr/bin/env bash
-set -euo pipefail
-cd "$(dirname "$0")"
-make regress SIMULATOR=verilator "$@"
 ''')
         revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
         (root / "VERSION.txt").write_text(
@@ -167,7 +166,7 @@ make regress SIMULATOR=verilator "$@"
             "make clean\n"
             "make list\n\n"
             "Settings: script/config.mk. Waveform groups: script/nWaveLog/signals.rc.\n"
-            "VCS is the workstation default. Local override: SIMULATOR=verilator.\n"
+            "Simulator: VCS with UVM 1.2.\n"
             "clean removes build products, reports and GUI output; keeps sources, patterns and signal RC files.\n")
         # Transport carries the complete original master ID; conversion is at NSU.
         import sys

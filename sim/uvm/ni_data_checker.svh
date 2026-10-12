@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Adapter to the existing AXI scoreboard memory/history algorithms.
 class ni_data_checker extends axi_test::axi_scoreboard #(
-    NI_INPUT_ID_WIDTH, AXI_ADDR_WIDTH, AXI_DATA_WIDTH, AXI_AWUSER_WIDTH, 0ps
+    NI_INPUT_ID_WIDTH, AXI_ADDR_WIDTH, AXI_DATA_WIDTH, AXI_AWUSER_WIDTH
 );
     process workers[$];
-    function new(); super.new(null); endfunction
+    function new(); super.new(); endfunction
     virtual function void report_read_error(string message);
         `uvm_error("AXI_DATA", message)
     endfunction

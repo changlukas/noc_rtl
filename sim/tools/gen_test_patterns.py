@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emit per-node pulp axi_file_master stimulus (write.txt/read.txt) for a traffic pattern.
+"""Emit per-node AXI text stimulus (write.txt/read.txt) for a traffic pattern.
 
 Usage:
     gen_test_patterns.py --pattern neighbor \\
