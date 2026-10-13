@@ -17,11 +17,10 @@
 // ready/valid per port, no credit. TXREQREADY-class pins are packed
 // [LINK_PORTS-1:0] vectors (one bit per port), matching spec §7.
 //
-// DAT (Router, credit, NUM_DAT_VC virtual channels): unchanged FlooNoC
-// pulse-credit mechanism, now applied uniformly to LOCAL too instead of
-// LOCAL-special-cased + LINK-looped. Credit is a per-VC pulse vector, one
-// word per port (unpacked array [LINK_PORTS] of [NUM_DAT_VC-1:0] packed).
-//
+// DAT: shared flit data and per-VC valid/ready/credit-return vectors.
+// Valid is one-hot. The output register holds the selected flit until ready.
+// DPI inputs carry accepted flit strobes and output-register availability.
+
 // Registered-DPI-tick discipline (shared by the NI wraps nmu_wrap/nsu_wrap): on every posedge clk_i
 // the module samples the PREVIOUS cycle's registered wire inputs, pushes them to the
 // C++ model via DPI set_inputs, advances the model via tick, pulls outputs
@@ -82,10 +81,12 @@ module router_wrap #(
     output logic [LINK_PORTS-1:0]     rx_rsp_ready,
 
     // DAT network (credit, NUM_DAT_VC virtual channels): per-port.
-    output logic [LINK_PORTS-1:0]     tx_dat_valid,
+    output logic [NUM_DAT_VC-1:0]     tx_dat_valid [LINK_PORTS],
+    input  logic [NUM_DAT_VC-1:0]     tx_dat_ready [LINK_PORTS],
     output logic [DAT_FLIT_WIDTH-1:0] tx_dat_flit     [LINK_PORTS],
     input  logic [NUM_DAT_VC-1:0]     tx_dat_crdvalid [LINK_PORTS],
-    input  logic [LINK_PORTS-1:0]     rx_dat_valid,
+    input  logic [NUM_DAT_VC-1:0]     rx_dat_valid [LINK_PORTS],
+    output logic [NUM_DAT_VC-1:0]     rx_dat_ready [LINK_PORTS],
     input  logic [DAT_FLIT_WIDTH-1:0] rx_dat_flit     [LINK_PORTS],
     output logic [NUM_DAT_VC-1:0]     rx_dat_crdvalid [LINK_PORTS]
 );
@@ -123,7 +124,8 @@ module router_wrap #(
         input  longint unsigned              ctx,
         input  bit [LINK_PORTS-1:0]     rx_dat_valid,
         input  bit [DAT_FLIT_WIDTH-1:0] rx_dat_flit  [LINK_PORTS],
-        input  bit [NUM_DAT_VC-1:0]     tx_dat_crdvalid [LINK_PORTS]
+        input  bit [NUM_DAT_VC-1:0]     tx_dat_crdvalid [LINK_PORTS],
+        input bit [LINK_PORTS-1:0] tx_dat_ready
     );
 
     // tick: advance C++ model one cycle (all three networks together).
@@ -146,7 +148,8 @@ module router_wrap #(
         input  longint unsigned              ctx,
         output bit [LINK_PORTS-1:0]     tx_dat_valid,
         output bit [DAT_FLIT_WIDTH-1:0] tx_dat_flit  [LINK_PORTS],
-        output bit [NUM_DAT_VC-1:0]     rx_dat_crdvalid [LINK_PORTS]
+        output bit [NUM_DAT_VC-1:0]     rx_dat_crdvalid [LINK_PORTS],
+        output bit [NUM_DAT_VC-1:0] rx_dat_ready [LINK_PORTS]
     );
 
     // Lifecycle / error polling lives in tb_top.sv.
@@ -164,6 +167,8 @@ module router_wrap #(
     logic     [LINK_PORTS-1:0] tx_rsp_model_ready;
     bit       [LINK_PORTS-1:0] rx_rsp_ready_q;
     bit       [LINK_PORTS-1:0] tx_dat_valid_q;
+    wire [LINK_PORTS-1:0] tx_dat_model_ready, rx_dat_accept;
+    bit [NUM_DAT_VC-1:0] rx_dat_ready_q [LINK_PORTS];
     logic [DAT_FLIT_WIDTH-1:0] tx_dat_flit_q [LINK_PORTS];
     logic     [NUM_DAT_VC-1:0] rx_dat_crdvalid_q [LINK_PORTS];
 
@@ -184,6 +189,7 @@ module router_wrap #(
                 tx_rsp_flit_q[p]     <= '0;
                 tx_dat_flit_q[p]     <= '0;
                 rx_dat_crdvalid_q[p] <= '0;
+                rx_dat_ready_q[p] <= '0;
             end
         end else begin
             // Step 1: push current wire values into C++ input latch, one call
@@ -210,7 +216,7 @@ module router_wrap #(
                 cmodel_router_rsp_set_inputs(ctx_i, rx_rsp_valid & rx_rsp_ready_q,
                                              b_rx_rsp_flit,
                                              tx_rsp_model_ready);
-                cmodel_router_dat_set_inputs(ctx_i, rx_dat_valid, b_rx_dat_flit, b_tx_dat_crdvalid);
+                cmodel_router_dat_set_inputs(ctx_i, rx_dat_accept, b_rx_dat_flit, b_tx_dat_crdvalid, tx_dat_model_ready);
             end
 
             // Step 2: advance C++ model one cycle.
@@ -229,19 +235,19 @@ module router_wrap #(
                 bit     [LINK_PORTS-1:0] t_tx_dat_valid;
                 bit [DAT_FLIT_WIDTH-1:0] t_tx_dat_flit [LINK_PORTS];
                 bit     [NUM_DAT_VC-1:0] t_rx_dat_crdvalid [LINK_PORTS];
+                bit [NUM_DAT_VC-1:0] t_rx_dat_ready [LINK_PORTS];
                 cmodel_router_req_get_outputs(ctx_i, t_tx_req_valid, t_tx_req_flit, t_rx_req_ready);
                 cmodel_router_rsp_get_outputs(ctx_i, t_tx_rsp_valid, t_tx_rsp_flit, t_rx_rsp_ready);
-                cmodel_router_dat_get_outputs(ctx_i, t_tx_dat_valid, t_tx_dat_flit, t_rx_dat_crdvalid);
+                cmodel_router_dat_get_outputs(ctx_i, t_tx_dat_valid, t_tx_dat_flit, t_rx_dat_crdvalid, t_rx_dat_ready);
                 rx_req_ready_q <= t_rx_req_ready;
                 rx_rsp_ready_q <= t_rx_rsp_ready;
-                tx_dat_valid_q <= t_tx_dat_valid;
                 // REQ/RSP egress: the model strobe lands in a single HOLD
                 // register that keeps valid/flit until the wire handshake
                 // completes. A strobe may land on the same edge the previous
                 // flit's handshake frees the register (load wins; the old flit
                 // was consumed at this edge), which is what tx_*_model_ready's
-                // empty-or-draining condition guarantees. DAT stays a plain
-                // registered strobe (credit-gated, never backpressured).
+                // empty-or-draining condition guarantees. DAT uses the same
+                // hold rule with ready selected by the flit VC.
                 //
                 // Unpacked arrays: bit temp -> logic reg element-wise. 5.048
                 // enforces IEEE 1800-2023 6.22.2 element-type equivalence on
@@ -260,7 +266,11 @@ module router_wrap #(
                     end else if (tx_rsp_ready[p]) begin
                         tx_rsp_valid_q[p] <= 1'b0;
                     end
-                    tx_dat_flit_q[p]     <= t_tx_dat_flit[p];
+                    if (tx_dat_model_ready[p]) begin
+                        tx_dat_valid_q[p] <= t_tx_dat_valid[p];
+                        tx_dat_flit_q[p] <= t_tx_dat_flit[p];
+                    end
+                    rx_dat_ready_q[p] <= t_rx_dat_ready[p];
                     rx_dat_crdvalid_q[p] <= t_rx_dat_crdvalid[p];
                 end
             end
@@ -314,7 +324,14 @@ module router_wrap #(
         end
     end
 
-    assign tx_dat_valid    = tx_dat_valid_q;
+    for (genvar p = 0; p < LINK_PORTS; p++) begin : gen_dat_handshake
+        wire ni_flit_pkg::dat_flit_t dat = tx_dat_flit_q[p];
+        wire [ni_flit_pkg::VC_ID_WIDTH-1:0] vc = dat.header[ni_flit_pkg::VC_ID_LSB +: ni_flit_pkg::VC_ID_WIDTH];
+        assign tx_dat_valid[p] = tx_dat_valid_q[p] ? (NUM_DAT_VC'(1) << vc) : '0;
+        assign tx_dat_model_ready[p] = !tx_dat_valid_q[p] || tx_dat_ready[p][vc];
+        assign rx_dat_accept[p] = |(rx_dat_valid[p] & rx_dat_ready[p]);
+        assign rx_dat_ready[p] = rx_dat_ready_q[p];
+    end
     assign tx_dat_flit     = tx_dat_flit_q;
     assign rx_dat_crdvalid = rx_dat_crdvalid_q;
 

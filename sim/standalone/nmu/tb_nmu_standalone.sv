@@ -145,11 +145,12 @@ module tb_nmu_standalone #(
     int live_w[256], live_r[256];
     int id_exhaustion_w = 0, id_exhaustion_r = 0;
     int b_full_cycles   = 0, r_full_cycles = 0;
-    logic req_valid, req_ready, rsp_valid = 0, rsp_ready, dat_valid;
+    logic req_valid, req_ready, rsp_valid = 0, rsp_ready;
+    logic [ni_params_pkg::NUM_DAT_VC-1:0] dat_valid, rx_dat_ready;
     req_flit_t req;
     rsp_flit_t rsp = '0;
     dat_flit_t tx_dat, rx_dat = '0;
-    logic rx_dat_valid                              = 0;
+    logic [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_valid = '0;
     logic [ni_params_pkg::NUM_DAT_VC-1:0] tx_credit = '0, rx_credit;
     int rx_available[ni_params_pkg::NUM_DAT_VC];
     always @(posedge noc_clk) begin
@@ -161,7 +162,7 @@ module tb_nmu_standalone #(
             if (dat_valid) tx_credit[int'(tx_dat.header[VC_ID_LSB +: VC_ID_WIDTH])] <= 1'b1;
             for (int vc = 0; vc < ni_params_pkg::NUM_DAT_VC; vc++)
                 rx_available[vc] += int'(rx_credit[vc]);
-            if (rx_dat_valid) rx_available[int'(rx_dat.header[VC_ID_LSB +: VC_ID_WIDTH])]--;
+            if (|(rx_dat_valid & rx_dat_ready)) rx_available[int'(rx_dat.header[VC_ID_LSB +: VC_ID_WIDTH])]--;
         end
     end
     assign bus.awid     = vip.awid;
@@ -222,9 +223,11 @@ module tb_nmu_standalone #(
         .rx_rsp_flit_i     (rsp      ),
         .rx_rsp_ready_o    (rsp_ready),
         .tx_dat_valid_o    (dat_valid),
+        .tx_dat_ready_i    ('1),
         .tx_dat_flit_o     (tx_dat   ),
         .tx_dat_crdvalid_i (tx_credit),
         .rx_dat_valid_i    (rx_dat_valid),
+        .rx_dat_ready_o    (rx_dat_ready),
         .rx_dat_flit_i     (rx_dat   ),
         .rx_dat_crdvalid_o (rx_credit)
     );
@@ -475,7 +478,8 @@ module tb_nmu_standalone #(
         if (!perf_active || noc_clk !== 1'b0) @(negedge noc_clk);
         while (rx_available[vc] == 0) @(negedge noc_clk);
         rx_dat       = value;
-        rx_dat_valid = 1;
+        rx_dat_valid = ni_params_pkg::NUM_DAT_VC'(1) << vc;
+        do @(posedge noc_clk); while (!rx_dat_ready[vc]);
         @(negedge noc_clk);
         rx_dat_valid = 0;
     endtask

@@ -49,7 +49,7 @@ module tb_nmu_response_depacketize #(
         .s_ctrl_valid_i       (rsp_valid    ),
         .s_ctrl_ready_o       (rsp_ready    ),
         .s_dat_i             (dat          ),
-        .s_dat_valid_i       (dat_valid    ),
+        .s_dat_valid_i       (dat_valid ? (NUM_DAT_VC'(1) << dat.header[VC_ID_LSB +: VC_ID_WIDTH]) : '0),
         .dat_credit_return_o (credit_return),
         .m_ctrl_o             (rx_rsp_head  ),
         .m_ctrl_valid_o       (rx_rsp_valid ),

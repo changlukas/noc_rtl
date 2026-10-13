@@ -245,7 +245,7 @@ extern "C" void cmodel_router_rsp_set_inputs(unsigned long long ctx, svBitVecVal
 
 extern "C" void cmodel_router_dat_set_inputs(unsigned long long ctx, svBitVecVal* rx_dat_valid,
                                              svBitVecVal* rx_dat_flit,
-                                             svBitVecVal* tx_dat_crdvalid) {
+                                             svBitVecVal* tx_dat_crdvalid, svBitVecVal* tx_dat_ready) {
     DPI_BOUNDARY_BEGIN(cmodel_router_dat_set_inputs) {
         REQUIRE_HANDLE(ctx, WrapType::Router, "cmodel_router_dat_set_inputs");
         auto* r = static_cast<RouterWrap*>(_h->adapter.get());
@@ -258,7 +258,10 @@ extern "C" void cmodel_router_dat_set_inputs(unsigned long long ctx, svBitVecVal
             flit[p] = DatFlitMarshal::unpack(rx_dat_flit + p * DatFlitMarshal::VEC_WORDS);
             crdvalid[p] = unpack_vc_credit<VcCreditVec>(tx_dat_crdvalid + p, nvc);
         }
-        r->set_dat_inputs(valid, flit, crdvalid);
+        PerPort<bool> ready{};
+        for (std::size_t p = 0; p < ROUTER_LINK_PORTS; ++p)
+            ready[p] = ((tx_dat_ready[0] >> p) & 1u) != 0;
+        r->set_dat_inputs(valid, flit, crdvalid, ready);
     }
     DPI_BOUNDARY_END(cmodel_router_dat_set_inputs);
 }
@@ -311,7 +314,7 @@ extern "C" void cmodel_router_rsp_get_outputs(unsigned long long ctx, svBitVecVa
 
 extern "C" void cmodel_router_dat_get_outputs(unsigned long long ctx, svBitVecVal* tx_dat_valid,
                                               svBitVecVal* tx_dat_flit,
-                                              svBitVecVal* rx_dat_crdvalid) {
+                                              svBitVecVal* rx_dat_crdvalid, svBitVecVal* rx_dat_ready) {
     DPI_BOUNDARY_BEGIN(cmodel_router_dat_get_outputs) {
         REQUIRE_HANDLE(ctx, WrapType::Router, "cmodel_router_dat_get_outputs");
         auto* r = static_cast<RouterWrap*>(_h->adapter.get());
@@ -319,12 +322,14 @@ extern "C" void cmodel_router_dat_get_outputs(unsigned long long ctx, svBitVecVa
         PerPort<bool> valid{};
         PerPort<FlitBytes> flit{};
         PerPort<VcCreditVec> crdvalid{};
-        r->get_dat_outputs(valid, flit, crdvalid);
+        PerPort<VcCreditVec> ready{};
+        r->get_dat_outputs(valid, flit, crdvalid, ready);
         tx_dat_valid[0] = 0;
         for (std::size_t p = 0; p < ROUTER_LINK_PORTS; ++p) {
             if (valid[p]) tx_dat_valid[0] |= (1u << p);
             DatFlitMarshal::pack(flit[p], tx_dat_flit + p * DatFlitMarshal::VEC_WORDS);
             pack_vc_credit(crdvalid[p], nvc, rx_dat_crdvalid + p);
+            pack_vc_credit(ready[p], nvc, rx_dat_ready + p);
         }
     }
     DPI_BOUNDARY_END(cmodel_router_dat_get_outputs);

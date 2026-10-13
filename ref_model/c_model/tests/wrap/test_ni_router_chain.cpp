@@ -42,6 +42,7 @@ struct Node {
     DatMergeInputs merge_in{};
     DatMergeOutputs merge_out{};
     RouterInputs rtr_in{};
+    Node() { rtr_in.tx_dat_ready.fill(true); }
     RouterOutputs rtr_out{};
 };
 

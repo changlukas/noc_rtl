@@ -15,9 +15,9 @@
 //     (called only when ready() was true) stashes the grant, drained AFTER
 //     tick() onto tx_<net>_valid/flit. rx_<net>_ready is the router's own
 //     ready(port,0), read AFTER tick() so it reflects this cycle's push.
-//   DAT (Router): unchanged FlooNoC pulse-credit LinkEjectAdapter/
-//     LinkCreditOut pattern, now applied uniformly to all 5 ports (LOCAL
-//     included) instead of LOCAL-special-cased + LINK-looped.
+//   DAT: credit is reserved at output-FIFO admission. The SV output
+//     register holds the selected VC/flit until its ready handshake.
+//     tx_dat_ready below means that register can accept another flit.
 //
 // Registered-DPI-tick discipline (shared by the NI wraps nmu_wrap/nsu_wrap):
 // on every posedge clk_i the module samples the PREVIOUS cycle's registered
@@ -110,10 +110,11 @@ class RouterWrap {
         in_.tx_rsp_ready = tx_ready;
     }
     void set_dat_inputs(const PerPort<bool>& rx_valid, const PerPort<FlitBytes>& rx_flit,
-                        const PerPort<VcCreditVec>& tx_crdvalid) {
+                        const PerPort<VcCreditVec>& tx_crdvalid, const PerPort<bool>& tx_ready) {
         in_.rx_dat_valid = rx_valid;
         in_.rx_dat_flit = rx_flit;
         in_.tx_dat_crdvalid = tx_crdvalid;
+        in_.tx_dat_ready = tx_ready;
     }
     void get_req_outputs(PerPort<bool>& tx_valid, PerPort<FlitBytes>& tx_flit,
                          PerPort<bool>& rx_ready) const {
@@ -128,10 +129,11 @@ class RouterWrap {
         rx_ready = out_.rx_rsp_ready;
     }
     void get_dat_outputs(PerPort<bool>& tx_valid, PerPort<FlitBytes>& tx_flit,
-                         PerPort<VcCreditVec>& rx_crdvalid) const {
+                         PerPort<VcCreditVec>& rx_crdvalid, PerPort<VcCreditVec>& rx_ready) const {
         tx_valid = out_.tx_dat_valid;
         tx_flit = out_.tx_dat_flit;
         rx_crdvalid = out_.rx_dat_crdvalid;
+        rx_ready = out_.rx_dat_ready;
     }
 
     void tick() {
@@ -171,12 +173,13 @@ class RouterWrap {
             }
             out_.rx_rsp_ready[p] = rsp_router_->ready(p, 0);
 
-            if (auto f = dat_eject_[p]->pop_flit()) {
+            if (auto f = in_.tx_dat_ready[p] ? dat_eject_[p]->pop_flit() : std::nullopt) {
                 out_.tx_dat_valid[p] = true;
                 out_.tx_dat_flit[p] = flit_to_bytes(*f);
             }
             for (uint8_t vc = 0; vc < dat_num_vc_; ++vc) {
                 out_.rx_dat_crdvalid[p][vc] = dat_credit_[p]->take(vc);
+                out_.rx_dat_ready[p][vc] = dat_router_->ready(p, vc);
             }
         }
     }

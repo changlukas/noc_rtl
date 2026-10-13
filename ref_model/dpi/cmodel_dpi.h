@@ -91,14 +91,14 @@ void cmodel_router_req_set_inputs(unsigned long long ctx, svBitVecVal* rx_req_va
 void cmodel_router_rsp_set_inputs(unsigned long long ctx, svBitVecVal* rx_rsp_valid,
                                   svBitVecVal* rx_rsp_flit, svBitVecVal* tx_rsp_ready);
 void cmodel_router_dat_set_inputs(unsigned long long ctx, svBitVecVal* rx_dat_valid,
-                                  svBitVecVal* rx_dat_flit, svBitVecVal* tx_dat_crdvalid);
+                                  svBitVecVal* rx_dat_flit, svBitVecVal* tx_dat_crdvalid, svBitVecVal* tx_dat_ready);
 void cmodel_router_tick(unsigned long long ctx);
 void cmodel_router_req_get_outputs(unsigned long long ctx, svBitVecVal* tx_req_valid,
                                    svBitVecVal* tx_req_flit, svBitVecVal* rx_req_ready);
 void cmodel_router_rsp_get_outputs(unsigned long long ctx, svBitVecVal* tx_rsp_valid,
                                    svBitVecVal* tx_rsp_flit, svBitVecVal* rx_rsp_ready);
 void cmodel_router_dat_get_outputs(unsigned long long ctx, svBitVecVal* tx_dat_valid,
-                                   svBitVecVal* tx_dat_flit, svBitVecVal* rx_dat_crdvalid);
+                                   svBitVecVal* tx_dat_flit, svBitVecVal* rx_dat_crdvalid, svBitVecVal* rx_dat_ready);
 
 // DatMerge — NI-level DAT LOCAL-port merge point (S3a T5, controller ruling,
 // translate of floo_nw_chimney.sv's wide-link merge). One instance per node,

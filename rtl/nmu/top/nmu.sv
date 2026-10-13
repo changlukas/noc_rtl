@@ -61,10 +61,12 @@ module nmu #(
     input  wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] rx_rsp_flit_i,
     output wire logic                                         rx_rsp_ready_o,
 
-    output wire logic                                         tx_dat_valid_o,
+    output wire logic                        [NUM_DAT_VC-1:0] tx_dat_valid_o,
+    input  wire logic                        [NUM_DAT_VC-1:0] tx_dat_ready_i,
     output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o,
     input  wire logic                        [NUM_DAT_VC-1:0] tx_dat_crdvalid_i,
-    input  wire logic                                         rx_dat_valid_i,
+    input  wire logic                        [NUM_DAT_VC-1:0] rx_dat_valid_i,
+    output wire logic                        [NUM_DAT_VC-1:0] rx_dat_ready_o,
     input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i,
     output wire logic                        [NUM_DAT_VC-1:0] rx_dat_crdvalid_o
 );
@@ -233,6 +235,7 @@ module nmu #(
         .tx_req_flit_o        (tx_req_flit_o    ),
         .tx_req_ready_i       (tx_req_ready_i   ),
         .tx_dat_valid_o       (tx_dat_valid_o   ),
+        .tx_dat_ready_i       (tx_dat_ready_i),
         .tx_dat_flit_o        (tx_dat_flit_o    ),
         .tx_dat_crdvalid_i    (tx_dat_crdvalid_i)
     );
@@ -284,6 +287,7 @@ module nmu #(
         .rx_rsp_flit_i        (rx_rsp_flit_i    ),
         .rx_rsp_ready_o       (rx_rsp_ready_o   ),
         .rx_dat_valid_i       (rx_dat_valid_i   ),
+        .rx_dat_ready_o       (rx_dat_ready_o),
         .rx_dat_flit_i        (rx_dat_flit_i    ),
         .rx_dat_crdvalid_o    (rx_dat_crdvalid_o)
     );

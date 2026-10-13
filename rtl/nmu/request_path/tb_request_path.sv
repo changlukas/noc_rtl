@@ -93,6 +93,7 @@ module tb_nmu_request_path;
         .tx_req_flit_o        (            ),
         .tx_req_ready_i       (1'b1        ),
         .tx_dat_valid_o       (            ),
+        .tx_dat_ready_i       ('1),
         .tx_dat_flit_o        (            ),
         .tx_dat_crdvalid_i    ('0          )
     );

@@ -19,8 +19,8 @@
 //   rx_<net>_valid/flit  : flit arriving from port p (input)
 //   rx_<net>_ready       : ready this node returns to port p (output)
 //
-// DAT (credit Router, unchanged flow control): per-VC credit pulse vector,
-// mirrors the pre-S3a LINK-only shape now extended uniformly to LOCAL too.
+// DAT: the SV wrapper decodes per-VC valid/ready into accepted input
+// strobes and output-register availability for this tick-level API.
 //   tx_dat_valid/flit    : this node's transmit flit toward port p
 //   tx_dat_crdvalid      : credit pulse/VC FROM port p for flits we sent there (input)
 //   rx_dat_valid/flit    : flit arriving from port p (input)
@@ -59,6 +59,7 @@ struct RouterInputs {
 
     // --- DAT network (credit) ---
     PerPort<bool> rx_dat_valid;
+    PerPort<bool> tx_dat_ready;
     PerPort<FlitBytes> rx_dat_flit;
     PerPort<VcCreditVec> tx_dat_crdvalid;  // credit/VC from port p for flits we sent
 };
@@ -76,6 +77,7 @@ struct RouterOutputs {
 
     // --- DAT network (credit) ---
     PerPort<bool> tx_dat_valid;
+    PerPort<VcCreditVec> rx_dat_ready;
     PerPort<FlitBytes> tx_dat_flit;
     PerPort<VcCreditVec> rx_dat_crdvalid;  // credit/VC this node returns to port p
 };

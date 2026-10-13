@@ -25,10 +25,12 @@ module ni_direct_link #(
     output wire logic                         [NUM_PORTS-1:0] tx_rsp_valid_o,
     output wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] tx_rsp_flit_o [NUM_PORTS],
     input  wire logic                         [NUM_PORTS-1:0] tx_rsp_ready_i,
-    input  wire logic                         [NUM_PORTS-1:0] rx_dat_valid_i,
+    input  wire logic                         [NUM_DAT_VC-1:0] rx_dat_valid_i [NUM_PORTS],
+    output wire logic [NUM_DAT_VC-1:0] rx_dat_ready_o [NUM_PORTS],
     input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i [NUM_PORTS],
     output wire logic                        [NUM_DAT_VC-1:0] rx_dat_crdvalid_o [NUM_PORTS],
-    output wire logic                         [NUM_PORTS-1:0] tx_dat_valid_o,
+    output wire logic                         [NUM_DAT_VC-1:0] tx_dat_valid_o [NUM_PORTS],
+    input wire logic [NUM_DAT_VC-1:0] tx_dat_ready_i [NUM_PORTS],
     output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o [NUM_PORTS],
     input  wire logic                        [NUM_DAT_VC-1:0] tx_dat_crdvalid_i [NUM_PORTS]
 );
@@ -113,7 +115,8 @@ module ni_direct_link #(
             localparam bit ACTIVE = DAT_VC_MODE == 0 || ((p == 0) == (vc < NUM_DAT_VC/2));
             if (ACTIVE) begin : gen_active
                 wire full, empty;
-                wire push = rst_n_i && rx_dat_valid_i[p] && vc_id == VC_ID_WIDTH'(vc);
+                wire push = rx_dat_valid_i[p][vc] && rx_dat_ready_o[p][vc];
+                assign rx_dat_ready_o[p][vc] = !full;
                 wire [NUM_PORTS-1:0] grants;
                 for (genvar q = 0; q < NUM_PORTS; q++) begin : gen_grant
                     assign grants[q] = dat_grant[q][p*NUM_DAT_VC+vc];
@@ -142,6 +145,7 @@ module ni_direct_link #(
                     if (rst_n_i && !$onehot0(grants)) $fatal(1, "Direct-link DAT duplicate transfer");
                 end
             end else begin : gen_unused
+                assign rx_dat_ready_o[p][vc] = 1'b0;
                 assign dat_pop[p][vc]   = 1'b0;
                 assign dat_valid[p][vc] = 1'b0;
                 assign dat_head[p][vc]  = '0;
@@ -162,6 +166,9 @@ module ni_direct_link #(
     for (genvar q = 0; q < NUM_PORTS; q++) begin : gen_output
         wire [NUM_DAT_VC-1:0] credit_left;
         wire dat_flit_t selected_dat;
+        wire selected_valid;
+        wire [VC_ID_WIDTH-1:0] selected_vc = selected_dat.header[VC_ID_LSB +: VC_ID_WIDTH];
+        assign tx_dat_valid_o[q] = selected_valid ? (NUM_DAT_VC'(1) << selected_vc) : '0;
         wire [NUM_DAT_INPUTS-1:0] request;
         wire dat_flit_t [NUM_DAT_INPUTS-1:0] data;
         assign tx_dat_flit_o[q] = tx_dat_valid_o[q] ? selected_dat : '0;
@@ -176,7 +183,7 @@ module ni_direct_link #(
                     .clr_i         (1'b0                                                                                  ),
                     .credit_o      (                                                                                      ),
                     .credit_give_i (rst_n_i && tx_dat_crdvalid_i[q][vc]                                                   ),
-                    .credit_take_i (tx_dat_valid_o[q] && selected_dat.header[VC_ID_LSB +: VC_ID_WIDTH] == VC_ID_WIDTH'(vc)),
+                    .credit_take_i (tx_dat_valid_o[q][vc] && tx_dat_ready_i[q][vc]),
                     .credit_left_o (credit_left[vc]                                                                       ),
                     .credit_crit_o (                                                                                      ),
                     .credit_full_o (                                                                                      )
@@ -197,7 +204,7 @@ module ni_direct_link #(
             .NumIn     (NUM_DAT_INPUTS),
             .DataType  (dat_flit_t    ),
             .AxiVldRdy (1'b1          ),
-            .LockIn    (1'b0          ),
+            .LockIn    (1'b1          ),
             .FairArb   (1'b1          )
         ) i_dat_arb (
             .clk_i   (clk_i            ),
@@ -207,8 +214,8 @@ module ni_direct_link #(
             .req_i   (request          ),
             .gnt_o   (dat_grant[q]     ),
             .data_i  (data             ),
-            .req_o   (tx_dat_valid_o[q]),
-            .gnt_i   (rst_n_i          ),
+            .req_o   (selected_valid   ),
+            .gnt_i   (tx_dat_ready_i[q][selected_vc]),
             .data_o  (selected_dat     ),
             .idx_o   (                 )
         );

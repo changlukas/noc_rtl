@@ -52,7 +52,8 @@ module nmu_response_path #(
     input  wire logic                                                                     rx_rsp_valid_i,
     input  wire logic                             [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] rx_rsp_flit_i,
     output wire logic                                                                     rx_rsp_ready_o,
-    input  wire logic                                                                     rx_dat_valid_i,
+    input  wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_valid_i,
+    output wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_ready_o,
     input  wire logic                             [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i,
     output wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_crdvalid_o
 );
@@ -120,6 +121,7 @@ module nmu_response_path #(
         .rst_n_i             (noc_rst_n_i                            ),
         .s_dat_i             (ni_flit_pkg::dat_flit_t'(rx_dat_flit_i)),
         .s_dat_valid_i       (rx_dat_valid_i                         ),
+        .s_dat_ready_o       (rx_dat_ready_o),
         .dat_credit_return_o (rx_dat_crdvalid_o                      ),
         .s_ctrl_i            (ni_flit_pkg::rsp_flit_t'(rx_rsp_flit_i)),
         .s_ctrl_valid_i      (rx_rsp_valid_i                         ),

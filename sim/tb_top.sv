@@ -141,7 +141,8 @@ module tb_top #(
     wire [NOC_REQ_FLIT_WIDTH-1:0] tx_req_flit [NUM_PORTS], rx_req_flit [NUM_PORTS];
     wire [NUM_PORTS-1:0] tx_rsp_valid, rx_rsp_valid;
     wire [NOC_RSP_FLIT_WIDTH-1:0] tx_rsp_flit [NUM_PORTS], rx_rsp_flit [NUM_PORTS];
-    wire [NUM_PORTS-1:0] tx_dat_valid, rx_dat_valid;
+    wire [NUM_DAT_VC-1:0] tx_dat_valid [NUM_PORTS], rx_dat_valid [NUM_PORTS];
+    wire [NUM_DAT_VC-1:0] tx_dat_ready [NUM_PORTS], rx_dat_ready [NUM_PORTS];
     wire [NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit [NUM_PORTS], rx_dat_flit [NUM_PORTS];
     wire [NUM_PORTS-1:0] tx_req_ready, rx_req_ready, tx_rsp_ready, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] tx_dat_credit [NUM_PORTS], rx_dat_credit [NUM_PORTS];
@@ -155,6 +156,7 @@ module tb_top #(
         assign noc_observe[2*p+0].rsp_ready = rx_rsp_ready[p];
         assign noc_observe[2*p+0].dat = rx_dat_flit[p];
         assign noc_observe[2*p+0].dat_valid = rx_dat_valid[p];
+        assign noc_observe[2*p+0].dat_ready = rx_dat_ready[p];
         assign noc_observe[2*p+0].credit = rx_dat_credit[p];
         initial uvm_config_db #(virtual ni_noc_if)::set(null, $sformatf("uvm_test_top.env.noc_tx%0d", p), "vif", noc_observe[2*p+0]);
         assign noc_observe[2*p+1].req = tx_req_flit[p];
@@ -165,6 +167,7 @@ module tb_top #(
         assign noc_observe[2*p+1].rsp_ready = tx_rsp_ready[p];
         assign noc_observe[2*p+1].dat = tx_dat_flit[p];
         assign noc_observe[2*p+1].dat_valid = tx_dat_valid[p];
+        assign noc_observe[2*p+1].dat_ready = tx_dat_ready[p];
         assign noc_observe[2*p+1].credit = tx_dat_credit[p];
         initial uvm_config_db #(virtual ni_noc_if)::set(null, $sformatf("uvm_test_top.env.noc_rx%0d", p), "vif", noc_observe[2*p+1]);
     end
@@ -245,9 +248,11 @@ module tb_top #(
         .rx_rsp_flit_i     (tx_rsp_flit[NMU_PORT]),
         .rx_rsp_ready_o    (tx_rsp_ready[NMU_PORT]),
         .tx_dat_valid_o    (rx_dat_valid[NMU_PORT]),
+        .tx_dat_ready_i    (rx_dat_ready[NMU_PORT]),
         .tx_dat_flit_o     (rx_dat_flit[NMU_PORT]),
         .tx_dat_crdvalid_i (rx_dat_credit[NMU_PORT]),
         .rx_dat_valid_i    (tx_dat_valid[NMU_PORT]),
+        .rx_dat_ready_o    (tx_dat_ready[NMU_PORT]),
         .rx_dat_flit_i     (tx_dat_flit[NMU_PORT]),
         .rx_dat_crdvalid_o (tx_dat_credit[NMU_PORT])
     );
@@ -275,9 +280,11 @@ module tb_top #(
         .rx_rsp_flit_i     (rx_rsp_flit  ),
         .rx_rsp_ready_o    (rx_rsp_ready ),
         .tx_dat_valid_o    (tx_dat_valid ),
+        .tx_dat_ready_i    (tx_dat_ready ),
         .tx_dat_flit_o     (tx_dat_flit  ),
         .tx_dat_crdvalid_i (tx_dat_credit),
         .rx_dat_valid_i    (rx_dat_valid ),
+        .rx_dat_ready_o    (rx_dat_ready ),
         .rx_dat_flit_i     (rx_dat_flit  ),
         .rx_dat_crdvalid_o (rx_dat_credit)
     );
@@ -299,9 +306,11 @@ module tb_top #(
         .rx_rsp_flit     (rx_rsp_flit),
         .rx_rsp_ready    (rx_rsp_ready),
         .tx_dat_valid    (tx_dat_valid),
+        .tx_dat_ready    (tx_dat_ready),
         .tx_dat_flit     (tx_dat_flit),
         .tx_dat_crdvalid (tx_dat_credit),
         .rx_dat_valid    (rx_dat_valid),
+        .rx_dat_ready    (rx_dat_ready),
         .rx_dat_flit     (rx_dat_flit),
         .rx_dat_crdvalid (rx_dat_credit)
     );
@@ -390,8 +399,10 @@ module tb_top #(
                 .tx_rsp_valid_o(rx_rsp_valid[PORT]), .tx_rsp_flit_o(rx_rsp_flit[PORT]),
                 .tx_rsp_ready_i(rx_rsp_ready[PORT]),
                 .tx_dat_valid_o(rx_dat_valid[PORT]), .tx_dat_flit_o(rx_dat_flit[PORT]),
+                .tx_dat_ready_i(rx_dat_ready[PORT]),
                 .tx_dat_crdvalid_i(rx_dat_credit[PORT]),
                 .rx_dat_valid_i(tx_dat_valid[PORT]), .rx_dat_flit_i(tx_dat_flit[PORT]),
+                .rx_dat_ready_o(tx_dat_ready[PORT]),
                 .rx_dat_crdvalid_o(tx_dat_credit[PORT])
             );
             assign aw_context_full[n] = i_nsu.i_response_path.i_context_buffer.i_aw_context.full_o;
@@ -501,7 +512,7 @@ module tb_top #(
             if (int'(dut.i_request_path.i_tx_credit_buffer.i_ctrl_fifo.usage_o) > tx_req_peak)
                 tx_req_peak = int'(dut.i_request_path.i_tx_credit_buffer.i_ctrl_fifo.usage_o);
             if (rx_req_valid[NMU_PORT] && rx_req_ready[NMU_PORT]) tx_req_beats++;
-            if (rx_dat_valid[NMU_PORT]) tx_dat_beats++;
+            if (|(rx_dat_valid[NMU_PORT] & rx_dat_ready[NMU_PORT])) tx_dat_beats++;
         end
     end
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_tx_occupancy

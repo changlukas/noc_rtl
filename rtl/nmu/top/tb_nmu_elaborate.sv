@@ -23,10 +23,10 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
     logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] rx_rsp_flit_i;
     logic                                         rx_rsp_ready_o;
 
-    logic                                         tx_dat_valid_o;
+    logic [ni_params_pkg::NUM_DAT_VC-1:0] tx_dat_valid_o;
     logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o;
     logic         [ni_params_pkg::NUM_DAT_VC-1:0] tx_dat_crdvalid_i;
-    logic                                         rx_dat_valid_i;
+    logic [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_valid_i;
     logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i;
     logic         [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_crdvalid_o;
 
@@ -49,6 +49,7 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
         .rx_rsp_flit_i     (rx_rsp_flit_i    ),
         .rx_rsp_ready_o    (rx_rsp_ready_o   ),
         .tx_dat_valid_o    (tx_dat_valid_o   ),
+        .tx_dat_ready_i    ('1),
         .tx_dat_flit_o     (tx_dat_flit_o    ),
         .tx_dat_crdvalid_i (tx_dat_crdvalid_i),
         .rx_dat_valid_i    (rx_dat_valid_i   ),

@@ -68,7 +68,8 @@ module nmu_request_path #(
     output wire logic                                                                     tx_req_valid_o,
     output wire logic                             [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] tx_req_flit_o,
     input  wire logic                                                                     tx_req_ready_i,
-    output wire logic                                                                     tx_dat_valid_o,
+    output wire logic                                                    [NUM_DAT_VC-1:0] tx_dat_valid_o,
+    input  wire logic                                                    [NUM_DAT_VC-1:0] tx_dat_ready_i,
     output wire logic                             [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o,
     input  wire logic                                                    [NUM_DAT_VC-1:0] tx_dat_crdvalid_i
 );
@@ -309,10 +310,10 @@ module nmu_request_path #(
         .s_dat_ready_o (tx_dat_ready  ),
         .m_dat_o       (tx_dat        ),
         .m_dat_valid_o (tx_dat_valid_o),
-        .m_dat_ready_i (1'b1          )
+        .m_dat_ready_i (tx_dat_ready_i)
     );
     assign tx_req_flit_o = tx_req_valid_o ? tx_req : '0;
-    assign tx_dat_flit_o = tx_dat_valid_o ? tx_dat : '0;
+    assign tx_dat_flit_o = (|tx_dat_valid_o) ? tx_dat : '0;
 
 endmodule
 

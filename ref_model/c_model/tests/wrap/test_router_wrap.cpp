@@ -66,6 +66,7 @@ TEST(RouterWrap, NmuReqRoutesToLinkOut) {
     RouterWrap a;
     a.init(/*x_coord=*/0);
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_req_valid[LOCAL] = true;
     in.rx_req_flit[LOCAL] = flit_to_bytes(make_req(/*dst=*/0x01));
     in.tx_req_ready[EAST] = true;  // neighbor always ready
@@ -94,6 +95,7 @@ TEST(RouterWrap, LinkInReqEjectsAtNsu) {
     RouterWrap a;
     a.init(/*x_coord=*/0);
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_req_valid[EAST] = true;
     in.rx_req_flit[EAST] = flit_to_bytes(make_req(/*dst=*/0x00));
     in.tx_req_ready[LOCAL] = true;  // NSU always ready
@@ -122,6 +124,7 @@ TEST(RouterWrap, LinkInRspEjectsAtNmu) {
     RouterWrap a;
     a.init(/*x_coord=*/0);
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_rsp_valid[EAST] = true;
     in.rx_rsp_flit[EAST] = flit_to_bytes(make_rsp(/*dst=*/0x00));
     in.tx_rsp_ready[LOCAL] = true;  // NMU always ready
@@ -150,6 +153,7 @@ TEST(RouterWrap, ReqStaysQueuedUntilDownstreamReady) {
 
     // Present the flit for exactly one tick, NSU not ready.
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_req_valid[EAST] = true;
     in.rx_req_flit[EAST] = flit_to_bytes(make_req(/*dst=*/0x00));  // LOCAL-bound
     in.tx_req_ready[LOCAL] = false;
@@ -159,6 +163,7 @@ TEST(RouterWrap, ReqStaysQueuedUntilDownstreamReady) {
     // Stop re-presenting; hold NSU not-ready for several more cycles. The
     // flit must sit in the input FIFO with no transfer.
     in = RouterInputs{};
+    in.tx_dat_ready.fill(true);
     a.set_inputs(in);
     RouterOutputs out{};
     for (int cyc = 0; cyc < 8; ++cyc) {
@@ -185,6 +190,7 @@ TEST(RouterWrap, Node1NmuReqRoutesToLinkOut) {
     RouterWrap a;
     a.init(/*x_coord=*/1);
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_req_valid[LOCAL] = true;
     in.rx_req_flit[LOCAL] = flit_to_bytes(make_req(/*dst=*/0x00));
     in.tx_req_ready[WEST] = true;
@@ -215,6 +221,7 @@ TEST(RouterWrap, CornerNodeRoutesPerDirectionIndependently) {
         RouterWrap a;
         a.init(/*x=*/1, /*y=*/1, /*mesh_x=*/2, /*mesh_y=*/2);
         RouterInputs in{};
+        in.tx_dat_ready.fill(true);
         in.rx_req_valid[LOCAL] = true;
         in.rx_req_flit[LOCAL] = flit_to_bytes(make_req(dst));
         in.tx_req_ready[WEST] = true;
@@ -259,6 +266,7 @@ TEST(RouterWrap, DatLocalInputDrainEmitsCreditPulse) {
     RouterWrap a;
     a.init(/*x=*/0, /*y=*/0, /*mesh_x=*/2, /*mesh_y=*/1, /*dat_num_vc=*/1);
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_dat_valid[LOCAL] = true;
     in.rx_dat_flit[LOCAL] = flit_to_bytes(make_dat_r(/*dst=*/0x00));  // LOCAL-bound
     a.set_inputs(in);
@@ -288,6 +296,7 @@ TEST(RouterWrap, DatLocalCreditReturnReplenishesRouter) {
     ASSERT_GT(seed, 0u) << "router LOCAL output credit must seed > 0";
 
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_dat_valid[LOCAL] = true;
     in.rx_dat_flit[LOCAL] = flit_to_bytes(make_dat_r(/*dst=*/0x00));  // LOCAL-bound
     a.set_inputs(in);
@@ -307,6 +316,7 @@ TEST(RouterWrap, DatLocalCreditReturnReplenishesRouter) {
         << "ejecting one LOCAL flit must spend exactly one credit_[LOCAL]";
 
     in = RouterInputs{};
+    in.tx_dat_ready.fill(true);
     in.tx_dat_crdvalid[LOCAL][0] = true;
     a.set_inputs(in);
     a.tick();
@@ -331,6 +341,7 @@ TEST(RouterWrap, DatCornerNodeCreditDoesNotCrossDirections) {
 
     // Eject one WEST-bound flit (dst (0,1) = 0x10): the grant spends one WEST credit.
     RouterInputs in{};
+    in.tx_dat_ready.fill(true);
     in.rx_dat_valid[LOCAL] = true;
     in.rx_dat_flit[LOCAL] = flit_to_bytes(make_dat_r(/*dst=*/0x10));
     a.set_inputs(in);
@@ -351,10 +362,46 @@ TEST(RouterWrap, DatCornerNodeCreditDoesNotCrossDirections) {
 
     // Return the WEST credit pulse: only WEST replenishes; SOUTH stays at its seed.
     in = RouterInputs{};
+    in.tx_dat_ready.fill(true);
     in.tx_dat_crdvalid[WEST][0] = true;
     a.set_inputs(in);
     a.tick();
     EXPECT_EQ(a.dat_router().credit(WEST, 0), west_seed)
         << "WEST credit-return must replenish WEST";
     EXPECT_EQ(a.dat_router().credit(SOUTH, 0), south_seed) << "WEST credit must not touch SOUTH";
+}
+
+TEST(RouterWrap, DatReadyStallPreservesCreditReservation) {
+    RouterWrap a;
+    a.init(0);
+    RouterInputs in{};
+    auto flit = make_dat_r(0);
+    flit.set_header_field("fixed_vc", 1);
+    in.rx_dat_valid[EAST] = true;
+    in.rx_dat_flit[EAST] = flit_to_bytes(flit);
+    a.set_inputs(in);
+    a.tick();
+    in.rx_dat_valid[EAST] = false;
+    a.set_inputs(in);
+    RouterOutputs out{};
+    for (int cycle = 0; cycle < 20; ++cycle) {
+        a.tick();
+        a.get_outputs(out);
+        EXPECT_FALSE(out.tx_dat_valid[LOCAL]);
+    }
+    EXPECT_EQ(a.dat_eject_buffered(LOCAL), 1u);
+    EXPECT_EQ(a.dat_router().credit(LOCAL, 0), a.dat_router().out_credit_seed(LOCAL) - 1);
+    in.tx_dat_ready[LOCAL] = true;
+    a.set_inputs(in);
+    a.tick();
+    a.get_outputs(out);
+    ASSERT_TRUE(out.tx_dat_valid[LOCAL]);
+    EXPECT_EQ(out.tx_dat_flit[LOCAL], flit_to_bytes(flit));
+    EXPECT_EQ(a.dat_router().credit(LOCAL, 0), a.dat_router().out_credit_seed(LOCAL) - 1);
+    in.tx_dat_crdvalid[LOCAL][0] = true;
+    a.set_inputs(in);
+    a.tick();
+    a.get_outputs(out);
+    EXPECT_FALSE(out.tx_dat_valid[LOCAL]);
+    EXPECT_EQ(a.dat_router().credit(LOCAL, 0), a.dat_router().out_credit_seed(LOCAL));
 }

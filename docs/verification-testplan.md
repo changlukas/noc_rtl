@@ -193,6 +193,8 @@ Cross: `credit_return_send = cp_available × cp_give × cp_take`.
 
 `zero × returned × sent` covers same-cycle credit return and transmission. Bins distinguish zero/nonzero balance. The subscriber also checks that the reconstructed balance remains within `0..CREDIT_DEPTH`.
 
+DAT transfer is sampled on `|(dat_valid & dat_ready)`. `dat_valid` is one-hot and selects the shared flit VC. A stalled transfer holds valid, VC and payload stable. Credit returns are sampled independently of ready.
+
 ### 3.6 Assertion and Cover-Property Coverage
 
 | Object | Type | Condition / Purpose |

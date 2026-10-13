@@ -23,7 +23,8 @@ module rx_credit_buffer #(
     input  wire logic                                    s_ctrl_valid_i,
     output wire logic                                    s_ctrl_ready_o,
     input  wire ni_flit_pkg::dat_flit_t                  s_dat_i,
-    input  wire logic                                    s_dat_valid_i,
+    input  wire logic                   [NUM_DAT_VC-1:0] s_dat_valid_i,
+    output wire logic                   [NUM_DAT_VC-1:0] s_dat_ready_o,
     output wire logic                   [NUM_DAT_VC-1:0] dat_credit_return_o,
     output wire ctrl_t                                   m_ctrl_o,
     output wire logic                                    m_ctrl_valid_o,
@@ -76,7 +77,8 @@ module rx_credit_buffer #(
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_dat_vc
         assign m_dat_o[vc] = m_dat_valid_o[vc] ? dat_head[vc] : '0;
         if (DAT_VC_MASK[vc]) begin : gen_active
-            assign dat_push[vc]      = s_dat_valid_i && dat_vc == VC_ID_WIDTH'(vc);
+            assign dat_push[vc]      = s_dat_valid_i[vc] && s_dat_ready_o[vc];
+            assign s_dat_ready_o[vc]  = !dat_full[vc];
             assign dat_pop[vc]       = m_dat_valid_o[vc] && m_dat_ready_i[vc];
             assign m_dat_valid_o[vc] = !dat_empty[vc];
             cc_fifo #(
@@ -97,6 +99,7 @@ module rx_credit_buffer #(
                 .pop_i   (dat_pop[vc]  )
             );
         end else begin : gen_unused
+            assign s_dat_ready_o[vc]  = 1'b0;
             assign dat_push[vc]      = 1'b0;
             assign dat_pop[vc]       = 1'b0;
             assign dat_full[vc]      = 1'b0;
@@ -122,8 +125,8 @@ module rx_credit_buffer #(
             if ($isunknown({dat_channel, dat_vc}) || !DAT_CH_MASK[dat_channel] ||
                     int'(dat_vc) >= NUM_DAT_VC || !DAT_VC_MASK[VC_IDX_W'(dat_vc)])
                 $fatal(1, "invalid channel or VC on DAT ingress");
-            if (dat_full[VC_IDX_W'(dat_vc)])
-                $fatal(1, "DAT receive credit overflow");
+            if (!$onehot(s_dat_valid_i) || !s_dat_valid_i[VC_IDX_W'(dat_vc)])
+                $fatal(1, "DAT valid vector does not match header VC");
         end
         if (rst_n_i && s_ctrl_valid_i && !CTRL_CH_MASK[channel])
             $fatal(1, "invalid channel on control ingress");

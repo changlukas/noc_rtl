@@ -15,8 +15,8 @@ module tx_vc_arbiter #(
     input  wire logic                   [NUM_DAT_VC-1:0] s_dat_valid_i,
     output wire logic                   [NUM_DAT_VC-1:0] s_dat_ready_o,
     output wire ni_flit_pkg::dat_flit_t                  m_dat_o,
-    output wire logic                                    m_dat_valid_o,
-    input  wire logic                                    m_dat_ready_i
+    output wire logic                   [NUM_DAT_VC-1:0] m_dat_valid_o,
+    input  wire logic                   [NUM_DAT_VC-1:0] m_dat_ready_i
 );
     localparam int unsigned NUM_ARB_VC = NUM_DAT_VC;
     if (NUM_DAT_VC < 1 || NUM_DAT_VC > (1 << ni_flit_pkg::VC_ID_WIDTH)) begin : gen_invalid_vcs
@@ -27,11 +27,13 @@ module tx_vc_arbiter #(
     end
     wire ni_flit_pkg::dat_flit_t selected_dat;
     wire selected_valid;
+    localparam int unsigned VC_IDX_W = NUM_DAT_VC > 1 ? $clog2(NUM_DAT_VC) : 1;
+    wire [VC_IDX_W-1:0] selected_vc;
     rr_arb_tree #(
         .NumIn     (NUM_ARB_VC             ),
         .DataType  (ni_flit_pkg::dat_flit_t),
         .AxiVldRdy (1'b1                   ),
-        .LockIn    (1'b0                   ),
+        .LockIn    (1'b1                   ),
         .FairArb   (1'b1                   )
     ) i_arb (
         .clk_i   (clk_i                        ),
@@ -42,12 +44,12 @@ module tx_vc_arbiter #(
         .gnt_o   (s_dat_ready_o[NUM_ARB_VC-1:0]),
         .data_i  (s_dat_i[NUM_ARB_VC-1:0]      ),
         .req_o   (selected_valid               ),
-        .gnt_i   (m_dat_ready_i                ),
+        .gnt_i   (m_dat_ready_i[selected_vc]   ),
         .data_o  (selected_dat                 ),
-        .idx_o   (                             )
+        .idx_o   (selected_vc                  )
     );
-    assign m_dat_valid_o = selected_valid;
-    assign m_dat_o       = m_dat_valid_o ? selected_dat : '0;
+    assign m_dat_valid_o = selected_valid ? (NUM_DAT_VC'(1) << selected_vc) : '0;
+    assign m_dat_o       = selected_valid ? selected_dat : '0;
     for (genvar vc = NUM_ARB_VC; vc < NUM_DAT_VC; vc++) begin : gen_unused
         assign s_dat_ready_o[vc] = 1'b0;
     end

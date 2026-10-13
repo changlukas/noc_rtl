@@ -227,6 +227,10 @@ class Router {
         ++credit_[port][vc_id];
     }
 
+    bool ready(std::size_t port, uint8_t vc) const {
+        return !input_reg_[port].has_value() && input_fifo_[port][vc].size() < cfg_.vc_depth;
+    }
+
     void tick();
 
     // Test introspection

@@ -28,7 +28,7 @@ class ni_noc_monitor extends uvm_monitor;
             s.reset = !vif.monitor_cb.rst_n;
             s.req_accept = vif.monitor_cb.req_valid && vif.monitor_cb.req_ready;
             s.rsp_accept = vif.monitor_cb.rsp_valid && vif.monitor_cb.rsp_ready;
-            s.dat_accept = vif.monitor_cb.dat_valid;
+            s.dat_accept = |(vif.monitor_cb.dat_valid & vif.monitor_cb.dat_ready);
             s.req = vif.monitor_cb.req;
             s.rsp = vif.monitor_cb.rsp;
             s.dat = vif.monitor_cb.dat;

@@ -140,6 +140,8 @@ module nmu_request_inject_tb_dut #(
         .m_dat_ready_i       (tx_dat_ready       ),
         .dat_credit_return_i (dat_credit_return_i)
     );
+    wire [NUM_DAT_VC-1:0] dat_valid;
+    assign m_dat_valid_o = |dat_valid;
     tx_vc_arbiter #(
         .NUM_DAT_VC  (NUM_DAT_VC ),
         .DAT_VC_MODE (DAT_VC_MODE)
@@ -150,8 +152,8 @@ module nmu_request_inject_tb_dut #(
         .s_dat_valid_i (tx_dat_valid ),
         .s_dat_ready_o (tx_dat_ready ),
         .m_dat_o       (m_dat_o      ),
-        .m_dat_valid_o (m_dat_valid_o),
-        .m_dat_ready_i (1'b1         )
+        .m_dat_valid_o (dat_valid    ),
+        .m_dat_ready_i ('1           )
     );
 endmodule
 `resetall

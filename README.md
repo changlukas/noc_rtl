@@ -4,6 +4,18 @@ NMU and NSU RTL with AXI4 interfaces. The integration testbench connects one NMU
 one C++ router and four NSUs to five AXI UVM agents. The router is a reference model,
 not router RTL.
 
+## DAT link interface
+
+NMU, NSU and the router wrapper use shared DAT flit data with per-VC
+`valid`, `ready` and credit-return vectors. At most one valid bit is asserted.
+The selected VC transfers on `valid[vc] && ready[vc]`. Until acceptance,
+valid, VC and flit data remain stable.
+
+TX arbitration considers FIFO heads with available credit, including same-cycle
+credit return. NI TX credit is consumed on handshake. RX credit is returned when
+the receive FIFO is read. The C++ router reserves credit at output-FIFO admission
+and does not decrement it again at the link handshake.
+
 ## Source layout
 
 | Directory | Content |
