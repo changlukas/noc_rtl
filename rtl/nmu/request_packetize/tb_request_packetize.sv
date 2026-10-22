@@ -45,7 +45,7 @@ module tb_nmu_request_packetize;
         .m_req_ready_i       (m_req_ready      ),
         .m_dat_o             (m_dat            ),
         .m_dat_valid_o       (m_dat_valid      ),
-        .dat_credit_return_i (dat_credit_return)
+        .credit_i            (dat_credit_return)
     );
 
     task automatic push_aw(input logic is_data, input logic [7:0] dst,

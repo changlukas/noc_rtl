@@ -4,18 +4,19 @@
 `default_nettype none
 
 module nsu_request_path #(
-    parameter int unsigned OUTPUT_ID_WIDTH = ni_params_pkg::NSU_AXI_ID_WIDTH,
-    parameter int unsigned AXI_FIFO_DEPTH  = 32,
-    parameter int unsigned AW_FIFO_DEPTH   = AXI_FIFO_DEPTH,
-    parameter int unsigned W_FIFO_DEPTH    = AXI_FIFO_DEPTH,
-    parameter int unsigned AR_FIFO_DEPTH   = AXI_FIFO_DEPTH,
-    parameter int unsigned REQ_FIFO_DEPTH  = 32,
-    parameter int unsigned NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned NOC_DAT_VC_MODE = ni_params_pkg::NOC_DAT_VC_MODE,
-    parameter int unsigned CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
-    parameter int unsigned AW_REG_TYPE     = 0,
-    parameter int unsigned W_REG_TYPE      = 0,
-    parameter int unsigned AR_REG_TYPE     = 0,
+    parameter bit          EXTERNAL_DAT_LINK = 1'b0,
+    parameter int unsigned OUTPUT_ID_WIDTH   = ni_params_pkg::NSU_AXI_ID_WIDTH,
+    parameter int unsigned AXI_FIFO_DEPTH    = 32,
+    parameter int unsigned AW_FIFO_DEPTH     = AXI_FIFO_DEPTH,
+    parameter int unsigned W_FIFO_DEPTH      = AXI_FIFO_DEPTH,
+    parameter int unsigned AR_FIFO_DEPTH     = AXI_FIFO_DEPTH,
+    parameter int unsigned REQ_FIFO_DEPTH    = 32,
+    parameter int unsigned NUM_DAT_VC        = ni_params_pkg::NUM_DAT_VC,
+    localparam int unsigned NOC_DAT_VC_MODE   = (NUM_DAT_VC > 1),
+    parameter int unsigned CREDIT_DEPTH      = ni_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned AW_REG_TYPE       = 0,
+    parameter int unsigned W_REG_TYPE        = 0,
+    parameter int unsigned AR_REG_TYPE       = 0,
 
     parameter type aw_t = ni_signals_pkg::noc_axi_aw_t,
     parameter type ar_t = ni_signals_pkg::noc_axi_ar_t,
@@ -30,6 +31,9 @@ module nsu_request_path #(
     parameter sam_rule_t [SAM_NUM_RULES-1:0]        SAM    = topology_pkg::SAM,
     parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0] SRC_ID = '0
 ) (
+    input  wire ni_flit_pkg::dat_flit_t                               [NUM_DAT_VC-1:0] rx_dat_vc_i,
+    input  wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_vc_valid_i,
+    output wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_vc_ready_o,
     input  wire logic                                                                  axi_clk_i,
     input  wire logic                                                                  axi_rst_n_i,
     input  wire logic                                                                  noc_clk_i,
@@ -53,7 +57,7 @@ module nsu_request_path #(
     input  wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_valid_i,
     output wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_ready_o,
     input  wire logic                          [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i,
-    output wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_crdvalid_o,
+    output wire logic                                                 [NUM_DAT_VC-1:0] credit_o,
     axi_if.wr_mst axi_wr_o,
     axi_if.rd_mst axi_rd_o
 );
@@ -140,31 +144,36 @@ module nsu_request_path #(
     assign axi_wr_o.wlast    = fifo_w_valid && fifo_w.wlast;
     assign axi_wr_o.wuser    = '0;
     assign axi_wr_o.wvalid   = fifo_w_valid;
+    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] buffered_dat;
+    wire [NUM_DAT_VC-1:0] buffered_dat_valid;
+    assign rx_dat_head = EXTERNAL_DAT_LINK ? rx_dat_vc_i : buffered_dat;
+    assign rx_dat_valid = EXTERNAL_DAT_LINK ? rx_dat_vc_valid_i : buffered_dat_valid;
+    assign rx_dat_vc_ready_o = EXTERNAL_DAT_LINK ? rx_dat_ready : '0;
     rx_credit_buffer #(
+        .DAT_EN          (!EXTERNAL_DAT_LINK),
         .CTRL_FIFO_DEPTH (REQ_FIFO_DEPTH),
         .ctrl_t          (req_flit_t),
         .NUM_DAT_VC      (NUM_DAT_VC),
-        .DAT_VC_MODE     (NOC_DAT_VC_MODE),
         .CREDIT_DEPTH    (CREDIT_DEPTH),
         .DAT_VC_MASK     (WR_VC_MASK),
         .CTRL_CH_MASK    ((1 << AXI_CH_WIDTH)'((1 << AXI_CH_NarrowAw) | (1 << AXI_CH_NarrowW) | (1 << AXI_CH_NarrowAr) | (1 << AXI_CH_DataAr))),
         .DAT_CH_MASK     ((1 << AXI_CH_WIDTH)'((1 << AXI_CH_DataAw) | (1 << AXI_CH_DataW)))
     ) i_rx_credit_buffer (
-        .clk_i               (noc_clk_i                 ),
-        .rst_n_i             (noc_rst_n_i               ),
-        .s_ctrl_i            (req_flit_t'(rx_req_flit_i)),
-        .s_ctrl_valid_i      (rx_req_valid_i            ),
-        .s_ctrl_ready_o      (rx_req_ready_o            ),
-        .s_dat_i             (dat_flit_t'(rx_dat_flit_i)),
-        .s_dat_valid_i       (rx_dat_valid_i            ),
-        .s_dat_ready_o       (rx_dat_ready_o),
-        .dat_credit_return_o (rx_dat_crdvalid_o         ),
-        .m_ctrl_o            (rx_req_head               ),
-        .m_ctrl_valid_o      (rx_req_valid              ),
-        .m_ctrl_ready_i      (rx_req_ready              ),
-        .m_dat_o             (rx_dat_head               ),
-        .m_dat_valid_o       (rx_dat_valid              ),
-        .m_dat_ready_i       (rx_dat_ready              )
+        .clk_i          (noc_clk_i                 ),
+        .rst_n_i        (noc_rst_n_i               ),
+        .s_ctrl_i       (req_flit_t'(rx_req_flit_i)),
+        .s_ctrl_valid_i (rx_req_valid_i            ),
+        .s_ctrl_ready_o (rx_req_ready_o            ),
+        .s_dat_i        (dat_flit_t'(rx_dat_flit_i)),
+        .s_dat_valid_i  (rx_dat_valid_i            ),
+        .s_dat_ready_o  (rx_dat_ready_o            ),
+        .credit_o       (credit_o                  ),
+        .m_ctrl_o       (rx_req_head               ),
+        .m_ctrl_valid_o (rx_req_valid              ),
+        .m_ctrl_ready_i (rx_req_ready              ),
+        .m_dat_o        (buffered_dat              ),
+        .m_dat_valid_o  (buffered_dat_valid        ),
+        .m_dat_ready_i  (rx_dat_ready              )
     );
     nsu_rx_channel_assign #(
         .NUM_DAT_VC (NUM_DAT_VC)

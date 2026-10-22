@@ -1,10 +1,17 @@
-+tree tb_top.dut 0
-+tree tb_top.gen_nsu[0].gen_rtl_nsu.i_nsu 0
-+tree tb_top.gen_nsu[1].gen_rtl_nsu.i_nsu 0
-+tree tb_top.gen_nsu[2].gen_rtl_nsu.i_nsu 0
-+tree tb_top.gen_nsu[3].gen_rtl_nsu.i_nsu 0
--module ni_fifo_coverage
--module ni_credit_coverage
--module ni_arbiter_checks
--module ni_credit_forward_checks
--module ni_fifo_wrap_coverage
++tree tb_top.gen_node[0].i_ni 0
++tree tb_top.gen_node[1].i_ni 0
++tree tb_top.gen_node[2].i_ni 0
++tree tb_top.gen_node[3].i_ni 0
++tree tb_top.gen_node[4].i_ni 0
++tree tb_top.gen_node[5].i_ni 0
++tree tb_top.gen_node[6].i_ni 0
++tree tb_top.gen_node[7].i_ni 0
++tree tb_top.gen_node[8].i_ni 0
++tree tb_top.gen_node[9].i_ni 0
++tree tb_top.gen_node[10].i_ni 0
++tree tb_top.gen_node[11].i_ni 0
++tree tb_top.gen_node[12].i_ni 0
++tree tb_top.gen_node[13].i_ni 0
++tree tb_top.gen_node[14].i_ni 0
++tree tb_top.gen_node[15].i_ni 0
++tree tb_top.i_router 0

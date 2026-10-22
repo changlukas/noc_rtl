@@ -12,6 +12,7 @@ def resolve(packet, constants, noc_id_width):
         raise ValueError("noc_id_width must be in [1, 8] for the model/DPI ID carrier")
     previous_width = packet["flit"]["field_widths"]["NOC_ID_WIDTH"]
     packet, constants = deepcopy(packet), deepcopy(constants)
+    constants["noc"]["DAT_VC_MODE"]["default"] = int(constants["noc"]["DAT_NUM_VC"]["default"] > 1)
     packet["flit"]["field_widths"]["NOC_ID_WIDTH"] = noc_id_width
     constants["axi"]["NOC_ID_WIDTH"]["default"] = noc_id_width
     # The reference NSU supports collapse or full passthrough, not a partial remap.

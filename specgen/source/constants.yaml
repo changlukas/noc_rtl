@@ -93,8 +93,8 @@ noc:
   DAT_VC_MODE:
     type: int
     units: mode
-    description: "DAT VC allocation policy: 0 = SHARED, 1 = READ_WRITE_SPLIT"
-    default: 0
+    description: "Derived DAT policy: one VC shares read/write, multiple VCs split equally"
+    default: 1
     allowed: [0, 1]
     sv_symbol: NOC_DAT_VC_MODE
     cpp_symbol: NOC_DAT_VC_MODE

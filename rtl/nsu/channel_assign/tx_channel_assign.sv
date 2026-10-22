@@ -5,7 +5,7 @@
 
 module nsu_tx_channel_assign #(
     parameter int unsigned NUM_DAT_VC  = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned DAT_VC_MODE = ni_params_pkg::NOC_DAT_VC_MODE
+    localparam int unsigned DAT_VC_MODE = (NUM_DAT_VC > 1)
 ) (
     input  wire logic                                    clk_i,
     input  wire logic                                    rst_n_i,

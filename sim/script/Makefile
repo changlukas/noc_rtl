@@ -30,6 +30,7 @@ IO_FIFO_DEPTH ?= 32
 -include environment.mk
 -include tools.mk
 DIRECT_LINK ?= 0
+RTL_ROUTER ?= 1
 DEVICE_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"NSU_AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
 CONTEXT_DEPTH ?= 32
 INPUT_ID_WIDTH ?= $(shell python3 -c 'import re; print(re.search(r"AXI_ID_WIDTH\s*=\s*(\d+)", open("repo/specgen/generated/sv/ni_params_pkg.sv").read()).group(1))')
@@ -56,13 +57,16 @@ VCS_FLAGS := -ntb_opts uvm-1.2 -lca -pvalue+tb_top.AXI_CLK_PERIOD_PS=$(AXI_CLK_P
 ifeq ($(COVERAGE),1)
 VCS_FLAGS += +define+NI_COVERAGE -cm $(COVERAGE_METRICS) -cm_hier coverage.hier
 endif
-ifeq ($(DIRECT_LINK),0)
+ifeq ($(DIRECT_LINK)$(RTL_ROUTER),00)
+VCS_FLAGS += +define+TB_CMODEL_ROUTER
 DPI := $(BUILD)/dpi_$(shell python3 build_key.py cpp "$(CPPFLAGS) $(CXX)")
 YAML_BUILD := $(BUILD)/yaml_$(shell python3 build_key.py yaml "$(CPPFLAGS) $(CXX)")
 DPI_DEP := $(DPI)/libnmu_cmodel.so
 DPI_LINK := -LDFLAGS "-L$(DPI) -Wl,-rpath,$(DPI) -lnmu_cmodel"
 else
+ifeq ($(DIRECT_LINK),1)
 VCS_FLAGS += +define+TB_DIRECT_LINK
+endif
 DPI_DEP :=
 DPI_LINK :=
 endif
@@ -75,12 +79,12 @@ help:
 	 'make run_wave CASE=<case>   Compile and simulate with FSDB' \
 	 'make view CASE=<case>       Open existing FSDB and signal groups' \
 	 'make clean                 Remove simulation and GUI output' \
-	 'make list                  List the 18 test cases' \
+	 'make list                  List the available test cases' \
 	 'make verification JOBS=3   Run the prepared coverage matrix' \
 	 'make report                Generate the native URG report'
 list:
 	@cat pattern_list.txt
-ifeq ($(DIRECT_LINK),0)
+ifeq ($(DIRECT_LINK)$(RTL_ROUTER),00)
 $(YAML_BUILD)/%.o: deps/yaml-cpp/src/%.cpp $(YAML_HEADERS)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) -c $< -o $@

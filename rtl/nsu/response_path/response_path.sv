@@ -4,18 +4,19 @@
 `default_nettype none
 
 module nsu_response_path #(
-    parameter int unsigned OUTPUT_ID_WIDTH  = ni_params_pkg::NSU_AXI_ID_WIDTH,
-    parameter int unsigned AXI_FIFO_DEPTH   = 32,
-    parameter int unsigned B_FIFO_DEPTH     = AXI_FIFO_DEPTH,
-    parameter int unsigned R_FIFO_DEPTH     = AXI_FIFO_DEPTH,
-    parameter int unsigned AW_CONTEXT_DEPTH = ni_params_pkg::NSU_MAX_OUTSTANDING,
-    parameter int unsigned AR_CONTEXT_DEPTH = ni_params_pkg::NSU_MAX_OUTSTANDING,
-    parameter int unsigned RSP_FIFO_DEPTH   = 32,
-    parameter int unsigned NUM_DAT_VC       = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned NOC_DAT_VC_MODE  = ni_params_pkg::NOC_DAT_VC_MODE,
-    parameter int unsigned CREDIT_DEPTH     = ni_params_pkg::CREDIT_DEPTH,
-    parameter int unsigned B_REG_TYPE       = 0,
-    parameter int unsigned R_REG_TYPE       = 0,
+    parameter bit          EXTERNAL_DAT_LINK = 1'b0,
+    parameter int unsigned OUTPUT_ID_WIDTH   = ni_params_pkg::NSU_AXI_ID_WIDTH,
+    parameter int unsigned AXI_FIFO_DEPTH    = 32,
+    parameter int unsigned B_FIFO_DEPTH      = AXI_FIFO_DEPTH,
+    parameter int unsigned R_FIFO_DEPTH      = AXI_FIFO_DEPTH,
+    parameter int unsigned AW_CONTEXT_DEPTH  = ni_params_pkg::NSU_MAX_OUTSTANDING,
+    parameter int unsigned AR_CONTEXT_DEPTH  = ni_params_pkg::NSU_MAX_OUTSTANDING,
+    parameter int unsigned RSP_FIFO_DEPTH    = 32,
+    parameter int unsigned NUM_DAT_VC        = ni_params_pkg::NUM_DAT_VC,
+    localparam int unsigned NOC_DAT_VC_MODE   = (NUM_DAT_VC > 1),
+    parameter int unsigned CREDIT_DEPTH      = ni_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned B_REG_TYPE        = 0,
+    parameter int unsigned R_REG_TYPE        = 0,
 
     parameter type b_t = ni_signals_pkg::noc_axi_b_t,
     parameter type r_t = ni_signals_pkg::noc_axi_r_t,
@@ -23,6 +24,9 @@ module nsu_response_path #(
     parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0]      SRC_ID      = '0,
     parameter logic [ni_flit_pkg::SRC_PORT_ID_WIDTH-1:0] SRC_PORT_ID = '0
 ) (
+    output wire ni_flit_pkg::dat_flit_t                               [NUM_DAT_VC-1:0] tx_dat_vc_o,
+    output wire logic                                                 [NUM_DAT_VC-1:0] tx_dat_vc_valid_o,
+    input  wire logic                                                 [NUM_DAT_VC-1:0] tx_dat_vc_ready_i,
     input  wire logic                                                                  axi_clk_i,
     input  wire logic                                                                  axi_rst_n_i,
     input  wire logic                                                                  noc_clk_i,
@@ -46,7 +50,7 @@ module nsu_response_path #(
     output wire logic                                                 [NUM_DAT_VC-1:0] tx_dat_valid_o,
     input  wire logic                                                 [NUM_DAT_VC-1:0] tx_dat_ready_i,
     output wire logic                          [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o,
-    input  wire logic                                                 [NUM_DAT_VC-1:0] tx_dat_crdvalid_i,
+    input  wire logic                                                 [NUM_DAT_VC-1:0] credit_i,
     axi_if.wr_mst axi_wr_o,
     axi_if.rd_mst axi_rd_o
 );
@@ -151,8 +155,7 @@ module nsu_response_path #(
         .m_r_ready_i (packet_r_ready )
     );
     nsu_tx_channel_assign #(
-        .NUM_DAT_VC  (NUM_DAT_VC     ),
-        .DAT_VC_MODE (NOC_DAT_VC_MODE)
+        .NUM_DAT_VC  (NUM_DAT_VC     )
     ) i_tx_channel_assign (
         .clk_i         (noc_clk_i         ),
         .rst_n_i       (noc_rst_n_i       ),
@@ -170,43 +173,52 @@ module nsu_response_path #(
         .dat_ready_i   (dat_fifo_ready    )
     );
     tx_credit_buffer #(
-        .CTRL_FIFO_DEPTH (RSP_FIFO_DEPTH ),
-        .ctrl_t          (rsp_flit_t     ),
-        .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .DAT_VC_MODE     (NOC_DAT_VC_MODE),
-        .CREDIT_DEPTH    (CREDIT_DEPTH   ),
-        .DAT_VC_MASK     (RD_VC_MASK     )
+        .CREDIT_EN       (!EXTERNAL_DAT_LINK),
+        .CTRL_FIFO_DEPTH (RSP_FIFO_DEPTH    ),
+        .ctrl_t          (rsp_flit_t        ),
+        .NUM_DAT_VC      (NUM_DAT_VC        ),
+        .CREDIT_DEPTH    (CREDIT_DEPTH      ),
+        .DAT_VC_MASK     (RD_VC_MASK        )
     ) i_tx_credit_buffer (
-        .clk_i               (noc_clk_i         ),
-        .rst_n_i             (noc_rst_n_i       ),
-        .s_ctrl_i            (assigned_rsp      ),
-        .s_ctrl_valid_i      (assigned_rsp_valid),
-        .s_ctrl_ready_o      (assigned_rsp_ready),
-        .m_ctrl_o            (tx_rsp            ),
-        .m_ctrl_valid_o      (tx_rsp_valid_o    ),
-        .m_ctrl_ready_i      (tx_rsp_ready_i    ),
-        .s_dat_i             (assigned_dat      ),
-        .s_dat_valid_i       (assigned_dat_valid),
-        .dat_ready_o         (dat_fifo_ready    ),
-        .m_dat_o             (tx_dat_head       ),
-        .m_dat_valid_o       (tx_dat_valid      ),
-        .m_dat_ready_i       (tx_dat_ready      ),
-        .dat_credit_return_i (tx_dat_crdvalid_i )
+        .clk_i          (noc_clk_i         ),
+        .rst_n_i        (noc_rst_n_i       ),
+        .s_ctrl_i       (assigned_rsp      ),
+        .s_ctrl_valid_i (assigned_rsp_valid),
+        .s_ctrl_ready_o (assigned_rsp_ready),
+        .m_ctrl_o       (tx_rsp            ),
+        .m_ctrl_valid_o (tx_rsp_valid_o    ),
+        .m_ctrl_ready_i (tx_rsp_ready_i    ),
+        .s_dat_i        (assigned_dat      ),
+        .s_dat_valid_i  (assigned_dat_valid),
+        .dat_ready_o    (dat_fifo_ready    ),
+        .m_dat_o        (tx_dat_head       ),
+        .m_dat_valid_o  (tx_dat_valid      ),
+        .m_dat_ready_i  (tx_dat_ready      ),
+        .credit_i       (credit_i          )
     );
-    tx_vc_arbiter #(
-        .NUM_DAT_VC  (NUM_DAT_VC     ),
-        .DAT_VC_MODE (NOC_DAT_VC_MODE),
-        .DAT_VC_MASK (RD_VC_MASK     )
-    ) i_tx_vc_arbiter (
-        .clk_i         (noc_clk_i     ),
-        .rst_n_i       (noc_rst_n_i   ),
-        .s_dat_i       (tx_dat_head   ),
-        .s_dat_valid_i (tx_dat_valid  ),
-        .s_dat_ready_o (tx_dat_ready  ),
-        .m_dat_o       (tx_dat        ),
-        .m_dat_valid_o (tx_dat_valid_o),
-        .m_dat_ready_i (tx_dat_ready_i)
-    );
+    if (EXTERNAL_DAT_LINK) begin : gen_external_dat
+        assign tx_dat_vc_o       = tx_dat_head;
+        assign tx_dat_vc_valid_o = tx_dat_valid;
+        assign tx_dat_ready      = tx_dat_vc_ready_i;
+        assign tx_dat_valid_o    = '0;
+        assign tx_dat            = '0;
+    end else begin : gen_internal_dat
+        assign tx_dat_vc_o       = '0;
+        assign tx_dat_vc_valid_o = '0;
+        tx_vc_arbiter #(
+            .NUM_DAT_VC  (NUM_DAT_VC     ),
+            .DAT_VC_MASK (RD_VC_MASK     )
+        ) i_tx_vc_arbiter (
+            .clk_i         (noc_clk_i     ),
+            .rst_n_i       (noc_rst_n_i   ),
+            .s_dat_i       (tx_dat_head   ),
+            .s_dat_valid_i (tx_dat_valid  ),
+            .s_dat_ready_o (tx_dat_ready  ),
+            .m_dat_o       (tx_dat        ),
+            .m_dat_valid_o (tx_dat_valid_o),
+            .m_dat_ready_i (tx_dat_ready_i)
+        );
+    end
 endmodule
 
 `resetall

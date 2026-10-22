@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare P01-P22 stimulus variants using the shared AXI file generator."""
+"""Prepare shared AXI and router verification patterns."""
 import argparse
 import hashlib
 import json
@@ -8,7 +8,7 @@ import sys
 import shutil
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from prepare import prepare, attach_hardware, ROOT
-from gen_standalone_patterns import generate
+from gen_standalone_patterns import generate, load_cases
 from verification_matrix import metadata
 
 
@@ -23,17 +23,17 @@ def main():
     prepare(out, args.profile)
     import yaml
     profile = yaml.safe_load((out / "profile.yml").read_text())
-    cases = {c["name"]: c for c in json.loads((ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]}
+    cases = {c["name"]: c for c in load_cases("base")}
+    import yaml
+    from address_map import pack_config
+    _, entries = pack_config(yaml.safe_load((out / "topology.yml").read_text()))
+    num_destinations = sum(e["space"] == "memory" for e in entries)
+    hardware = dict(response_fifo_depth=profile.get("io_fifo_depth", 32),
+                    context_depth=profile.get("context_depth", 32))
     rows = []
 
     def add(item, case, mode="auto", seed=1):
-        # Repeat directed AXI sweeps at each endpoint, retaining the same payloads.
-        sweep = item in ("P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10", "P13")
-        for destination in range(4 if sweep else 1):
-            variant = dict(case)
-            if destination:
-                variant["destination_order"] = [(i + destination) % 4 for i in range(4)]
-            add_run(item, variant, mode, seed)
+        add_run(item, dict(case), mode, seed)
 
     def add_run(item, case, mode="auto", seed=1):
         index = len(rows)
@@ -48,7 +48,7 @@ def main():
         catalog = directory / "cases.json"
         catalog.write_text(json.dumps({"cases": [case]}, indent=2) + "\n")
         generate(directory / "patterns", out / "topology.yml", profile.get("input_id_width", 3),
-                 catalog, mode, seed, profile="cosim")
+                 catalog, mode, seed, profile="cosim", hardware=hardware)
         if case["name"] == "capacity_reuse":
             shutil.copytree(directory / "patterns" / case["name"], directory / "patterns" / (case["name"] + "_" + case["capacity_target"]), dirs_exist_ok=True)
         attach_hardware(out, directory / "patterns")
@@ -72,6 +72,10 @@ def main():
                 case["burst_lengths"] = list(range(2, 65 if case["mode"] == "data" else 257))
                 case["count"] = len(case["burst_lengths"])
             add("P%02d" % item, case)
+            if "burst_lengths" in case:
+                boundary = dict(case, burst_lengths=[2, 3, max(case["burst_lengths"])] * num_destinations,
+                                count=3*num_destinations, sequence="sam_boundary")
+                add("P11", boundary)
         for mode in ("control", "data"):
             for lane in ("full", "partial", "zero", "onehot"):
                 add("P09" if lane == "full" else "P10",
@@ -85,23 +89,22 @@ def main():
                     case["response_random_delay"] = True
                 add(item, case, mode)
         for mode in ("control", "data"):
-            add("P12", dict(name="multi_id_outstanding", count=32, ids="multiple",
-                            destinations="all", min_unique=2), mode)
+            add("P12", dict(next(c for c in load_cases("mesh") if c["name"] == "routing")), mode)
         for mode in ("control", "data"):
-            for destination in range(4):
+            for destination in range(1):
                 add("P15", dict(name=mode.replace("control", "ctrl") + "_read_write",
                     mode=mode, count=16, burst_beats=1, ids="multiple", concurrent_rw=True,
                     response_hold_cycles=512,
-                    destination_order=[(i + destination) % 4 for i in range(4)]), mode)
-        for destination in range(4):
+                    destination_order=[(i + destination) % num_destinations for i in range(num_destinations)]), mode)
+        for destination in range(1):
             add("P20", dict(name="data_read_write", mode="data", count=128,
                 burst_beats=8, ids="multiple", concurrent_rw=True,
                 source_response_hold_cycles=4096, response_backpressure=True,
                 response_random_delay=True,
-                destination_order=[(i + destination) % 4 for i in range(4)]), "data")
+                destination_order=[(i + destination) % num_destinations for i in range(num_destinations)]), "data")
         for error in (2, 3):
-            catalog = ROOT / "sim/test_patterns/sweeps" / ("response_slverr.json" if error == 2 else "response_decerr.json")
-            for case in json.loads(catalog.read_text())["cases"]:
+            catalog = "response_slverr" if error == 2 else "response_decerr"
+            for case in load_cases(catalog):
                 add("P13", case)
         for item, name in (("P19", "ctrl_rand"), ("P20", "data_rand"), ("P21", "request_rand")):
             for seed in (1, 17, 29):
@@ -116,6 +119,15 @@ def main():
                         response_hold_cycles=4096)
             for mode in ("control", "data"):
                 add(item, case, mode)
+    if args.capacity == "all":
+        for case in load_cases("router"):
+            for mode in ("control", "data", "rand"):
+                add("P23", dict(case), mode)
+    if args.capacity == "all":
+        for item, name in (("P25", "hotspot"), ("P26", "uniform_random")):
+            case = next(c for c in load_cases("mesh") if c["name"] == name)
+            for mode in ("control", "data", "rand"):
+                add(item, dict(case), mode)
     shutil.copyfile(ROOT / "sim/script/run_verification.py", out / "run_verification.py")
     (out / "verification-runs.json").write_text(json.dumps(rows, indent=2) + "\n")
     files = {out / line.split("  ", 1)[1] for line in (out / "SHA256SUMS").read_text().splitlines()}

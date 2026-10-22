@@ -1,4 +1,6 @@
-目前 `sim/` 與 `nsu-standalone/` 提供 **18 個預設 CASE**。P01–P22 的完整 regression 由 `prepare_ni_verification.py` 展開為 168 次執行。
+目前 sim/ 提供 23 個預設 CASE。nsu-standalone/ 保留 17 個 NI cases。
+
+目前 4×4 matrix 為 82 runs，含多 source routing、hotspot 與 uniform random。驗證結果以本輪 VCS report 為準。
 
 | # | CASE | 測試內容 |
 |---:|---|---|
@@ -18,8 +20,7 @@
 | 14 | `data_rand` | 隨機 data request：ID、destination、burst length、size、write strobe |
 | 15 | `request_rand` | 混合 control／data 的隨機 read／write |
 | 16 | `capacity_reuse` | 填滿指定資源，確認 backpressure、釋放與重新使用 |
-| 17 | `hol_blocking` | 阻塞一個 destination，確認另一個 destination 仍可完成 response |
-| 18 | `reset_recovery` | 有 pending transactions 時隨機 reset，確認清除舊交易並恢復新交易 |
+| 17 | `reset_recovery` | 有 pending transactions 時隨機 reset，確認清除舊交易並恢復新交易 |
 
 預設 CASE 的 burst length 測試點（完整 matrix 另掃描 control 2–256、data 2–64 的每個 length）：
 
@@ -43,7 +44,7 @@
 在工作站選擇其中一個環境，再執行下列指令：
 
 ```sh
-# NMU + C++ router + NSU RTL
+# 4×4 RTL router mesh，每個 node 包含 NMU + NSU
 cd /home/mingwei/noc_project/sim
 
 # NMU + NSU RTL direct-link
@@ -64,7 +65,7 @@ make view CASE=single_id_reorder MODE=data
 # 收集 functional / code / assertion coverage
 make run CASE=request_rand COVERAGE=1
 
-# 執行全部 18 個 case 的預設組態，不包含所有選項組合
+# 執行 pattern.txt 的預設 case，不包含所有選項組合
 make regress COVERAGE=1
 
 # 清除目前環境的模擬與 GUI 輸出
@@ -79,7 +80,6 @@ make run CASE=capacity_reuse TARGET=context MODE=control COVERAGE=1
 make run CASE=capacity_reuse TARGET=rob MODE=data COVERAGE=1
 make run CASE=single_id_reorder BACKPRESSURE=1 MODE=control COVERAGE=1
 make run CASE=multi_id_out_of_order BACKPRESSURE=1 MODE=data COVERAGE=1
-make run CASE=hol_blocking MODE=data COVERAGE=1
 make run CASE=reset_recovery MODE=control SEED=17 COVERAGE=1
 ```
 
@@ -88,3 +88,33 @@ make run CASE=reset_recovery MODE=control SEED=17 COVERAGE=1
 
 `pattern.txt` 保留純 case 名稱，供 regression 讀取；
 `pattern_list.txt` 提供本說明與指令。
+
+Router multicast (4x4 RTL mesh):
+multicast_single  - One-beat writes to row, column, 2x2 subgroup and all nodes.
+multicast_burst   - 2/4/8/64-beat multicast writes with merged B completion.
+multicast_rand    - Multicast writes with random data and device response delay.
+MODE=control/data/rand uses the existing generator and file sequence.
+Overlapping collective trees are serialized until B completion.
+
+4x4 regression
+--------------
+make verification
+make report
+
+82 runs, default hardware profile. Pattern definitions: sim/test_patterns/cases.json.
+AXI transactions: full length/size/WSTRB/response sweeps on a representative path.
+Routing: all 16 sources to all 16 destinations; SAM boundaries batched per class/direction.
+Outstanding/ordering: same-ID and different-ID checks remain separate.
+Capacity recovery: per-ID, context and ROB targets remain separate.
+Hotspot: 16 sources use the same AXI ID and target node 5.
+Uniform random: 16 sources, random destinations and device response delay.
+Multicast/CollectB: existing legal groups and serialized overlapping trees.
+Reset recovery: pending traffic, reset and subsequent transactions.
+
+make run CASE=routing MODE=control COVERAGE=1
+make run CASE=hotspot MODE=data COVERAGE=1
+make run CASE=uniform_random MODE=rand COVERAGE=1
+
+Each active source uses the existing TXT format and file-based sequence.
+Source 0 files remain in the case directory; other sources use source<N>/.
+Hardware settings remain in ni_tb_params.svh, separate from transactions.

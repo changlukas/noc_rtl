@@ -4,9 +4,10 @@
 `default_nettype none
 
 module tx_credit_buffer #(
+    parameter bit                    CREDIT_EN       = 1'b1,
     parameter int unsigned           CTRL_FIFO_DEPTH = 32,
     parameter int unsigned           NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned           DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
+    localparam int unsigned           DAT_VC_MODE     = (NUM_DAT_VC > 1),
     parameter int unsigned           CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
     parameter type                   ctrl_t          = ni_flit_pkg::req_flit_t,
     parameter logic [NUM_DAT_VC-1:0] DAT_VC_MASK     = (DAT_VC_MODE == 1 ? ({NUM_DAT_VC{1'b1}} >> (NUM_DAT_VC/2)) : '1)
@@ -25,7 +26,7 @@ module tx_credit_buffer #(
     output wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
     output wire logic                   [NUM_DAT_VC-1:0] m_dat_valid_o,
     input  wire logic                   [NUM_DAT_VC-1:0] m_dat_ready_i,
-    input  wire logic                   [NUM_DAT_VC-1:0] dat_credit_return_i
+    input  wire logic                   [NUM_DAT_VC-1:0] credit_i
 );
     import ni_flit_pkg::*;
     localparam int unsigned VC_IDX_W = NUM_DAT_VC > 1 ? $clog2(NUM_DAT_VC) : 1;
@@ -71,37 +72,41 @@ module tx_credit_buffer #(
             assign m_dat_valid_o[vc] = dat_req[vc];
             assign dat_ready_o[vc] = !dat_full[vc];
             assign dat_req[vc] = !dat_empty[vc] &&
-                (credit_left[vc] || dat_credit_return_i[vc]);
+                (credit_left[vc] || credit_i[vc]);
             cc_fifo #(
                 .Depth       (CREDIT_DEPTH),
                 .FallThrough (1'b0        ),
                 .data_t      (dat_flit_t  )
             ) i_fifo (
-                .clk_i   (clk_i                                                         ),
-                .rst_ni  (rst_n_i                                                       ),
-                .clr_i   (1'b0                                                          ),
-                .flush_i (1'b0                                                          ),
-                .full_o  (dat_full[vc]                                                  ),
-                .empty_o (dat_empty[vc]                                                 ),
-                .usage_o (                                                              ),
-                .data_i  (s_dat_i                                                       ),
+                .clk_i   (clk_i),
+                .rst_ni  (rst_n_i),
+                .clr_i   (1'b0),
+                .flush_i (1'b0),
+                .full_o  (dat_full[vc]),
+                .empty_o (dat_empty[vc]),
+                .usage_o (),
+                .data_i  (s_dat_i),
                 .push_i  (s_dat_valid_i && dat_ready_o[vc] && dat_vc == VC_ID_WIDTH'(vc)),
-                .data_o  (dat_head[vc]                                                  ),
-                .pop_i   (dat_pop[vc]                                                   )
+                .data_o  (dat_head[vc]),
+                .pop_i   (dat_pop[vc])
             );
-            cc_credit_counter #(
-                .NumCredits (CREDIT_DEPTH)
-            ) i_credit (
-                .clk_i         (clk_i                  ),
-                .rst_ni        (rst_n_i                ),
-                .clr_i         (1'b0                   ),
-                .credit_o      (                       ),
-                .credit_give_i (dat_credit_return_i[vc]),
-                .credit_take_i (dat_pop[vc]            ),
-                .credit_left_o (credit_left[vc]        ),
-                .credit_crit_o (                       ),
-                .credit_full_o (                       )
-            );
+            if (CREDIT_EN) begin : gen_credit
+                cc_credit_counter #(
+                    .NumCredits (CREDIT_DEPTH)
+                ) i_credit (
+                    .clk_i         (clk_i          ),
+                    .rst_ni        (rst_n_i        ),
+                    .clr_i         (1'b0           ),
+                    .credit_o      (               ),
+                    .credit_give_i (credit_i[vc]   ),
+                    .credit_take_i (dat_pop[vc]    ),
+                    .credit_left_o (credit_left[vc]),
+                    .credit_crit_o (               ),
+                    .credit_full_o (               )
+                );
+            end else begin : gen_no_credit
+                assign credit_left[vc] = 1'b1;
+            end
         end else begin : gen_unused
             assign dat_ready_o[vc]   = 1'b0;
             assign dat_full[vc]      = 1'b0;

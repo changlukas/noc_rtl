@@ -1,11 +1,11 @@
 class ni_env extends uvm_env;
-    ni_noc_monitor noc_monitor[2*(NI_NUM_NSUS+1)];
-    ni_noc_coverage noc_coverage[2*(NI_NUM_NSUS+1)];
+    ni_noc_monitor noc_monitor[2*NI_NUM_LINKS];
+    ni_noc_coverage noc_coverage[2*NI_NUM_LINKS];
     ni_scoreboard scoreboard;
-    ni_axi_coverage coverage;
+    ni_axi_coverage coverage[NI_NUM_SOURCES];
     ni_axi_coverage device_coverage[NI_NUM_NSUS];
-    tvip_axi_master_agent source;
-    tvip_axi_slave_agent device[4];
+    tvip_axi_master_agent source[NI_NUM_SOURCES];
+    tvip_axi_slave_agent device[NI_NUM_NSUS];
 
     function new(string name, uvm_component parent);
         super.new(name, parent);
@@ -21,11 +21,13 @@ class ni_env extends uvm_env;
             noc_coverage[i] = ni_noc_coverage::type_id::create($sformatf("noc_%s_coverage%0d", i%2 == 0 ? "tx" : "rx", i/2), this);
         end
         scoreboard = ni_scoreboard::type_id::create("scoreboard", this);
-        coverage = ni_axi_coverage::type_id::create("coverage", this);
-        if (!uvm_config_db #(tvip_axi_configuration)::get(this, "", "source_cfg", cfg))
-            `uvm_fatal("CONFIG", "Missing Source AXI configuration")
-        source = tvip_axi_master_agent::type_id::create("source", this);
-        source.set_configuration(cfg);
+        foreach (source[i]) begin
+            coverage[i] = ni_axi_coverage::type_id::create($sformatf("coverage%0d", i), this);
+            if (!uvm_config_db #(tvip_axi_configuration)::get(this, "", $sformatf("source_cfg%0d", i), cfg))
+                `uvm_fatal("CONFIG", "Missing Source AXI configuration")
+            source[i] = tvip_axi_master_agent::type_id::create($sformatf("source%0d", i), this);
+            source[i].set_configuration(cfg);
+        end
         foreach (device[i]) begin
             if (!uvm_config_db #(tvip_axi_configuration)::get(this, "", $sformatf("device_cfg%0d", i), cfg))
                 `uvm_fatal("CONFIG", "Missing Device AXI configuration")
@@ -40,10 +42,12 @@ class ni_env extends uvm_env;
     function void connect_phase(uvm_phase phase);
         super.connect_phase(phase);
         foreach (noc_monitor[i]) noc_monitor[i].analysis_port.connect(noc_coverage[i].analysis_export);
-        source.transfer_port.connect(scoreboard.input_fifo[0].analysis_export);
-        source.transfer_port.connect(coverage.analysis_export);
+        foreach (source[i]) begin
+            source[i].transfer_port.connect(scoreboard.input_fifo[i].analysis_export);
+            source[i].transfer_port.connect(coverage[i].analysis_export);
+        end
         foreach (device[i]) begin
-            device[i].transfer_port.connect(scoreboard.input_fifo[i+1].analysis_export);
+            device[i].transfer_port.connect(scoreboard.input_fifo[i+NI_NUM_SOURCES].analysis_export);
             device[i].transfer_port.connect(device_coverage[i].analysis_export);
         end
     endfunction

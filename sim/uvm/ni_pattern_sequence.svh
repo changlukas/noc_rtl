@@ -86,6 +86,8 @@ class ni_pattern_sequence extends tvip_axi_master_sequence_base;
                 items[i].response_ready_delay[0] = first_response_delay;
             start_item(items[i]);
             finish_item(items[i]);
+            if (!items[i].is_read() && items[i].awuser[9:8] == 2'b01)
+                items[i].wait_for_done();
         end
         foreach (items[i]) items[i].wait_for_done();
     endtask

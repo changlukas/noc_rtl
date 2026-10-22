@@ -12,6 +12,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 # Existing verification-plan item IDs and implemented coverage objects.
 TARGETS = {
+    "P25": ("Router output contention", "arbiter contended_grant; transaction_cg"),
+    "P26": ("Multi-source random traffic", "transaction_cg; credit_cg"),
+    "P23": ("Router multicast / CollectB", "AXI scoreboard; ordering checker"),
     "P01": ("AXI-01, NI-02", "transaction_cg; response_cg"),
     "P02": ("AXI-01, NI-02", "transaction_cg; response_cg"),
     "P03": ("AXI-01, NI-02", "transaction_cg; response_cg"),
@@ -133,8 +136,8 @@ def export(stage, out, report_dir=None):
     if set(completed) != {r["tag"] for r in runs} or len(results) != len(runs):
         raise ValueError("Regression results do not match the prepared matrix")
     topology = yaml.safe_load((stage / "topology.yml").read_text())
-    regions = [(ep["name"], r) for ep in topology["endpoints"]
-               for r in ep.get("addr_range", [])]
+    from address_map import pack_config
+    _, regions = pack_config(topology)
     params = dict(re.findall(r"localparam int NI_(\w+)\s*=\s*(\d+)",
                             (stage / "ni_tb_params.svh").read_text()))
     config = "R_ROB_EN={R_ROB_EN}, NUM_DAT_VC={NUM_DAT_VC}".format(**params)
@@ -173,8 +176,13 @@ def export(stage, out, report_dir=None):
         run_summary.append([run_id, run["item"], case, config, "PASS", cycles, settings,
                             str(record_file.relative_to(stage))])
         index = 0
-        for filename, direction in (("init_write.txt", "write"), ("write.txt", "write"),
+        files = []
+        for source in run["conditions"].get("sources", [0]):
+            prefix = "" if source == 0 else "source" + str(source) + "/"
+            for name, direction in (("init_write.txt", "write"), ("write.txt", "write"),
                                     ("read.txt", "read"), ("verify_read.txt", "read")):
+                files.append((prefix + name, direction, source))
+        for filename, direction, source in files:
             file = stim / filename
             if not file.exists():
                 continue
@@ -182,8 +190,8 @@ def export(stage, out, report_dir=None):
             for transaction in parsed:
                 index += 1
                 addr, size = transaction["addr"], transaction["size"]
-                destination, region = next((name, r) for name, r in regions
-                    if int(r["base"]) <= addr < int(r["base"]) + int(r["size"]))
+                region = next(r for r in regions if int(r["base"]) <= addr < int(r["base"]) + int(r["size"]))
+                destination = region["name"] if "name" in region else str(region["id"] if "id" in region else region["base"] >> 32)
                 traffic = "control" if region["space"] == "config" else "data"
                 strobe = " ".join("h" + beat.split()[1].removeprefix("0x")
                                   for beat in transaction.get("beats", []))
@@ -213,7 +221,7 @@ def export(stage, out, report_dir=None):
     bins = coverage_bins((report_dir / "grpinfo.txt").read_text(), "r{}_vc{}".format(
         params["R_ROB_EN"], params["NUM_DAT_VC"]), test_runs)
     if {r[0] for r in matrix} != set(TARGETS):
-        raise ValueError("Not all P01-P22 patterns are represented")
+        raise ValueError("Not all planned pattern IDs are represented")
     payload = dict(matrix=matrix, transactions=transactions, bins=bins, runs=run_summary)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False))

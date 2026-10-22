@@ -112,7 +112,7 @@ bind tx_credit_buffer ni_credit_forward_checks #(
     .rst_n_i(rst_n_i),
     .empty_i(dat_empty),
     .credit_i(credit_left),
-    .returned_i(dat_credit_return_i),
+    .returned_i(credit_i           ),
     .valid_i(m_dat_valid_o)
 );
 

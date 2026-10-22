@@ -13,7 +13,7 @@ module nmu_request_inject_tb_dut #(
     parameter int unsigned DAT_W_REG_TYPE                                = 0,
     parameter int unsigned                               FIFO_DEPTH      = ni_params_pkg::NOC_FIFO_DEPTH,
     parameter int unsigned                               NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned                               DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
+    localparam int unsigned                               DAT_VC_MODE     = (NUM_DAT_VC > 1),
     parameter int unsigned                               CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
     parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0]      SRC_ID          = '0,
     parameter logic [ni_flit_pkg::SRC_PORT_ID_WIDTH-1:0] SRC_PORT_ID     = '0
@@ -34,7 +34,7 @@ module nmu_request_inject_tb_dut #(
     input  wire logic                                           m_req_ready_i,
     output wire ni_flit_pkg::dat_flit_t                         m_dat_o,
     output wire logic                                           m_dat_valid_o,
-    input  wire logic                          [NUM_DAT_VC-1:0] dat_credit_return_i
+    input  wire logic                          [NUM_DAT_VC-1:0] credit_i
 );
     import ni_types_pkg::*;
 
@@ -98,8 +98,7 @@ module nmu_request_inject_tb_dut #(
     wire assigned_req_valid, assigned_req_ready, assigned_dat_valid;
     wire [NUM_DAT_VC-1:0] dat_fifo_ready;
     tx_channel_assign #(
-        .NUM_DAT_VC  (NUM_DAT_VC ),
-        .DAT_VC_MODE (DAT_VC_MODE)
+        .NUM_DAT_VC  (NUM_DAT_VC )
     ) i_tx_channel_assign (
         .clk_i         (clk_i             ),
         .rst_n_i       (rst_n_i           ),
@@ -121,7 +120,6 @@ module nmu_request_inject_tb_dut #(
     tx_credit_buffer #(
         .CTRL_FIFO_DEPTH (FIFO_DEPTH  ),
         .NUM_DAT_VC     (NUM_DAT_VC  ),
-        .DAT_VC_MODE    (DAT_VC_MODE ),
         .CREDIT_DEPTH   (CREDIT_DEPTH)
     ) i_tx_credit_buffer (
         .clk_i               (clk_i              ),
@@ -138,13 +136,12 @@ module nmu_request_inject_tb_dut #(
         .m_dat_o             (tx_dat_head        ),
         .m_dat_valid_o       (tx_dat_valid       ),
         .m_dat_ready_i       (tx_dat_ready       ),
-        .dat_credit_return_i (dat_credit_return_i)
+        .credit_i            (credit_i           )
     );
-    wire [NUM_DAT_VC-1:0] dat_valid;
-    assign m_dat_valid_o = |dat_valid;
+    wire [NUM_DAT_VC-1:0] link_dat_valid;
+    assign m_dat_valid_o = |link_dat_valid;
     tx_vc_arbiter #(
-        .NUM_DAT_VC  (NUM_DAT_VC ),
-        .DAT_VC_MODE (DAT_VC_MODE)
+        .NUM_DAT_VC  (NUM_DAT_VC )
     ) i_tx_vc_arbiter (
         .clk_i         (clk_i        ),
         .rst_n_i       (rst_n_i      ),
@@ -152,7 +149,7 @@ module nmu_request_inject_tb_dut #(
         .s_dat_valid_i (tx_dat_valid ),
         .s_dat_ready_o (tx_dat_ready ),
         .m_dat_o       (m_dat_o      ),
-        .m_dat_valid_o (dat_valid    ),
+        .m_dat_valid_o (link_dat_valid),
         .m_dat_ready_i ('1           )
     );
 endmodule

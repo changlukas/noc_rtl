@@ -84,11 +84,11 @@ module router_wrap #(
     output logic [NUM_DAT_VC-1:0]     tx_dat_valid [LINK_PORTS],
     input  logic [NUM_DAT_VC-1:0]     tx_dat_ready [LINK_PORTS],
     output logic [DAT_FLIT_WIDTH-1:0] tx_dat_flit     [LINK_PORTS],
-    input  logic [NUM_DAT_VC-1:0]     tx_dat_crdvalid [LINK_PORTS],
+    input  logic [NUM_DAT_VC-1:0]     credit_i [LINK_PORTS],
     input  logic [NUM_DAT_VC-1:0]     rx_dat_valid [LINK_PORTS],
     output logic [NUM_DAT_VC-1:0]     rx_dat_ready [LINK_PORTS],
     input  logic [DAT_FLIT_WIDTH-1:0] rx_dat_flit     [LINK_PORTS],
-    output logic [NUM_DAT_VC-1:0]     rx_dat_crdvalid [LINK_PORTS]
+    output logic [NUM_DAT_VC-1:0]     credit_o [LINK_PORTS]
 );
 
     // Elaboration guard: noc_types_pkg::noc_credit_t width must match NUM_DAT_VC.
@@ -124,7 +124,7 @@ module router_wrap #(
         input  longint unsigned              ctx,
         input  bit [LINK_PORTS-1:0]     rx_dat_valid,
         input  bit [DAT_FLIT_WIDTH-1:0] rx_dat_flit  [LINK_PORTS],
-        input  bit [NUM_DAT_VC-1:0]     tx_dat_crdvalid [LINK_PORTS],
+        input  bit [NUM_DAT_VC-1:0]     credit_i [LINK_PORTS],
         input bit [LINK_PORTS-1:0] tx_dat_ready
     );
 
@@ -148,7 +148,7 @@ module router_wrap #(
         input  longint unsigned              ctx,
         output bit [LINK_PORTS-1:0]     tx_dat_valid,
         output bit [DAT_FLIT_WIDTH-1:0] tx_dat_flit  [LINK_PORTS],
-        output bit [NUM_DAT_VC-1:0]     rx_dat_crdvalid [LINK_PORTS],
+        output bit [NUM_DAT_VC-1:0]     credit_o [LINK_PORTS],
         output bit [NUM_DAT_VC-1:0] rx_dat_ready [LINK_PORTS]
     );
 
@@ -208,7 +208,7 @@ module router_wrap #(
                     b_rx_req_flit[p]     = rx_req_flit[p];
                     b_rx_rsp_flit[p]     = rx_rsp_flit[p];
                     b_rx_dat_flit[p]     = rx_dat_flit[p];
-                    b_tx_dat_crdvalid[p] = tx_dat_crdvalid[p];
+                    b_tx_dat_crdvalid[p] = credit_i[p];
                 end
                 cmodel_router_req_set_inputs(ctx_i, rx_req_valid & rx_req_ready_q,
                                              b_rx_req_flit,
@@ -333,7 +333,7 @@ module router_wrap #(
         assign rx_dat_ready[p] = rx_dat_ready_q[p];
     end
     assign tx_dat_flit     = tx_dat_flit_q;
-    assign rx_dat_crdvalid = rx_dat_crdvalid_q;
+    assign credit_o = rx_dat_crdvalid_q;
 
 endmodule
 

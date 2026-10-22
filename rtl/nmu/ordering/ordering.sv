@@ -171,10 +171,13 @@ module nmu_ordering #(
             R_ROB_EN && ar_reorder_required;
         aw_tag        = aw_hold_reg ? aw_hold_tag_reg : (aw_reorder ? b_next_base : '0);
         ar_tag        = ar_hold_reg ? ar_hold_tag_reg : (ar_reorder ? r_next_base : '0);
+        // Drain the ID before switching between REQ and DAT.
         aw_can_accept = aw_hold_reg ||
             (wr_outstanding_cnt_reg[ID_IDX_W'(s_aw_i.axi.awid)] < OUTSTANDING_CNT_W'(MAX_OUTSTANDING_PER_ID) &&
              !wr_collective_active_reg[ID_IDX_W'(s_aw_i.axi.awid)] &&
              (s_aw_i.route.collective_op == 0 || wr_outstanding_cnt_reg[ID_IDX_W'(s_aw_i.axi.awid)] == 0) &&
+             (wr_outstanding_cnt_reg[ID_IDX_W'(s_aw_i.axi.awid)] == 0 ||
+              wr_domain_reg[ID_IDX_W'(s_aw_i.axi.awid)].is_data == s_aw_i.route.route.domain.is_data) &&
              (!aw_reorder || b_free_cnt != 0));
         ar_can_accept = ar_hold_reg ||
             (rd_outstanding_cnt_reg[ID_IDX_W'(s_ar_i.axi.arid)] < OUTSTANDING_CNT_W'(MAX_OUTSTANDING_PER_ID) &&
@@ -547,6 +550,9 @@ module nmu_ordering #(
     // synthesis translate_off
     always @(posedge clk_i) begin
         if (rst_n_i) begin
+            if (aw_accept && wr_outstanding_cnt_reg[ID_IDX_W'(s_aw_i.axi.awid)] != 0 &&
+                wr_domain_reg[ID_IDX_W'(s_aw_i.axi.awid)].is_data != s_aw_i.route.route.domain.is_data)
+                $fatal(1, "Write channel changed before prior B retirement (%m)");
             if ((s_aw_valid_i && int'(s_aw_i.axi.awid) >= NUM_IDS) ||
                 (s_ar_valid_i && int'(s_ar_i.axi.arid) >= NUM_IDS) ||
                 (s_b_valid_i && int'(s_b_i.axi.bid) >= NUM_IDS) ||

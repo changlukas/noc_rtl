@@ -8,10 +8,14 @@ package ni_test_pkg;
     `include "uvm_macros.svh"
     `include "ni_tb_params.svh"
     import ni_params_pkg::*;
-    localparam int NI_NUM_NSUS = 4;
+    localparam int NI_NUM_NSUS = NI_DIRECT_LINK ? 4 : NOC_MESH_X_DIM*NOC_MESH_Y_DIM;
+    localparam int NI_NUM_LINKS = NI_DIRECT_LINK ? NI_NUM_NSUS+1 : NI_NUM_NSUS;
+    localparam int NI_NUM_SOURCES = NI_DIRECT_LINK ? 1 : NI_NUM_NSUS;
+    localparam int NI_CHECK_ID_WIDTH = NI_MON_ID_WIDTH + $clog2(NI_NUM_SOURCES);
+    localparam int NI_CHECK_IDS = 1 << NI_CHECK_ID_WIDTH;
     localparam int NI_NUM_IDS = 1 << NI_INPUT_ID_WIDTH;
     typedef logic [AXI_ADDR_WIDTH-1:0] ni_mon_addr_t;
-    typedef logic [NI_MON_ID_WIDTH-1:0] ni_mon_id_t;
+    typedef logic [NI_CHECK_ID_WIDTH-1:0] ni_mon_id_t;
     typedef logic [AXI_DATA_WIDTH-1:0] ni_mon_data_t;
     typedef logic [AXI_DATA_WIDTH/8-1:0] ni_mon_strb_t;
     typedef logic [AXI_AWUSER_WIDTH-1:0] ni_mon_user_t;
@@ -22,6 +26,7 @@ package ni_test_pkg;
         ni_mon_addr_t end_addr;
     } ni_mon_rule_t;
     function automatic int ni_nsu_id(int port);
+        if (!NI_DIRECT_LINK) return (((port-1)/NOC_MESH_X_DIM) << ni_flit_pkg::X_WIDTH) | ((port-1)%NOC_MESH_X_DIM);
         case (port)
             1: return (2 << ni_flit_pkg::X_WIDTH) | 1;
             2: return (1 << ni_flit_pkg::X_WIDTH) | 2;

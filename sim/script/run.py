@@ -112,8 +112,8 @@ if a.coverage:
                   source_manifest_sha256=hashlib.sha256((build_source / "SHA256SUMS").read_bytes()).hexdigest(),
                   source_directory=str(build_source),
                   profile=Path("profile.yml").read_text(),
-                  stimulus_sha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                                   for p in sorted(stim.iterdir()) if p.is_file()})
+                  stimulus_sha256={str(p.relative_to(stim)): hashlib.sha256(p.read_bytes()).hexdigest()
+                                   for p in sorted(stim.rglob("*")) if p.is_file()})
     result["binary_sha256"] = hashlib.sha256(Path(a.binary).read_bytes()).hexdigest()
     clock = re.search(r"CLOCK_CONFIG axi_period_ps=(\d+) noc_period_ps=(\d+)", log)
     phase = re.search(r"CLOCK_PHASE noc_phase_ps=(\d+)", log)

@@ -1,0 +1,749 @@
+{
+  "version": 3,
+  "groups": {
+    "stress": [
+      {
+        "name": "capacity_reuse",
+        "count": 320,
+        "burst_beats": 1,
+        "ids": "multiple",
+        "sequence": "capacity_reuse",
+        "capacity_target": "per_id",
+        "response_hold_cycles": 4096
+      },
+      {
+        "name": "reset_recovery",
+        "count": 8,
+        "burst_beats": 4,
+        "ids": "multiple",
+        "destinations": "alternate",
+        "sequence": "reset_recovery"
+      }
+    ],
+    "base": [
+      {
+        "name": "ctrl_write_single",
+        "operation": "write",
+        "count": 1,
+        "mode": "control"
+      },
+      {
+        "name": "ctrl_read_single",
+        "operation": "read",
+        "count": 1,
+        "mode": "control"
+      },
+      {
+        "name": "ctrl_write_burst",
+        "operation": "write",
+        "count": 15,
+        "mode": "control",
+        "burst_lengths": [
+          2,
+          3,
+          4,
+          7,
+          8,
+          15,
+          16,
+          31,
+          32,
+          63,
+          64,
+          127,
+          128,
+          255,
+          256
+        ]
+      },
+      {
+        "name": "ctrl_read_burst",
+        "operation": "read",
+        "count": 15,
+        "mode": "control",
+        "burst_lengths": [
+          2,
+          3,
+          4,
+          7,
+          8,
+          15,
+          16,
+          31,
+          32,
+          63,
+          64,
+          127,
+          128,
+          255,
+          256
+        ]
+      },
+      {
+        "name": "single_id_outstanding",
+        "count": 16,
+        "response_delay": 12,
+        "startup_delay": 80,
+        "min_outstanding": 2
+      },
+      {
+        "extends": "base/single_id_outstanding",
+        "name": "multi_id_outstanding",
+        "ids": "multiple",
+        "min_unique": 2
+      },
+      {
+        "extends": "base/multi_id_outstanding",
+        "name": "multi_id_out_of_order",
+        "response_order": 2,
+        "require_ooo": 1,
+        "response_delay_port": 4
+      },
+      {
+        "name": "single_id_reorder",
+        "count": 16,
+        "destinations": "alternate",
+        "response_order": 1,
+        "response_delay": 12,
+        "startup_delay": 80,
+        "min_outstanding": 2,
+        "require_buffered": 1,
+        "response_delay_port": 4
+      },
+      {
+        "name": "outstanding_full_recover",
+        "legacy_mixed": true,
+        "response_order": 1,
+        "response_delay": 12,
+        "startup_delay": 160,
+        "min_outstanding": 2,
+        "require_capacity": 1
+      },
+      {
+        "name": "backpressure",
+        "count": 16,
+        "burst_sweep": true,
+        "stall_enable": 1,
+        "response_delay": 12,
+        "min_outstanding": 2,
+        "require_stall": 1
+      },
+      {
+        "name": "reset_recovery",
+        "count": 8,
+        "destinations": "alternate",
+        "reset_warmup": 1
+      },
+      {
+        "name": "data_write_single",
+        "mode": "data",
+        "operation": "write",
+        "count": 1
+      },
+      {
+        "name": "data_write_burst",
+        "mode": "data",
+        "operation": "write",
+        "count": 11,
+        "burst_lengths": [
+          2,
+          3,
+          4,
+          7,
+          8,
+          15,
+          16,
+          31,
+          32,
+          63,
+          64
+        ]
+      },
+      {
+        "name": "data_read_single",
+        "mode": "data",
+        "operation": "read",
+        "count": 1
+      },
+      {
+        "name": "data_read_burst",
+        "mode": "data",
+        "operation": "read",
+        "count": 11,
+        "burst_lengths": [
+          2,
+          3,
+          4,
+          7,
+          8,
+          15,
+          16,
+          31,
+          32,
+          63,
+          64
+        ]
+      },
+      {
+        "extends": "base/request_rand",
+        "name": "ctrl_rand",
+        "mode": "control"
+      },
+      {
+        "extends": "base/request_rand",
+        "name": "data_rand",
+        "mode": "data"
+      },
+      {
+        "name": "request_rand",
+        "mode": "rand",
+        "random": true,
+        "count": 64,
+        "ids": "multiple",
+        "destinations": "random",
+        "response_order": 1,
+        "response_delay": 12,
+        "startup_delay": 80,
+        "stall_enable": 1,
+        "min_outstanding": 2,
+        "min_unique": 2
+      }
+    ],
+    "out_of_order_perf": [
+      {
+        "name": "ooo_control_read_cross_id",
+        "mode": "control",
+        "operation": "read",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 2,
+        "ids": "multiple"
+      },
+      {
+        "name": "ooo_control_read_same_id",
+        "mode": "control",
+        "operation": "read",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "destinations": "alternate"
+      },
+      {
+        "name": "ooo_control_read_mixed_id",
+        "mode": "control",
+        "operation": "read",
+        "count": 16,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "ids": "multiple",
+        "destinations": "random"
+      },
+      {
+        "name": "ooo_control_write_cross_id",
+        "mode": "control",
+        "operation": "write",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 2,
+        "ids": "multiple"
+      },
+      {
+        "name": "ooo_control_write_same_id",
+        "mode": "control",
+        "operation": "write",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "destinations": "alternate"
+      },
+      {
+        "name": "ooo_control_write_mixed_id",
+        "mode": "control",
+        "operation": "write",
+        "count": 16,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "ids": "multiple",
+        "destinations": "random"
+      },
+      {
+        "name": "ooo_data_read_cross_id",
+        "mode": "data",
+        "operation": "read",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 2,
+        "ids": "multiple"
+      },
+      {
+        "name": "ooo_data_read_same_id",
+        "mode": "data",
+        "operation": "read",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "destinations": "alternate"
+      },
+      {
+        "name": "ooo_data_read_mixed_id",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "ids": "multiple",
+        "destinations": "random"
+      },
+      {
+        "name": "ooo_data_write_cross_id",
+        "mode": "data",
+        "operation": "write",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 2,
+        "ids": "multiple"
+      },
+      {
+        "name": "ooo_data_write_same_id",
+        "mode": "data",
+        "operation": "write",
+        "count": 8,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "destinations": "alternate"
+      },
+      {
+        "name": "ooo_data_write_mixed_id",
+        "mode": "data",
+        "operation": "write",
+        "count": 16,
+        "burst_beats": 8,
+        "response_delay": 0,
+        "startup_delay": 200,
+        "response_order": 1,
+        "ids": "multiple",
+        "destinations": "random"
+      }
+    ],
+    "mixed_perf": [
+      {
+        "name": "mixed_control_single",
+        "mode": "control",
+        "operation": "both",
+        "count": 128,
+        "burst_beats": 1,
+        "response_delay": 0
+      },
+      {
+        "name": "mixed_control_burst",
+        "mode": "control",
+        "operation": "both",
+        "count": 128,
+        "burst_beats": 16,
+        "response_delay": 0
+      },
+      {
+        "name": "mixed_data_single",
+        "mode": "data",
+        "operation": "both",
+        "count": 128,
+        "burst_beats": 1,
+        "response_delay": 0
+      },
+      {
+        "name": "mixed_data_burst",
+        "mode": "data",
+        "operation": "both",
+        "count": 128,
+        "burst_beats": 16,
+        "response_delay": 0
+      }
+    ],
+    "in_order_perf": [
+      {
+        "name": "perf_control_read_single",
+        "mode": "control",
+        "operation": "read",
+        "count": 128,
+        "burst_beats": 1,
+        "response_delay": 0
+      },
+      {
+        "name": "perf_control_read_burst",
+        "mode": "control",
+        "operation": "read",
+        "count": 128,
+        "burst_beats": 16,
+        "response_delay": 0
+      },
+      {
+        "name": "perf_control_write_single",
+        "mode": "control",
+        "operation": "write",
+        "count": 128,
+        "burst_beats": 1,
+        "response_delay": 0
+      },
+      {
+        "name": "perf_control_write_burst",
+        "mode": "control",
+        "operation": "write",
+        "count": 128,
+        "burst_beats": 16,
+        "response_delay": 0
+      },
+      {
+        "name": "perf_data_read_single",
+        "mode": "data",
+        "operation": "read",
+        "count": 128,
+        "burst_beats": 1,
+        "response_delay": 0
+      },
+      {
+        "name": "perf_data_read_burst",
+        "mode": "data",
+        "operation": "read",
+        "count": 128,
+        "burst_beats": 16,
+        "response_delay": 0
+      },
+      {
+        "name": "perf_data_write_single",
+        "mode": "data",
+        "operation": "write",
+        "count": 128,
+        "burst_beats": 1,
+        "response_delay": 0
+      },
+      {
+        "name": "perf_data_write_burst",
+        "mode": "data",
+        "operation": "write",
+        "count": 128,
+        "burst_beats": 16,
+        "response_delay": 0
+      }
+    ],
+    "verification": [
+      {
+        "name": "read_interleave",
+        "count": 16,
+        "ids": "multiple",
+        "burst_beats": 4,
+        "response_delay": 1,
+        "startup_delay": 80,
+        "min_outstanding": 2,
+        "min_unique": 2
+      }
+    ],
+    "cosim": [
+      {
+        "name": "ctrl_backpressure",
+        "mode": "control",
+        "count": 16,
+        "burst_beats": 8,
+        "source_response_delay": true
+      },
+      {
+        "name": "ctrl_capacity_recover",
+        "mode": "control",
+        "count": 320,
+        "burst_beats": 4,
+        "ids": "multiple",
+        "min_outstanding": 64,
+        "min_unique": 8,
+        "source_response_hold_cycles": 4096,
+        "fifo_capacity": "control"
+      },
+      {
+        "name": "ctrl_partial_write",
+        "mode": "control",
+        "count": 12,
+        "burst_sweep": true,
+        "partial_write": true
+      },
+      {
+        "name": "ctrl_read_write",
+        "mode": "control",
+        "count": 16,
+        "burst_beats": 8,
+        "concurrent_rw": true
+      },
+      {
+        "extends": "cosim/ctrl_backpressure",
+        "name": "data_backpressure",
+        "mode": "data"
+      },
+      {
+        "extends": "cosim/ctrl_capacity_recover",
+        "name": "data_capacity_recover",
+        "mode": "data",
+        "burst_beats": 8,
+        "fifo_capacity": "data"
+      },
+      {
+        "extends": "cosim/ctrl_partial_write",
+        "name": "data_partial_write",
+        "mode": "data"
+      },
+      {
+        "extends": "cosim/ctrl_read_write",
+        "name": "data_read_write",
+        "mode": "data"
+      }
+    ],
+    "capacity_perf": [
+      {
+        "name": "capacity_active_ids",
+        "count": 48,
+        "mode": "control",
+        "ids": "multiple",
+        "num_ids": 12
+      },
+      {
+        "name": "capacity_per_id",
+        "count": 48,
+        "mode": "control",
+        "ids": "same"
+      }
+    ],
+    "router": [
+      {
+        "name": "multicast_single",
+        "count": 4,
+        "operation": "write",
+        "ids": "multiple",
+        "destinations": "all",
+        "burst_lengths": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "multicast_masks": [
+          3,
+          48,
+          17,
+          51
+        ],
+        "random": false,
+        "response_random_delay": false
+      },
+      {
+        "extends": "router/multicast_single",
+        "name": "multicast_burst",
+        "burst_lengths": [
+          2,
+          4,
+          8,
+          64
+        ]
+      },
+      {
+        "extends": "router/multicast_single",
+        "name": "multicast_rand",
+        "count": 8,
+        "burst_lengths": [
+          1,
+          2,
+          4,
+          8,
+          1,
+          2,
+          4,
+          8
+        ],
+        "random": true,
+        "response_random_delay": true
+      }
+    ],
+    "response_slverr": [
+      {
+        "extends": "base/ctrl_write_single",
+        "response_error": 2
+      },
+      {
+        "extends": "base/ctrl_read_single",
+        "response_error": 2
+      },
+      {
+        "extends": "base/ctrl_write_burst",
+        "response_error": 2
+      },
+      {
+        "extends": "base/ctrl_read_burst",
+        "response_error": 2
+      },
+      {
+        "extends": "base/data_write_single",
+        "response_error": 2
+      },
+      {
+        "extends": "base/data_write_burst",
+        "response_error": 2
+      },
+      {
+        "extends": "base/data_read_single",
+        "response_error": 2
+      },
+      {
+        "extends": "base/data_read_burst",
+        "response_error": 2
+      }
+    ],
+    "response_decerr": [
+      {
+        "extends": "base/ctrl_write_single",
+        "response_error": 3
+      },
+      {
+        "extends": "base/ctrl_read_single",
+        "response_error": 3
+      },
+      {
+        "extends": "base/ctrl_write_burst",
+        "response_error": 3
+      },
+      {
+        "extends": "base/ctrl_read_burst",
+        "response_error": 3
+      },
+      {
+        "extends": "base/data_write_single",
+        "response_error": 3
+      },
+      {
+        "extends": "base/data_write_burst",
+        "response_error": 3
+      },
+      {
+        "extends": "base/data_read_single",
+        "response_error": 3
+      },
+      {
+        "extends": "base/data_read_burst",
+        "response_error": 3
+      }
+    ],
+    "mesh": [
+      {
+        "name": "hotspot",
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "count": 4,
+        "ids": "same",
+        "destination_order": [
+          5,
+          0,
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "burst_beats": 4,
+        "num_ids": 1
+      },
+      {
+        "name": "uniform_random",
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "count": 4,
+        "ids": "same",
+        "destinations": "random",
+        "response_random_delay": true,
+        "num_ids": 1
+      },
+      {
+        "name": "routing",
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "count": 16,
+        "burst_beats": 1,
+        "ids": "same",
+        "destinations": "all",
+        "num_ids": 1
+      }
+    ]
+  }
+}

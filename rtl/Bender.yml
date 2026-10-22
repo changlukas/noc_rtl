@@ -49,3 +49,16 @@ sources:
   - nsu/response_packetize/response_packetize.sv
   - nsu/response_path/response_path.sv
   - nsu/top/nsu.sv
+  - ni/dat_tx.sv
+  - ni/ni.sv
+
+  - router/route_compute.sv
+  - router/collective_control.sv
+  - router/crossbar.sv
+  - router/switch_allocator.sv
+  - router/vc_allocator.sv
+  - router/vc_arbiter.sv
+  - router/req_router.sv
+  - router/rsp_router.sv
+  - router/dat_router.sv
+  - router/router.sv

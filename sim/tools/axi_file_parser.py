@@ -15,10 +15,10 @@ def _parse_write(path):
         length = int(next(it)); size = int(next(it)); burst = int(next(it))
         for _ in range(6):  # lock cache prot qos region atop
             next(it)
-        next(it)            # user
+        user = int(next(it))
         beats = [next(it) for _ in range(length + 1)]
         txns.append({"id": axid, "addr": addr, "len": length, "size": size,
-                     "burst": burst, "beats": beats})
+                     "burst": burst, "awuser": user, "beats": beats})
     return txns
 
 def _parse_read(path):

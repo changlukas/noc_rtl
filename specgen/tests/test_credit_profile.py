@@ -21,3 +21,15 @@ def test_credit_profile_matches_both_languages(tmp_path, depth):
             assert int(re.search(r"\b" + symbol + r"\s*=\s*(\d+)", text)[1]) == 8
         assert "NOC_ROUTER_VC_DEPTH" not in text
         assert "NOC_NI_DAT_RX_VC_DEPTH" not in text
+
+
+@pytest.mark.parametrize("num_vc", [1, 2, 8])
+def test_dat_policy_derived_from_vc_count(tmp_path, num_vc):
+    constants = yaml.safe_load((ROOT / "specgen/source/constants.yaml").read_text())
+    constants["noc"]["DAT_NUM_VC"]["default"] = num_vc
+    # The count controls the policy even if the supplied legacy value disagrees.
+    constants["noc"]["DAT_VC_MODE"]["default"] = int(num_vc == 1)
+    emit(ROOT, tmp_path, constants, 3)
+    for language, filename in [("sv", "ni_params_pkg.sv"), ("cpp", "ni_params.h")]:
+        text = (tmp_path / "repo/specgen/generated" / language / filename).read_text()
+        assert int(re.search(r"\bNOC_DAT_VC_MODE\s*=\s*(\d+)", text)[1]) == int(num_vc > 1)

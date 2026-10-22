@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 import pytest
-from gen_standalone_patterns import generate, REPO
+from gen_standalone_patterns import generate, REPO, load_cases
 from axi_file_parser import _parse_read, _parse_write
 
 
@@ -95,7 +95,7 @@ def test_control_capacity_preserves_existing_recipe(tmp_path, width):
 
 
 def test_in_order_performance_inputs(tmp_path):
-    catalog = REPO / "sim/test_patterns/standalone/in_order_perf.json"
+    catalog = "in_order_perf"
     names = generate(tmp_path, REPO / "sim/configs/mesh_2x2.yml", catalog=catalog)
     assert len(names) == 8
     for name in names:
@@ -117,7 +117,7 @@ def test_in_order_performance_inputs(tmp_path):
 
 
 def test_out_of_order_performance_capacity(tmp_path):
-    catalog = REPO / "sim/test_patterns/standalone/out_of_order_perf.json"
+    catalog = "out_of_order_perf"
     names = generate(tmp_path, REPO / "sim/configs/mesh_2x2.yml", catalog=catalog)
     assert len(names) == 12
     for name in names:
@@ -140,7 +140,7 @@ def test_out_of_order_performance_capacity(tmp_path):
 
 
 def test_mixed_performance_inputs(tmp_path):
-    catalog = REPO / "sim/test_patterns/standalone/mixed_perf.json"
+    catalog = "mixed_perf"
     names = generate(tmp_path, REPO / "sim/configs/mesh_2x2.yml", catalog=catalog)
     assert len(names) == 4
     for name in names:
@@ -224,7 +224,7 @@ def test_cosim_memory_dependencies(tmp_path, mode):
 
 def test_cosim_additional_memory_phases(tmp_path):
     names = generate(tmp_path, REPO / "sim/topology.yml", 3,
-                     profile="cosim", catalog=REPO / "sim/test_patterns/cosim/cases.json")
+                     profile="cosim", catalog="cosim")
     assert len(names) == 8
     for name in names:
         root = tmp_path / name
@@ -314,7 +314,7 @@ def test_cosim_reorder_destinations_and_delay_selection(tmp_path, mode):
 
 
 def test_capacity_profile_inputs(tmp_path):
-    catalog = REPO / "sim/test_patterns/cosim/capacity_perf.json"
+    catalog = "capacity_perf"
     names = generate(tmp_path, REPO / "sim/topology.yml", 8,
                      catalog=catalog, profile="cosim")
     for name in names:
@@ -375,10 +375,10 @@ def test_random_concurrent_memory_and_strobes(tmp_path, seed, name):
 @pytest.mark.parametrize("mode", ["control", "data", "rand"])
 def test_stress_patterns_legal_and_distinct(tmp_path, mode):
     import json
-    catalog = REPO / "sim/test_patterns/stress/cases.json"
+    catalog = "stress"
     names = generate(tmp_path, REPO / "sim/topology.yml", 3,
                      profile="cosim", mode=mode, catalog=catalog)
-    assert names == ["capacity_reuse", "hol_blocking", "reset_recovery"]
+    assert names == ["capacity_reuse", "reset_recovery"]
     for name in names:
         writes = _parse_write(tmp_path / name / "write.txt")
         reads = _parse_read(tmp_path / name / "read.txt")
@@ -390,13 +390,9 @@ def test_stress_patterns_legal_and_distinct(tmp_path, mode):
             assert not byte_addresses & addresses
             byte_addresses |= addresses
             assert t["addr"] >> 12 == (t["addr"]+span-1) >> 12
-        if name == "hol_blocking":
-            assert len({t["addr"] >> 32 for t in writes}) == 2
-            by_id = {i: {t["addr"] >> 32 for t in writes if t["id"] == i} for i in range(8)}
-            assert all(len(d) == 1 for d in by_id.values())
         if name == "reset_recovery":
             assert (tmp_path / name / "preload.mem").exists()
-    original = json.loads(catalog.read_text())["cases"][0]
+    original = load_cases(catalog)[0]
     for target in ("per_id", "context", "rob"):
         path = tmp_path / (target+".json")
         path.write_text(json.dumps(dict(cases=[dict(original, capacity_target=target)])))
@@ -411,7 +407,7 @@ def test_stress_patterns_legal_and_distinct(tmp_path, mode):
 @pytest.mark.parametrize("mode", ["control", "data", "rand"])
 def test_reorder_backpressure_prefill(tmp_path, mode, depth):
     import json
-    original = json.loads((REPO / "sim/test_patterns/standalone/cases.json").read_text())
+    original = dict(cases=load_cases("base"))
     case = next(c for c in original["cases"] if c["name"] == "single_id_reorder")
     catalog = tmp_path / "catalog.json"
     catalog.write_text(json.dumps(dict(cases=[dict(case, count=64, response_backpressure=True)])))
@@ -579,3 +575,93 @@ def test_destination_permutation_preserves_transactions(tmp_path):
         for t in txns:
             assert t["addr"] >> 12 == (t["addr"] + ((t["len"] + 1) << t["size"]) - 1) >> 12
     assert seen == {0, 1, 2, 3}
+
+
+@pytest.mark.parametrize("mode", ["control", "data", "rand"])
+def test_multicast_destinations_and_address_masks(tmp_path, mode):
+    names = generate(tmp_path, REPO / "sim/configs/mesh_4x4.yml", id_width=3,
+                     catalog="router",
+                     mode=mode, profile="cosim", seed=17)
+    assert names == ["multicast_single", "multicast_burst", "multicast_rand"]
+    for name in names:
+        transactions = _parse_write(tmp_path / name / "write.txt")
+        assert transactions and not _parse_read(tmp_path / name / "read.txt")
+        populations = set()
+        for txn in transactions:
+            assert (txn["awuser"] >> 8) & 3 == 1
+            mask = txn["awuser"] >> 10
+            assert mask and mask & ~((15) << 32) == 0
+            populations.add(1 << mask.bit_count())
+            assert (txn["addr"] >> 12) == ((txn["addr"] + ((txn["len"]+1) << txn["size"]) - 1) >> 12)
+        assert populations == {4, 16}
+
+
+def test_mesh_destination_rotation_preserves_reorder_stimulus(tmp_path):
+    case = dict(next(c for c in load_cases() if c["name"] == "single_id_reorder"))
+    topology = REPO / "sim/configs/mesh_4x4.yml"
+    catalog = tmp_path / "cases.json"
+    catalog.write_text(json.dumps(dict(cases=[case])))
+    generate(tmp_path / "base", topology, 3, catalog, "data", profile="cosim")
+    case["destination_order"] = [(i + 13) % 16 for i in range(16)]
+    catalog.write_text(json.dumps(dict(cases=[case])))
+    generate(tmp_path / "rotated", topology, 3, catalog, "data", profile="cosim")
+    before = _parse_write(tmp_path / "base/single_id_reorder/write.txt")
+    after = _parse_write(tmp_path / "rotated/single_id_reorder/write.txt")
+    for a, b in zip(before, after):
+        assert b["addr"] >> 32 == ((a["addr"] >> 32) + 13) % 16
+        a["addr"] %= 1 << 32
+        b["addr"] %= 1 << 32
+        assert a == b
+    assert "+response_delay_port=1" in (tmp_path / "rotated/single_id_reorder/schedule.txt").read_text()
+
+
+def test_mesh_context_pressure_keeps_four_targets(tmp_path):
+    case = dict(next(c for c in load_cases("stress") if c["name"] == "capacity_reuse"))
+    case.update(capacity_target="context", destination_order=[(i+12)%16 for i in range(16)])
+    catalog = tmp_path / "cases.json"
+    catalog.write_text(json.dumps(dict(cases=[case])))
+    generate(tmp_path / "out", REPO / "sim/configs/mesh_4x4.yml", 3, catalog, "data", profile="cosim")
+    transactions = _parse_write(tmp_path / "out/capacity_reuse/write.txt")
+    assert {t["addr"] >> 32 for t in transactions} == {12,13,14,15}
+    assert all(sum(t["addr"] >> 32 == d for t in transactions) > 32 for d in range(12,16))
+    assert "+context_target_mask=f000" in (tmp_path / "out/capacity_reuse/schedule.txt").read_text()
+
+
+@pytest.mark.parametrize("mode", ["control", "data", "rand"])
+def test_mesh_sources_reuse_ids_without_address_alias(tmp_path, mode):
+    generate(tmp_path, REPO / "sim/configs/mesh_4x4.yml", 3,
+             catalog="mesh", profile="cosim", mode=mode)
+    for name in ("hotspot", "uniform_random"):
+        occupied = set()
+        ids = []
+        payloads = []
+        for source in range(16):
+            directory = tmp_path / name
+            if source: directory /= "source" + str(source)
+            writes = _parse_write(directory / "write.txt")
+            reads = _parse_read(directory / "read.txt")
+            assert len(writes) == len(reads) == 4
+            ids.append({t["id"] for t in writes})
+            payloads.append(writes[0]["beats"][0].split()[0])
+            for txn in writes:
+                span = (txn["len"]+1) << txn["size"]
+                addresses = set(range(txn["addr"], txn["addr"]+span))
+                assert not occupied & addresses
+                occupied |= addresses
+                assert txn["addr"] >> 12 == (txn["addr"]+span-1) >> 12
+                if name == "hotspot": assert txn["addr"] >> 32 == 5
+        assert all(value == ids[0] for value in ids)
+        assert len(set(payloads)) == 16
+        assert "+source_mask=ffff" in (tmp_path / name / "schedule.txt").read_text()
+
+
+def test_mesh_routing_covers_every_source_destination(tmp_path):
+    generate(tmp_path, REPO / "sim/configs/mesh_4x4.yml", 3,
+             catalog="mesh", profile="cosim", mode="control", case_name="routing")
+    for source in range(16):
+        directory = tmp_path / "routing"
+        if source: directory /= "source" + str(source)
+        for filename, parser in (("write.txt", _parse_write), ("read.txt", _parse_read)):
+            transactions = parser(directory / filename)
+            assert {t["addr"] >> 32 for t in transactions} == set(range(16))
+            assert all(t["addr"] & 0xfff == source * 256 for t in transactions)

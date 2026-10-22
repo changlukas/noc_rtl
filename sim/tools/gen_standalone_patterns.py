@@ -7,10 +7,30 @@ from pathlib import Path
 from axi_file_format import _ax_fields, encode_write_beats
 
 REPO = Path(__file__).resolve().parents[2]
-CATALOG = REPO / "sim/test_patterns/standalone/cases.json"
+CATALOG = REPO / "sim/test_patterns/cases.json"
 SCHEDULE = ("response_order", "response_delay", "startup_delay",
             "stall_enable", "reset_warmup", "min_outstanding", "min_unique",
             "require_ooo", "require_buffered", "require_capacity", "require_stall")
+
+
+def load_cases(catalog=CATALOG):
+    if isinstance(catalog, list):
+        return catalog
+    if catalog == CATALOG or isinstance(catalog, str) and not Path(catalog).is_file():
+        group = "base" if catalog == CATALOG else catalog
+        groups = json.loads(CATALOG.read_text())["groups"]
+        def resolve(case, seen=()):
+            if "extends" not in case:
+                return dict(case)
+            reference = case["extends"]
+            if reference in seen:
+                raise ValueError("Circular pattern reference: " + reference)
+            base_group, base_name = reference.split("/", 1)
+            base = next(c for c in groups[base_group] if c.get("name") == base_name)
+            return dict(resolve(base, seen + (reference,)),
+                        **{key: value for key, value in case.items() if key != "extends"})
+        return [resolve(case) for case in groups[group]]
+    return json.loads(Path(catalog).read_text())["cases"]
 
 
 def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, case_name=None, profile="standalone", hardware=None):
@@ -35,12 +55,35 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
     if not 0 <= seed <= 0xffffffff:
         raise ValueError("SEED must be an unsigned 32-bit integer")
     names = []
-    cases = json.loads(Path(catalog).read_text())["cases"]
+    cases = load_cases(catalog)
     if case_name is not None:
         cases = [c for c in cases if c["name"] == case_name]
         if not cases:
             raise ValueError("unknown CASE: " + case_name)
     for case in cases:
+        if "sources" in case:
+            sources = case["sources"]
+            if profile != "cosim" or not sources or sources[0] != 0 or len(set(sources)) != len(sources):
+                raise ValueError("sources must be unique, start at zero and use cosim")
+            if any(source < 0 or source >= len(base_routes["data"]) for source in sources):
+                raise ValueError("source outside topology")
+            name = case["name"]
+            preloads = []
+            for source in sources:
+                variant = dict(case)
+                del variant["sources"]
+                variant["source"] = source
+                variant["name"] = name if source == 0 else "source" + str(source)
+                parent = out if source == 0 else out / name
+                generate(parent, topology, id_width, [variant], mode, seed + source,
+                         profile=profile, hardware=hardware)
+                preload = parent / variant["name"] / "preload.mem"
+                if preload.exists(): preloads.append(preload.read_text())
+            if preloads: (out / name / "preload.mem").write_text("".join(preloads))
+            schedule = out / name / "schedule.txt"
+            schedule.write_text(schedule.read_text() + "\n+source_mask=" + format(sum(1 << n for n in sources), "x") + "\n")
+            names.append(name)
+            continue
         routes = base_routes
         if "destination_order" in case:
             order = case["destination_order"]
@@ -81,7 +124,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         random_fields = case.get("random", False) or selected == "rand"
         if case.get("sequence") or case.get("response_backpressure"):
             random_fields = False
-        random_memory = profile == "cosim" and case.get("random", False)
+        random_memory = profile == "cosim" and case.get("random", False) and not case.get("multicast_masks")
         concurrent_rw = case.get("concurrent_rw", False) or random_memory
         rng = random.Random(seed)
         target = out / name
@@ -161,14 +204,13 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 # Leave one response FIFO entry for the delayed head transaction.
                 dest = 2 if txn < response_prefill else (1, 2, 3, 0)[(txn-response_prefill) % 4]
             if case.get("capacity_target") in ("per_id", "context"):
-                dest = 0 if case["capacity_target"] == "per_id" else txn % len(routes[classes[txn]])
+                dest = 0 if case["capacity_target"] == "per_id" else txn % min(4, len(routes[classes[txn]]))
                 if case["capacity_target"] == "per_id":
                     axi_id = 0
-            if case.get("sequence") == "destination_blocking":
-                # Send the unblocked destination after enough requests to fill a context.
-                progress_index = min(count - 1, (hardware or {}).get("context_depth", 32) + 1)
-                dest = 0 if txn == progress_index else 1
-                axi_id = 0 if txn == progress_index else 1 + txn % (num_ids-1)
+            if case.get("multicast_masks"):
+                dest = rng.randrange(len(routes[classes[txn]])) if case.get("random") else txn % len(routes[classes[txn]])
+            if case.get("sequence") == "sam_boundary":
+                dest = txn // 3
             route = routes[classes[txn]][dest]
             step = 1 << size
             offset = 256 + (txn % 8)*max(8, step)
@@ -188,20 +230,42 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             if random_memory and not is_data:
                 offset = route_slots.get(dest, 0) * 64
                 route_slots[dest] = route_slots.get(dest, 0) + 1
-            if case.get("sequence") in ("capacity_reuse", "destination_blocking"):
+            if case.get("sequence") == "capacity_reuse":
                 offset = txn * step
             if lane_sweep:
                 offset += lane
             if id_values is not None:
                 axi_id = id_values[axi_id % num_ids]
+            if "source" in case:
+                if case.get("destinations") == "all":
+                    offset = (txn // len(routes[classes[txn]])) * (512 if is_data else 64)
+                offset += case["source"] * (0x10000 if is_data else 0x100)
+                if offset + (length+1)*step > route["size"]:
+                    raise ValueError("multi-source transaction exceeds SAM range")
             address = route["base"] + offset
             operation = case.get("operation", "both")
-            if case.get("random"):
+            if case.get("random") and not case.get("multicast_masks"):
                 # Paired directions keep every class/single/burst category non-vacuous.
                 operation = "both"
             if operation in ("write", "both"):
                 # Keep the transaction marker in opaque AWUSER[7:0], below collective control.
-                fields = _ax_fields(axi_id, address, length, size, True, user=txn & 0xff)
+                user = txn & 0xff
+                if case.get("multicast_masks"):
+                    from gen_tb_top import _collective_selectors
+                    from address_map import router_array
+                    import yaml
+                    selectors = _collective_selectors(entries, *router_array(yaml.safe_load(topology.read_text())))
+                    space = "memory" if is_data else "config"
+                    if not route.get("en_collective") or space not in selectors:
+                        raise ValueError("multicast requires a complete collective-enabled topology")
+                    mask = case["multicast_masks"][txn % len(case["multicast_masks"])]
+                    (x_offset, x_width), (y_offset, y_width) = selectors[space]
+                    x_mask, y_mask = mask & 15, mask >> 4
+                    if not mask or x_mask >= (1 << x_width) or y_mask >= (1 << y_width):
+                        raise ValueError("multicast mask exceeds mesh coordinates")
+                    address_mask = (x_mask << x_offset) | (y_mask << y_offset)
+                    user |= (1 << 8) | (address_mask << 10)
+                fields = _ax_fields(axi_id, address, length, size, True, user=user)
                 fields[4] = str(burst)
                 if profile == "cosim" and (case.get("partial_write") or case.get("concurrent_rw")):
                     init_writes.extend(fields)
@@ -224,7 +288,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     if random_fields:
                         data = hex(rng.getrandbits(512))
                         strobe = hex(int(strobe, 16) & rng.getrandbits(64))
-                    elif profile == "cosim" and (case.get("require_ooo") or case.get("require_buffered")):
+                    elif profile == "cosim" and ("source" in case or case.get("require_ooo") or case.get("require_buffered")):
                         # Repeated address bytes cannot distinguish reordered read responses.
                         data = hex(rng.getrandbits(512))
                     elif (case.get("burst_sweep") and txn % 3 == 0) or (capacity and txn % 5 == 0):
@@ -294,6 +358,9 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 acceptance["order"] = "cross_id"
             if case.get("capacity_target"):
                 acceptance["capacity"] = case["capacity_target"]
+                if case["capacity_target"] == "context":
+                    order = case.get("destination_order", list(range(len(routes["data"]))))
+                    args.append("+context_target_mask=" + format(sum(1 << d for d in order[:4]), "x"))
             if case.get("fifo_capacity"):
                 acceptance["fifo_capacity"] = case["fifo_capacity"]
             if case.get("response_backpressure"):
@@ -302,13 +369,14 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             for key in ("response_delay_port", "response_hold_port",
                         "source_response_hold_cycles"):
                 if case.get(key):
-                    args.append(f"+{key}={case[key]}")
+                    value = case[key]
+                    if key in ("response_delay_port", "response_hold_port") and "destination_order" in case:
+                        value = case["destination_order"][value - 1] + 1
+                    args.append(f"+{key}={value}")
             if case.get("source_response_delay"):
                 args.append("+source_response_delay")
             if case.get("sequence") == "reset_recovery":
                 args.append("+reset_recovery")
-            if case.get("sequence") == "destination_blocking":
-                acceptance["destination_progress"] = 1
         response_error = case.get("response_error", 0)
         if response_error:
             if profile != "cosim" or response_error not in (2, 3) or init_writes or verify_reads:

@@ -225,11 +225,11 @@ module tb_nmu_standalone #(
         .tx_dat_valid_o    (dat_valid),
         .tx_dat_ready_i    ('1),
         .tx_dat_flit_o     (tx_dat   ),
-        .tx_dat_crdvalid_i (tx_credit),
+        .credit_i          (tx_credit),
         .rx_dat_valid_i    (rx_dat_valid),
         .rx_dat_ready_o    (rx_dat_ready),
         .rx_dat_flit_i     (rx_dat   ),
-        .rx_dat_crdvalid_o (rx_credit)
+        .credit_o          (rx_credit)
     );
     always @(negedge noc_clk) if (noc_rst_n) cycles++;
     always @(posedge axi_clk) if (axi_rst_n) #0.5 axi_cycles++;

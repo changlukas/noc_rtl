@@ -6,9 +6,10 @@
 
 // Response decode, transaction ordering, and NoC-to-AXI CDC.
 module nmu_response_path #(
+    parameter bit          EXTERNAL_DAT_LINK      = 1'b0,
     parameter int unsigned NUM_IDS                = 1 << ni_params_pkg::NOC_ID_WIDTH,
     parameter int unsigned NUM_DAT_VC             = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned NOC_DAT_VC_MODE        = ni_params_pkg::NOC_DAT_VC_MODE,
+    localparam int unsigned NOC_DAT_VC_MODE        = (NUM_DAT_VC > 1),
     parameter int unsigned CREDIT_DEPTH           = ni_params_pkg::CREDIT_DEPTH,
     parameter int unsigned AXI_FIFO_DEPTH         = 32,
     parameter int unsigned RSP_FIFO_DEPTH         = 32,
@@ -21,6 +22,9 @@ module nmu_response_path #(
     parameter bit          R_ROB_EN               = bit'(ni_params_pkg::NMU_R_ROB_EN),
     parameter int unsigned MAX_OUTSTANDING_PER_ID = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID
 ) (
+    input  wire ni_flit_pkg::dat_flit_t                                  [NUM_DAT_VC-1:0] rx_dat_vc_i,
+    input  wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_vc_valid_i,
+    output wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_vc_ready_o,
     input  wire logic                                                                     axi_clk_i,
     input  wire logic                                                                     axi_rst_n_i,
     input  wire logic                                                                     noc_clk_i,
@@ -55,7 +59,7 @@ module nmu_response_path #(
     input  wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_valid_i,
     output wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_ready_o,
     input  wire logic                             [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i,
-    output wire logic                                                    [NUM_DAT_VC-1:0] rx_dat_crdvalid_o
+    output wire logic                                                    [NUM_DAT_VC-1:0] credit_o
 );
 
     ni_types_pkg::nmu_b_response_t decoded_b;
@@ -111,27 +115,32 @@ module nmu_response_path #(
     wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] rx_dat_head;
     wire rx_rsp_valid, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] rx_dat_valid, rx_dat_ready;
+    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] buffered_dat;
+    wire [NUM_DAT_VC-1:0] buffered_dat_valid;
+    assign rx_dat_head = EXTERNAL_DAT_LINK ? rx_dat_vc_i : buffered_dat;
+    assign rx_dat_valid = EXTERNAL_DAT_LINK ? rx_dat_vc_valid_i : buffered_dat_valid;
+    assign rx_dat_vc_ready_o = EXTERNAL_DAT_LINK ? rx_dat_ready : '0;
     rx_credit_buffer #(
-        .CTRL_FIFO_DEPTH (RSP_FIFO_DEPTH ),
-        .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .DAT_VC_MODE     (NOC_DAT_VC_MODE),
-        .CREDIT_DEPTH    (CREDIT_DEPTH   )
+        .DAT_EN          (!EXTERNAL_DAT_LINK),
+        .CTRL_FIFO_DEPTH (RSP_FIFO_DEPTH    ),
+        .NUM_DAT_VC      (NUM_DAT_VC        ),
+        .CREDIT_DEPTH    (CREDIT_DEPTH      )
     ) i_rx_credit_buffer (
-        .clk_i               (noc_clk_i                              ),
-        .rst_n_i             (noc_rst_n_i                            ),
-        .s_dat_i             (ni_flit_pkg::dat_flit_t'(rx_dat_flit_i)),
-        .s_dat_valid_i       (rx_dat_valid_i                         ),
-        .s_dat_ready_o       (rx_dat_ready_o),
-        .dat_credit_return_o (rx_dat_crdvalid_o                      ),
-        .s_ctrl_i            (ni_flit_pkg::rsp_flit_t'(rx_rsp_flit_i)),
-        .s_ctrl_valid_i      (rx_rsp_valid_i                         ),
-        .s_ctrl_ready_o      (rx_rsp_ready_o                         ),
-        .m_ctrl_o            (rx_rsp_head                            ),
-        .m_ctrl_valid_o      (rx_rsp_valid                           ),
-        .m_ctrl_ready_i      (rx_rsp_ready                           ),
-        .m_dat_o             (rx_dat_head                            ),
-        .m_dat_valid_o       (rx_dat_valid                           ),
-        .m_dat_ready_i       (rx_dat_ready                           )
+        .clk_i          (noc_clk_i                              ),
+        .rst_n_i        (noc_rst_n_i                            ),
+        .s_dat_i        (ni_flit_pkg::dat_flit_t'(rx_dat_flit_i)),
+        .s_dat_valid_i  (rx_dat_valid_i                         ),
+        .s_dat_ready_o  (rx_dat_ready_o                         ),
+        .credit_o       (credit_o                               ),
+        .s_ctrl_i       (ni_flit_pkg::rsp_flit_t'(rx_rsp_flit_i)),
+        .s_ctrl_valid_i (rx_rsp_valid_i                         ),
+        .s_ctrl_ready_o (rx_rsp_ready_o                         ),
+        .m_ctrl_o       (rx_rsp_head                            ),
+        .m_ctrl_valid_o (rx_rsp_valid                           ),
+        .m_ctrl_ready_i (rx_rsp_ready                           ),
+        .m_dat_o        (buffered_dat                           ),
+        .m_dat_valid_o  (buffered_dat_valid                     ),
+        .m_dat_ready_i  (rx_dat_ready                           )
     );
     wire ni_flit_pkg::rsp_flit_t selected_rsp;
     wire selected_rsp_valid, selected_rsp_ready;

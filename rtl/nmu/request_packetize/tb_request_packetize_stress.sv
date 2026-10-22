@@ -4,7 +4,7 @@
 module tb_nmu_request_packetize_stress #(
     parameter int unsigned FIFO_DEPTH  = 2,
     parameter int unsigned NUM_DAT_VC  = 2,
-    parameter int unsigned DAT_VC_MODE = 0,
+    localparam int unsigned DAT_VC_MODE = (NUM_DAT_VC > 1),
     parameter int unsigned REG_TYPE    = 0,
     parameter int unsigned AW_REG_TYPE = REG_TYPE,
     parameter int unsigned W_REG_TYPE  = REG_TYPE,
@@ -23,7 +23,7 @@ module tb_nmu_request_packetize_stress #(
     ni_flit_pkg::dat_flit_t                         m_dat_o;
     logic                                           s_aw_valid_i, s_aw_ready_o, s_w_valid_i, s_w_ready_o;
     logic                                           s_ar_valid_i, s_ar_ready_o, m_req_valid_o, m_req_ready_i, m_dat_valid_o;
-    logic                          [NUM_DAT_VC-1:0] dat_credit_return_i;
+    logic                          [NUM_DAT_VC-1:0] credit_i;
     logic                          [NUM_DAT_VC-1:0] credit_delay [3];
     logic [31:0] random_reg = 32'hb7251309;
     logic req_stalled = 0;
@@ -32,6 +32,8 @@ module tb_nmu_request_packetize_stress #(
     int data_txn [NUM_DAT_VC], data_beat_vc [NUM_DAT_VC];
     bit data_active_vc [NUM_DAT_VC];
     bit data_seen [WRITES];
+    int flow_vc [8];
+    bit [NUM_DAT_VC-1:0] vc_seen;
     int cycle = 0, parallel_count = 0;
     bit narrow_active = 0, data_active = 0;
     int credit [NUM_DAT_VC];
@@ -47,7 +49,6 @@ module tb_nmu_request_packetize_stress #(
         .DAT_W_REG_TYPE (W_REG_TYPE),
         .FIFO_DEPTH      (FIFO_DEPTH  ),
         .NUM_DAT_VC      (NUM_DAT_VC  ),
-        .DAT_VC_MODE     (DAT_VC_MODE ),
         .CREDIT_DEPTH (CREDIT_DEPTH)
     ) dut (.*);
 
@@ -64,13 +65,13 @@ module tb_nmu_request_packetize_stress #(
     always @(negedge clk_i) begin
         if (~rst_n_i) begin
             m_req_ready_i       = 0;
-            dat_credit_return_i = '0;
+            credit_i = '0;
             random_reg          = 32'hb7251309;
         end else begin
             random_reg          = {random_reg[30:0], random_reg[31] ^ random_reg[21] ^ random_reg[1] ^ random_reg[0]};
             m_req_ready_i       = cycle > 12 && random_reg[0];
             for (int vc = 0; vc < NUM_DAT_VC; vc++)
-                dat_credit_return_i[vc] = pending_credit[vc] > 0 && (vc != 0 || cycle > 150);
+                credit_i[vc] = pending_credit[vc] > 0 && (vc != 0 || cycle > 150);
         end
     end
 
@@ -92,7 +93,7 @@ module tb_nmu_request_packetize_stress #(
             credit_delay[1] = credit_delay[0];
             credit_delay[0] = '0;
             for (int vc = 0; vc < NUM_DAT_VC; vc++) begin
-                if (dat_credit_return_i[vc]) begin
+                if (credit_i[vc]) begin
                     credit[vc]++;
                     pending_credit[vc]--;
                 end
@@ -133,7 +134,14 @@ module tb_nmu_request_packetize_stress #(
                     vc_bypass_count++;
                 case (int'(m_dat_o.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB]))
                     ni_flit_pkg::AXI_CH_DataAw: begin
-                        int txn;
+                        int txn, id;
+                        id = int'(m_dat_o.payload[ni_flit_pkg::AW_AWID_LSB +: ni_flit_pkg::AW_AWID_WIDTH]);
+                        if (!m_dat_o.header[ni_flit_pkg::FIXED_VC_LSB])
+                            $fatal(1, "write VC must remain fixed regardless of ordering_req");
+                        if (flow_vc[id] >= 0 && flow_vc[id] != vc)
+                            $fatal(1, "same flow changed VC");
+                        flow_vc[id] = vc;
+                        vc_seen[vc] = 1'b1;
                         txn = int'((m_dat_o.payload[ni_flit_pkg::AW_AWADDR_MSB:ni_flit_pkg::AW_AWADDR_LSB] - 48'h1000) >> 8);
                         if (txn < 0 || txn >= WRITES || !txn[0] || data_active_vc[vc])
                             $fatal(1, "data AW lost ownership or VC order");
@@ -162,9 +170,11 @@ module tb_nmu_request_packetize_stress #(
     end
 
     initial begin
+        foreach (flow_vc[i]) flow_vc[i] = -1;
+        vc_seen = '0;
         s_aw_i              = '0; s_w_i = '0; s_ar_i = '0;
         s_aw_valid_i        = 0; s_w_valid_i = 0; s_ar_valid_i = 0;
-        dat_credit_return_i = '0; m_req_ready_i = 0;
+        credit_i = '0; m_req_ready_i = 0;
         repeat (4) @(negedge clk_i);
         #1; rst_n_i = 1;
         fork
@@ -172,13 +182,14 @@ module tb_nmu_request_packetize_stress #(
                 for (int txn = 0; txn < WRITES; txn++) begin
                     @(negedge clk_i); #1;
                     s_aw_i                           = '0;
-                    s_aw_i.axi.awid                  = ni_params_pkg::NOC_ID_WIDTH'(txn % 8);
+                    s_aw_i.axi.awid                  = ni_params_pkg::NOC_ID_WIDTH'((txn/2) % 8);
                     s_aw_i.axi.awaddr                = address(txn, txn[0]);
                     s_aw_i.axi.awlen                 = ni_flit_pkg::AXI_LEN_WIDTH'(BEATS-1);
                     s_aw_i.axi.awsize                = txn[0] ? 3'd6 : 3'd3;
                     s_aw_i.axi.awburst               = 2'b01;
                     s_aw_i.meta.route.domain.is_data = txn[0];
-                    s_aw_i.meta.route.domain.dst_id  = ni_flit_pkg::DST_ID_WIDTH'(txn % 4);
+                    s_aw_i.meta.route.domain.dst_id  = '0;
+                    s_aw_i.meta.ordering_req          = txn >= 16;
                     s_aw_valid_i                     = 1;
                     do @(posedge clk_i); while (!s_aw_ready_o);
                     @(negedge clk_i); #1; s_aw_valid_i = 0;
@@ -217,7 +228,9 @@ module tb_nmu_request_packetize_stress #(
             if (credit[vc] != CREDIT_DEPTH) $fatal(1, "credit not conserved after drain");
         end
         if (WRITE_VCS > 1 && vc_bypass_count == 0) $fatal(1, "no progress past credit-starved VC");
-        $display("VC_BYPASS count=%0d", vc_bypass_count);
+        if (vc_seen != ((NUM_DAT_VC'(1) << WRITE_VCS)-1))
+            $fatal(1, "write VC pool not exercised: %h", vc_seen);
+        $display("VC_BYPASS count=%0d vc_seen=%h", vc_bypass_count, vc_seen);
         $display("PASS: packet stress depth=%0d vcs=%0d mode=%0d writes=%0d reads=%0d parallel=%0d", FIFO_DEPTH, NUM_DAT_VC, DAT_VC_MODE, WRITES, READS, parallel_count);
         $finish;
     end

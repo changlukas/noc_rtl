@@ -60,6 +60,7 @@ endclass
 
 class ni_noc_coverage extends uvm_subscriber #(ni_noc_sample);
     int credits[NUM_DAT_VC];
+    int unsigned flit_count[NUM_DAT_VC];
 `ifdef NI_COVERAGE
     ni_credit_coverage credit_coverage[NUM_DAT_VC];
 `endif
@@ -82,10 +83,17 @@ class ni_noc_coverage extends uvm_subscriber #(ni_noc_sample);
 `ifdef NI_COVERAGE
             credit_coverage[i].credit_cg.sample(credits[i] != 0, s.credit[i], take);
 `endif
+            if (take) flit_count[i]++;
             credits[i] += int'(s.credit[i]) - int'(take);
             if (credits[i] < 0 || credits[i] > CREDIT_DEPTH)
                 `uvm_error("CREDIT", $sformatf("VC%0d credit balance=%0d", i, credits[i]))
         end
+    endfunction
+    function void report_phase(uvm_phase phase);
+        string counts = "";
+        super.report_phase(phase);
+        foreach (flit_count[i]) counts = {counts, $sformatf(" vc%0d=%0d", i, flit_count[i])};
+        `uvm_info("DAT_VC_TRAFFIC", counts, UVM_LOW)
     endfunction
     `uvm_component_utils(ni_noc_coverage)
 endclass

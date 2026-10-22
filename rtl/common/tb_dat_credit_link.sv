@@ -15,25 +15,25 @@ module tb_dat_credit_link;
     int stalled = 0, exhausted = 0, simultaneous = 0;
     dat_flit_t expected[NUM_VC][$];
 
-    tx_credit_buffer #(.NUM_DAT_VC(NUM_VC), .DAT_VC_MODE(0), .CREDIT_DEPTH(2)) tx (
+    tx_credit_buffer #(.NUM_DAT_VC(NUM_VC), .DAT_VC_MASK('1), .CREDIT_DEPTH(2)) tx (
         .clk_i(clk), .rst_n_i(rst_n),
         .s_ctrl_i('0), .s_ctrl_valid_i(1'b0), .s_ctrl_ready_o(),
         .m_ctrl_o(), .m_ctrl_valid_o(), .m_ctrl_ready_i(1'b1),
         .s_dat_i(source), .s_dat_valid_i(source_valid), .dat_ready_o(source_ready),
         .m_dat_o(tx_data), .m_dat_valid_o(tx_valid), .m_dat_ready_i(tx_ready),
-        .dat_credit_return_i(credit)
+        .credit_i           (credit)
     );
-    tx_vc_arbiter #(.NUM_DAT_VC(NUM_VC), .DAT_VC_MODE(0)) arb (
+    tx_vc_arbiter #(.NUM_DAT_VC(NUM_VC), .DAT_VC_MASK('1)) arb (
         .clk_i(clk), .rst_n_i(rst_n), .s_dat_i(tx_data),
         .s_dat_valid_i(tx_valid), .s_dat_ready_o(tx_ready),
         .m_dat_o(link), .m_dat_valid_o(link_valid), .m_dat_ready_i(link_ready & link_enable)
     );
-    rx_credit_buffer #(.NUM_DAT_VC(NUM_VC), .DAT_VC_MODE(0), .CREDIT_DEPTH(2), .DAT_CH_MASK('1)) rx (
+    rx_credit_buffer #(.NUM_DAT_VC(NUM_VC), .DAT_VC_MASK('1), .CREDIT_DEPTH(2), .DAT_CH_MASK('1)) rx (
         .clk_i(clk), .rst_n_i(rst_n),
         .s_ctrl_i('0), .s_ctrl_valid_i(1'b0), .s_ctrl_ready_o(),
         .m_ctrl_o(), .m_ctrl_valid_o(), .m_ctrl_ready_i(1'b1),
         .s_dat_i(link), .s_dat_valid_i(link_valid & link_enable), .s_dat_ready_o(link_ready),
-        .dat_credit_return_o(credit), .m_dat_o(rx_data),
+        .credit_o           (credit), .m_dat_o(rx_data),
         .m_dat_valid_o(rx_valid), .m_dat_ready_i(consume)
     );
     assert property (@(posedge clk) disable iff (!rst_n)

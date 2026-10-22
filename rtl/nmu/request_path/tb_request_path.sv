@@ -95,7 +95,7 @@ module tb_nmu_request_path;
         .tx_dat_valid_o       (            ),
         .tx_dat_ready_i       ('1),
         .tx_dat_flit_o        (            ),
-        .tx_dat_crdvalid_i    ('0          )
+        .credit_i             ('0          )
     );
 
     always #3ns axi_clk_i = !axi_clk_i;

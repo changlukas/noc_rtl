@@ -2,7 +2,7 @@
 
 module tb_nmu_response_depacketize #(
     parameter int NUM_DAT_VC   = 2,
-    parameter int DAT_VC_MODE  = 0,
+    localparam int unsigned DAT_VC_MODE  = (NUM_DAT_VC > 1),
     parameter int CREDIT_DEPTH = 2,
     parameter int REG_TYPE     = 0
 );
@@ -40,7 +40,6 @@ module tb_nmu_response_depacketize #(
     rx_credit_buffer #(
         .CTRL_FIFO_DEPTH  (2              ),
         .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .DAT_VC_MODE     (DAT_VC_MODE    ),
         .CREDIT_DEPTH (CREDIT_DEPTH)
     ) i_buffer (
         .clk_i               (clk          ),
@@ -50,7 +49,7 @@ module tb_nmu_response_depacketize #(
         .s_ctrl_ready_o       (rsp_ready    ),
         .s_dat_i             (dat          ),
         .s_dat_valid_i       (dat_valid ? (NUM_DAT_VC'(1) << dat.header[VC_ID_LSB +: VC_ID_WIDTH]) : '0),
-        .dat_credit_return_o (credit_return),
+        .credit_o            (credit_return),
         .m_ctrl_o             (rx_rsp_head  ),
         .m_ctrl_valid_o       (rx_rsp_valid ),
         .m_ctrl_ready_i       (rx_rsp_ready ),

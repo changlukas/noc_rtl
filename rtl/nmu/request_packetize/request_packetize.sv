@@ -190,11 +190,11 @@ module nmu_request_packetize #(
         req_flit[NMU_REQ_AR_IDX].payload = ni_flit_pkg::AW_WIDTH'(pack_ar(s_ar_i));
         dat_flit[NMU_DAT_AW_IDX].header  = make_header(ni_flit_pkg::AXI_CH_WIDTH'(ni_flit_pkg::AXI_CH_DataAw),
             s_aw_i.meta, s_aw_i.collective_op, s_aw_i.collective_mask,
-            '0, !s_aw_i.meta.ordering_req, 1'b0);
+            '0, 1'b1, 1'b0);
         dat_flit[NMU_DAT_AW_IDX].payload = pack_aw(s_aw_i);
         dat_flit[NMU_DAT_W_IDX].header   = make_header(ni_flit_pkg::AXI_CH_WIDTH'(ni_flit_pkg::AXI_CH_DataW),
             write_beat.owner.meta, write_beat.owner.collective_op, write_beat.owner.collective_mask,
-            '0, !write_beat.owner.meta.ordering_req, write_beat.axi.wlast);
+            '0, 1'b1, write_beat.axi.wlast);
         dat_flit[NMU_DAT_W_IDX].payload = pack_w(write_beat, 1'b0);
     end
     stream_register #(

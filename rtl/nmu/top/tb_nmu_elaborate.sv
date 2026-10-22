@@ -25,10 +25,10 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
 
     logic [ni_params_pkg::NUM_DAT_VC-1:0] tx_dat_valid_o;
     logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o;
-    logic         [ni_params_pkg::NUM_DAT_VC-1:0] tx_dat_crdvalid_i;
+    logic         [ni_params_pkg::NUM_DAT_VC-1:0] credit_i;
     logic [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_valid_i;
     logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i;
-    logic         [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_crdvalid_o;
+    logic         [ni_params_pkg::NUM_DAT_VC-1:0] credit_o;
 
     nmu #(
         .INPUT_ID_WIDTH (ni_params_pkg::AXI_ID_WIDTH),
@@ -51,10 +51,10 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
         .tx_dat_valid_o    (tx_dat_valid_o   ),
         .tx_dat_ready_i    ('1),
         .tx_dat_flit_o     (tx_dat_flit_o    ),
-        .tx_dat_crdvalid_i (tx_dat_crdvalid_i),
+        .credit_i          (credit_i         ),
         .rx_dat_valid_i    (rx_dat_valid_i   ),
         .rx_dat_flit_i     (rx_dat_flit_i    ),
-        .rx_dat_crdvalid_o (rx_dat_crdvalid_o)
+        .credit_o          (credit_o         )
     );
 
     initial begin
@@ -72,7 +72,7 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
             else $fatal(1, "RSP flit width mismatch");
         assert ($bits(tx_dat_flit_o) == ni_params_pkg::NOC_DAT_FLIT_WIDTH)
             else $fatal(1, "DAT flit width mismatch");
-        assert ($bits(tx_dat_crdvalid_i) == ni_params_pkg::NUM_DAT_VC)
+        assert ($bits(credit_i) == ni_params_pkg::NUM_DAT_VC)
             else $fatal(1, "DAT credit width mismatch");
         #1ns;
         if (INVALID_WIDTH != 0) $fatal(1, "Invalid width was not detected");

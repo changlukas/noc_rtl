@@ -1,9 +1,9 @@
 # NI simulation
 
-The default environment is Source AXI -> NMU RTL -> C++ router -> four NSU RTL ->
-Device AXI memories. One active master and four active slave UVM agents drive AXI.
-Their monitor analysis ports feed the scoreboard and five AXI coverage subscribers.
-Ten passive NoC views feed credit coverage. Ordering/reset observations and bound
+The default environment is a 4x4 RTL Router mesh with one NI (NMU + NSU) per node.
+Sixteen master and sixteen slave UVM agents connect the mesh endpoints.
+Their monitor analysis ports feed the scoreboard and per-interface AXI coverage subscribers.
+Thirty-two passive NI-link TX/RX views feed credit coverage. Ordering/reset observations and bound
 arbitration assertions retain their existing checks.
 
 `ni_pattern_sequence` reads the text patterns and submits tvip items. `ni_test`
@@ -29,7 +29,7 @@ come from the selected profile.
 
 ```text
 sim/profile.yml                       Hardware settings
-sim/test_patterns/*/*.json            Input pattern definitions
+sim/test_patterns/cases.json          Shared input pattern definitions
 sim/tools/gen_standalone_patterns.py  Shared pattern generator
                  |
                  v
@@ -38,7 +38,8 @@ build/sim/stage/
 |-- patterns/<case>/
 |   |-- ni_tb_params.svh              Same parameters beside the input files
 |   |-- write.txt / read.txt          AXI transactions
-|   |-- schedule.txt                  Stimulus timing
+|   |-- source<N>/                    Additional source transaction files
+|   |-- schedule.txt                  Stimulus timing and active sources
 |   `-- manifest.json                 File list and acceptance checks
 |-- verification/<run>/patterns/      Expanded regression inputs
 |-- verification-runs.json            Generated execution list
@@ -79,12 +80,13 @@ From the repository root:
 ```sh
 python3 sim/tools/prepare_ni_verification.py --profile sim/profile.yml --out build/sim/stage
 cd build/sim/stage
-make verification JOBS=3
+make verification
 make report
 ```
 
-The default preparation produces 168 runs covering P01-P22, including the six
-capacity variants. `make regress` runs the default CASE list only and is not this
+The default 4x4 preparation produces 82 runs for P01-P23, P25 and P26, including
+capacity variants, all source/destination pairs and multi-source traffic. P24
+(hol_blocking) is retired. `make regress` runs the default CASE list only and is not this
 expanded matrix. `verification_results/results.json` records results and
 `coverage-tests.txt` selects only successful runs from this invocation for URG.
 Open `build/coverage/dashboard.html`. Code/assertion and functional coverage remain
@@ -120,7 +122,7 @@ python3 sim/tools/prepare_ni_verification.py --profile sim/profiles/robless.yml 
 Each profile uses a separate stage. Existing profile files are regression settings,
 not recommendations for area or performance. Depth defaults are not changed by the
 preparation flow. Each generated pattern carries its own `ni_tb_params.svh`.
-Changing only patterns does not invalidate a C++ build. Changing SV hardware
+The integrated mesh does not compile the C++ Router model. Changing SV hardware
 parameters invalidates the SV build. NoC transport changes regenerate both languages.
 
 ## Offline workstation
@@ -156,3 +158,26 @@ Root `make clean` removes all default generated outputs and Python caches.
 results, not source patterns.
 A stage can be removed and regenerated after its required results are retained.
 Historical development artifacts are not needed for the commands above.
+
+### Integrated NI mesh
+
+The integration TB uses a 4x4 RTL Router mesh. Each Local port connects one `ni`
+containing NMU and NSU. Each node has a source agent and a device agent. Existing
+NI cases use source 0. Routing, hotspot and uniform-random cases activate all
+sixteen sources using the same file sequence. Devices provide memory responses. The direct-link
+standalone environment keeps its four targets. `sim/configs/mesh_4x4.yml` defines
+the mesh address map. `multicast_single`, `multicast_burst`, and `multicast_rand`
+use the existing generator and file-based sequence with `MODE=control/data/rand`.
+
+NI DAT TX retains independent NMU/NSU VC FIFOs, then performs per-VC packet
+arbitration and physical-link arbitration with one downstream credit counter per
+VC. DAT RX uses one FIFO per VC and dispatches each head to NMU or NSU. An RX FIFO
+pop returns credit. No new serial FIFO stage is inserted by the NI wrapper.
+
+### Write ordering
+
+The NMU supports same-ID write outstanding on one channel. Switching REQ/DAT waits for all prior B responses of that ID to retire into the response CDC FIFO. Different IDs remain independent. Read outstanding and response reordering are unchanged.
+
+`single_id_reorder` checks B/R response reordering. Capacity checks target per-ID outstanding limits, AW/AR context storage and B/R ROB storage. Same-ID writes may remain outstanding on one channel. Switching REQ/DAT waits for prior B retirement. DAT AW/W use a stable VC per source/ID/destination at every hop, independently of `ordering_req`. `NUM_DAT_VC=1` shares VC 0. Larger even counts split the lower half for writes and upper half for reads. `dat_vc_mode` is no longer a profile setting.
+
+The standalone `ooo_*_write_same_id` cases exercise B ROB use. Cross-ID write cases require out-of-order completion.

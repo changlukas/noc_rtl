@@ -11,7 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "sim/tools"))
 from gen_tb_top import emit_sam_pkg, num_vc
-from gen_standalone_patterns import generate as generate_patterns
+from gen_standalone_patterns import generate as generate_patterns, load_cases
 
 
 def attach_hardware(stage, patterns):
@@ -38,7 +38,9 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False):
     if pattern_id_width > noc_id_width:
         raise ValueError("NoC output_id_width must preserve input_id_width")
     vc_count = profile.get("num_dat_vc", num_vc())
-    vc_mode = profile.get("dat_vc_mode", 0)
+    vc_mode = int(vc_count > 1)
+    if "dat_vc_mode" in profile:
+        raise ValueError("dat_vc_mode is derived from num_dat_vc; remove it from the profile")
     if vc_count not in (1, 2, 4, 8) or vc_mode not in (0, 1) or (vc_mode == 1 and vc_count < 2):
         raise ValueError("invalid DAT VC count/mode")
     for key in ("context_depth", "io_fifo_depth", "max_outstanding_per_id", "b_rob_depth", "r_rob_depth"):
@@ -84,24 +86,35 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False):
                    for name in ("cc_onehot_to_bin.sv", "cc_lzc.sv", "cc_id_queue.sv")]
     nsu_sources += sorted(path for path in (ROOT / "rtl/nsu").rglob("*.sv")
                           if not path.name.startswith("tb_"))
+    nsu_sources += sorted((ROOT / "rtl/ni").glob("*.sv"))
     for source in nsu_sources:
         relative = str(source.relative_to(ROOT))
         copy(source, "repo/" + relative)
         source_list.append("repo/" + relative)
     for relative in (f"specgen/generated/sv/noc_types_pkg_vc{vc_count}.sv",
-                     "ref_model/top/router_wrap.sv",
+
                      "deps/floonoc-dv/axi_reorder_compare.sv",
                      "sim/tb_top.sv"):
         if direct and relative.startswith("ref_model/top/"):
             continue
         copy(ROOT / relative, "repo/" + relative)
         source_list.append("repo/" + relative)
+    if not direct:
+        copy(ROOT / "sim/dv/router_mesh.sv", "repo/sim/dv/router_mesh.sv")
+        source_list.append("repo/sim/dv/router_mesh.sv")
+        for source in sorted((ROOT / "rtl/router").glob("*.sv")):
+            relative = "repo/" + str(source.relative_to(ROOT))
+            copy(source, relative)
+            source_list.append(relative)
     copy(ROOT / "sim/dv/ni_stress.svh", "repo/sim/dv/ni_stress.svh")
     copy(ROOT / "sim/dv/ni_coverage.svh", "repo/sim/dv/ni_coverage.svh")
     copy(ROOT / "sim/dv/ni_arbiter_checks.sv", "repo/sim/dv/ni_arbiter_checks.sv")
     source_list.append("repo/sim/dv/ni_arbiter_checks.sv")
     source_list.append("+incdir+repo/sim/dv")
     copy(ROOT / "sim/script/coverage.hier", "coverage.hier")
+    if direct:
+        (out / "coverage.hier").write_text("+tree tb_top.dut 0\n" + "".join(
+            f"+tree tb_top.gen_node[{n}].i_nsu 0\n" for n in range(4)))
     if direct:
         relative = "sim/standalone/nsu/ni_direct_link.sv"
         copy(ROOT / relative, "repo/" + relative)
@@ -126,7 +139,7 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False):
         for path in ([license_file] if license_file.is_file() else license_file.rglob("*")):
             if path.is_file():
                 copy(path, str(path.relative_to(ROOT)))
-    topo = ROOT / "sim/topology.yml"
+    topo = ROOT / ("sim/topology.yml" if direct else "sim/configs/mesh_4x4.yml")
     (out / "topology_pkg.sv").write_text(emit_sam_pkg(yaml.safe_load(topo.read_text())))
     uvm_sources = ["+incdir+."]
     copy(ROOT / "deps/revisions.json", "deps/revisions.json")
@@ -152,30 +165,41 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False):
         return generate_patterns(*args, hardware=hardware, **kwargs)
     cases = generate(patterns, topo, id_width=pattern_id_width, profile="cosim")
     cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim",
-                      catalog=ROOT / "sim/test_patterns/cosim/cases.json")
+                      catalog="cosim")
+    if not direct:
+        cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim",
+                          catalog="router")
+        cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim", catalog="mesh")
     if extra_catalog:
         cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim", catalog=extra_catalog)
     (patterns / "cases.list").write_text("\n".join(cases) + "\n")
-    stress_catalog = ROOT / "sim/test_patterns/stress/cases.json"
+    stress_catalog = "stress"
     cases += generate(patterns, topo, id_width=pattern_id_width, profile="cosim", catalog=stress_catalog)
     (patterns / "cases.list").write_text("\n".join(cases) + "\n")
-    common_cases = [case["name"] for case in json.loads(
-        (ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]
+    common_cases = [case["name"] for case in load_cases("base")
         if not (case.get("reset_warmup") or case.get("legacy_mixed") or case.get("require_stall"))]
-    common_cases += [case["name"] for case in json.loads(stress_catalog.read_text())["cases"]]
+    common_cases += [case["name"] for case in load_cases(stress_catalog)]
+    if not direct:
+        common_cases += [c["name"] for c in load_cases("router")]
+        common_cases += [c["name"] for c in load_cases("mesh")]
     (out / "pattern.txt").write_text("\n".join(common_cases) + "\n")
     for mode in ("control", "data", "rand"):
         mode_cases = generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode)
         mode_cases += generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
-                               catalog=ROOT / "sim/test_patterns/cosim/cases.json")
+                               catalog="cosim")
         mode_cases += generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
                                catalog=stress_catalog)
+        if not direct:
+            mode_cases += generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode,
+                                   catalog="router")
+            mode_cases += generate(patterns / mode, topo, id_width=pattern_id_width, profile="cosim", mode=mode, catalog="mesh")
         (patterns / mode / "cases.list").write_text("\n".join(mode_cases) + "\n")
-    variants = json.loads(stress_catalog.read_text())["cases"][:1]
+    variants = load_cases(stress_catalog)[:1]
     variants = [dict(variants[0], name="capacity_reuse_"+target, capacity_target=target)
                 for target in ("per_id", "context", "rob")]
-    base_cases = json.loads((ROOT / "sim/test_patterns/standalone/cases.json").read_text())["cases"]
-    variants += [dict(case, name=case["name"]+"_backpressure", count=64, source_response_hold_cycles=1024,
+    base_cases = load_cases("base")
+    variants += [dict(case, name=case["name"]+"_backpressure", count=64,
+                     source_response_hold_cycles=4096 if case.get("require_buffered") else 1024,
                      response_hold_cycles=256 if case.get("require_buffered") else 0, response_hold_port=1,
                      response_backpressure=True)
                  for case in base_cases if case["name"] in ("single_id_reorder", "multi_id_out_of_order")]
@@ -188,7 +212,19 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False):
                          catalog=variant_catalog)
         (directory / "cases.list").write_text("\n".join(existing+extra)+"\n")
     for name in ("signals.rc", "topology.yml", "README.md", "pattern_list.txt"):
-        copy(ROOT / "sim" / name, name)
+        copy(topo if name == "topology.yml" else ROOT / "sim" / name, name)
+        if direct and name == "signals.rc":
+            waves = (out / name).read_text().split('addGroup "NI [0] DAT Link"')[0]
+            prefix = "/tb_top/gen_node[0]/i_ni"
+            waves = waves.replace(prefix + "/i_nmu/", "/tb_top/dut/")
+            waves = waves.replace(prefix + "/i_dat_rx/", "/tb_top/dut/i_response_path/i_rx_credit_buffer/")
+            for signal in ("tx_dat", "rx_dat", "credit"):
+                waves = waves.replace(prefix + "/" + signal, "/tb_top/dut/" + signal)
+            waves = waves.replace("/i_ni/i_nsu/", "/i_nsu/")
+            for node in range(4):
+                waves = waves.replace(f"/gen_node[{node}]/i_ni/i_dat_rx/",
+                                      f"/gen_node[{node}]/i_nsu/i_request_path/i_rx_credit_buffer/")
+            (out / name).write_text(waves)
     if not direct:
         for directory in ("ref_model/dpi", "ref_model/c_model/include", "ref_model/c_model/tests/common",
                           "specgen/generated/cpp"):
@@ -234,8 +270,8 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False):
     attach_hardware(out, patterns)
     (out / "profile.mk").write_text("".join(
         f"{('REG_TYPE' if key == 'OUTPUT_REG_TYPE' else key)} ?= {value}\n"
-        for key, value in parameters.items() if key not in ("MON_ID_WIDTH", "DIRECT_LINK")))
-    (out / "environment.mk").write_text("DIRECT_LINK := %d\n" % int(direct))
+        for key, value in parameters.items() if key not in ("MON_ID_WIDTH", "DIRECT_LINK", "DAT_VC_MODE")))
+    (out / "environment.mk").write_text("DIRECT_LINK := %d\nRTL_ROUTER := 1\n" % int(direct))
     if direct:
         (out / "signals.rc").write_text((out / "signals.rc").read_text().replace("Router Links", "Direct Links"))
     copy(ROOT / "sim/script/Makefile", "Makefile")

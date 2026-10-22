@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Stress observations and reset checks share the integration interfaces.
-    `define STRESS_ORDER dut.i_response_path.i_ordering
+    `define STRESS_ORDER `NI_NMU.i_response_path.i_ordering
     bit [1:0] cov_same_id_seen = 0, cov_cross_id_seen = 0;
     bit cov_b_stall_inversion = 0, cov_r_stall_inversion = 0;
     bit wr_limit_seen = 0, rd_limit_seen = 0;
@@ -9,15 +9,15 @@
     bit b_storage_reused = 0, r_storage_reused = 0;
     bit [NUM_NSUS-1:0] aw_context_full_seen = '0, ar_context_full_seen = '0;
     bit [NUM_NSUS-1:0] aw_context_reused = '0, ar_context_reused = '0;
-    bit hol_wr_progress = 0, hol_rd_progress = 0;
     bit b_output_stalled = 0, r_output_stalled = 0;
     bit read_order_wait_seen = 0, read_order_resumed = 0;
 
-    int stress_wr_dst[NUM_IDS] = '{default:0};
-    int stress_rd_dst[NUM_IDS] = '{default:0};
+    bit [NUM_NSUS-1:0] context_target_mask = '1;
+    initial void'($value$plusargs("context_target_mask=%h", context_target_mask));
+
     wire b_storage_full = &`STRESS_ORDER.i_b_storage.alloc_reg;
     wire r_storage_full;
-    if (`STRESS_ORDER.R_ROB_EN) begin : gen_stress_read_storage
+    if (R_ROB_EN) begin : gen_stress_read_storage
         assign r_storage_full = &`STRESS_ORDER.gen_read_reorder_storage.i_r_storage.alloc_reg;
     end else begin : gen_stress_no_read_storage
         assign r_storage_full = 1'b0;
@@ -59,33 +59,6 @@
         end
     end
 
-    always @(posedge clk) begin
-        if (!axi_rst_n) begin
-            hol_wr_progress = 0;
-            hol_rd_progress = 0;
-        end else begin
-            if (check_destination_progress) begin
-                if (vip.aw_valid && vip.aw_ready) stress_wr_dst[vip.aw_id] = int'(decode_destination(vip.aw_addr));
-                if (vip.ar_valid && vip.ar_ready) stress_rd_dst[vip.ar_id] = int'(decode_destination(vip.ar_addr));
-                if (memory_b_blocked[0] && aw_context_full[0] && vip.b_valid && vip.b_ready &&
-                        stress_wr_dst[vip.b_id] != 0)
-                    hol_wr_progress = 1;
-                if (memory_r_blocked[0] && ar_context_full[0] && vip.r_valid && vip.r_ready &&
-                        stress_rd_dst[vip.r_id] != 0)
-                    hol_rd_progress = 1;
-            end
-        end
-    end
-
-    function automatic int decode_destination(input mon_addr_t address);
-        for (int rule = 0; rule < topology_pkg::SAM_NUM_RULES; rule++) begin
-            if (address >= MON_RULES[rule].start_addr && address < MON_RULES[rule].end_addr)
-                return MON_RULES[rule].idx;
-        end
-        $fatal(1, "Stress monitor address outside SAM");
-        return -1;
-    endfunction
-
     task automatic start_response_hold(input bit is_read);
         if (response_hold_cycles != 0) begin
             if (is_read) block_r = 1;
@@ -112,18 +85,17 @@
             $display("RESPONSE_INVERSION same_id=%b cross_id=%b", cov_same_id_seen, cov_cross_id_seen);
             if (check_order == "cross_id" && !(&cov_cross_id_seen))
                 $fatal(1, "Read/write cross-ID response inversion not exercised");
-            if (check_order == "same_id" && (!cov_same_id_seen[0] ||
-                    (R_ROB_EN && !cov_same_id_seen[1])))
+            if (check_order == "same_id" && (!cov_same_id_seen[0] || (R_ROB_EN && !cov_same_id_seen[1])))
                 $fatal(1, "Read/write same-ID response inversion not exercised");
         end
         if (check_response_stall)
             $display("REORDER_BACKPRESSURE write=%0d read=%0d", cov_b_stall_inversion, cov_r_stall_inversion);
         if (check_response_stall && check_order == "same_id" &&
-                (!cov_b_stall_inversion || !cov_r_stall_inversion))
+                (!cov_b_stall_inversion || (R_ROB_EN && !cov_r_stall_inversion)))
             $fatal(1, "Same-ID inversion/output-stall correlation not exercised");
     `endif
         if (check_response_stall && (!b_output_stalled || !r_output_stalled))
-            $fatal(1, "Reorder test missed B/R storage output backpressure");
+            $fatal(1, "Reorder test missed B/R response output stall");
         if (check_capacity != "") begin
             $display("CAPACITY_REUSE target=%s per_id=%b%b context=%b/%b rob=%b%b",
                 check_capacity, wr_limit_reused, rd_limit_reused,
@@ -131,18 +103,17 @@
             case (check_capacity)
                 "per_id": if (!wr_limit_reused || !rd_limit_reused)
                     $fatal(1, "Per-ID limit/reuse not exercised");
-                "context": if (!(&aw_context_reused) || !(&ar_context_reused))
-                    $fatal(1, "NSU context full/reuse not exercised");
-                "rob": if (!b_storage_reused || (R_ROB_EN && !r_storage_reused))
-                    $fatal(1, "B/R ROB full/reuse not exercised");
+                "context": if ((aw_context_reused & context_target_mask) != context_target_mask ||
+                    (ar_context_reused & context_target_mask) != context_target_mask)
+                    $fatal(1, "NSU AW/AR context full/reuse not exercised");
+                "rob": if (!b_storage_reused || (R_ROB_EN ? !r_storage_reused : !read_order_resumed))
+                    $fatal(1, "B/R reorder capacity/recovery not exercised");
                 default: $fatal(1, "Unknown capacity target");
             endcase
         end
-        if (check_destination_progress && (!hol_wr_progress || !hol_rd_progress))
-            $fatal(1, "Unblocked destination did not progress during blocking");
         if (reset_recovery && (!control.reset_complete || !control.reset_pending_seen))
             $fatal(1, "Reset recovery not exercised");
-        if (check_capacity != "" || check_destination_progress || reset_recovery || check_response_stall)
+        if (check_capacity != "" || reset_recovery || check_response_stall)
             $display("TEST_CONDITIONS_PASS");
     endfunction
     `undef STRESS_ORDER

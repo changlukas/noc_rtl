@@ -1,8 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
-class ni_order_checker extends axi_reorder_compare_core #(NI_NUM_NSUS, NI_MON_ID_WIDTH,
+class ni_order_checker extends axi_reorder_compare_core #(NI_NUM_NSUS, NI_CHECK_ID_WIDTH,
         topology_pkg::SAM_NUM_RULES, ni_mon_addr_t, ni_mon_rule_t, NI_MON_RULES, 0,
         ni_mon_aw_chan_t, ni_mon_w_chan_t, ni_mon_b_chan_t, ni_mon_ar_chan_t,
-        ni_mon_r_chan_t, ni_mon_req_t, ni_mon_resp_t);
+        ni_mon_r_chan_t, ni_mon_req_t, ni_mon_resp_t, ni_mon_id_t, NI_CHECK_IDS, NI_NUM_SOURCES);
+    virtual function logic [NI_NUM_NSUS-1:0] write_destinations(ni_mon_aw_chan_t aw);
+        logic [NI_NUM_NSUS-1:0] destinations = '0;
+        ni_mon_addr_t mask = ni_mon_addr_t'(aw.user >> 10);
+        int region = addr_region(aw.addr);
+        if (aw.user[9:8] != 2'b01) return super.write_destinations(aw);
+        for (int r = 0; r < topology_pkg::SAM_NUM_RULES; r++) begin
+            if ((NI_MON_RULES[r].start_addr & ~mask) == (NI_MON_RULES[region].start_addr & ~mask))
+                destinations[NI_MON_RULES[r].idx] = 1'b1;
+        end
+        return destinations;
+    endfunction
+    virtual function ni_mon_aw_chan_t device_aw(ni_mon_aw_chan_t aw, int slave);
+        int region = addr_region(aw.addr);
+        ni_mon_addr_t mask = ni_mon_addr_t'(aw.user >> 10);
+        ni_mon_aw_chan_t result = aw;
+        if (aw.user[9:8] == 2'b01) begin
+            for (int r = 0; r < topology_pkg::SAM_NUM_RULES; r++) begin
+                if (NI_MON_RULES[r].idx == slave &&
+                    (NI_MON_RULES[r].start_addr & ~mask) == (NI_MON_RULES[region].start_addr & ~mask))
+                    result.addr = NI_MON_RULES[r].start_addr + aw.addr - NI_MON_RULES[region].start_addr;
+            end
+        end
+        result.user = ni_mon_user_t'(aw.user[ni_flit_pkg::AXI_USER_WIDTH-1:0]);
+        return result;
+    endfunction
     virtual function void report_error(string message);
         `uvm_error("AXI_ORDER", message)
     endfunction
@@ -12,12 +37,12 @@ class ni_order_checker extends axi_reorder_compare_core #(NI_NUM_NSUS, NI_MON_ID
 endclass
 
 class ni_scoreboard extends uvm_scoreboard;
-    uvm_tlm_analysis_fifo #(uvm_sequence_item) input_fifo[NI_NUM_NSUS+1];
+    uvm_tlm_analysis_fifo #(uvm_sequence_item) input_fifo[NI_NUM_NSUS+NI_NUM_SOURCES];
     ni_order_checker ordering;
-    ni_data_checker data_check;
-    ni_mon_ar_chan_t pending_read[NI_NUM_IDS][$];
-    int read_beat[NI_NUM_IDS];
-    int pending_write[NI_NUM_IDS];
+    ni_data_checker data_check[NI_NUM_SOURCES];
+    ni_mon_ar_chan_t pending_read[NI_CHECK_IDS][$];
+    int read_beat[NI_CHECK_IDS];
+    int pending_write[NI_CHECK_IDS];
     int checked_bytes = 0, b_count = 0, r_count = 0, r_beats = 0;
     int response_error = 0;
     bit active, concurrent_active;
@@ -42,21 +67,21 @@ class ni_scoreboard extends uvm_scoreboard;
     endfunction
     task reset_checker();
         string directory;
-        if (data_check != null) data_check.stop();
+        foreach (data_check[i]) if (data_check[i] != null) data_check[i].stop();
         ordering.reset();
-        data_check = new();
+        foreach (data_check[i]) data_check[i] = new();
         if ($test$plusargs("preload")) begin
             void'($value$plusargs("stim_dir=%s", directory));
-            data_check.preload({directory, "/preload.mem"});
+            foreach (data_check[i]) data_check[i].preload({directory, "/preload.mem"});
         end
         foreach (pending_read[i]) begin
             pending_read[i].delete(); read_beat[i] = 0; pending_write[i] = 0;
         end
         checked_bytes = 0; b_count = 0; r_count = 0; r_beats = 0;
         peak_w = 0; peak_r = 0; peak_unique_w = 0; peak_unique_r = 0;
-        data_check.start();
+        foreach (data_check[i]) data_check[i].start();
     endtask
-    task check_source(ni_axi_sample s);
+    task check_source(ni_axi_sample s, int source);
         ni_mon_ar_chan_t ar;
         ni_mon_addr_t address;
         logic [7:0] expected;
@@ -64,7 +89,7 @@ class ni_scoreboard extends uvm_scoreboard;
         if (s.req.aw_valid && s.rsp.aw_ready) pending_write[s.req.aw.id]++;
         if (s.req.ar_valid && s.rsp.ar_ready) pending_read[s.req.ar.id].push_back(s.req.ar);
         if (s.rsp.b_valid) begin
-            if ($isunknown(s.rsp.b.id) || s.rsp.b.id >= NI_NUM_IDS)
+            if ($isunknown(s.rsp.b.id) || s.rsp.b.id >= NI_CHECK_IDS)
                 `uvm_fatal("AXI_B_ID", "Invalid BID")
             if (!pending_write[s.rsp.b.id]) `uvm_fatal("AXI_B", "Unsolicited B response")
         end
@@ -74,7 +99,7 @@ class ni_scoreboard extends uvm_scoreboard;
             pending_write[s.rsp.b.id]--; b_count++;
         end
         if (s.rsp.r_valid) begin
-            if ($isunknown(s.rsp.r.id) || s.rsp.r.id >= NI_NUM_IDS)
+            if ($isunknown(s.rsp.r.id) || s.rsp.r.id >= NI_CHECK_IDS)
                 `uvm_fatal("AXI_R_ID", "Invalid RID")
             if (!pending_read[s.rsp.r.id].size()) `uvm_fatal("AXI_R", "Unsolicited R response")
         end
@@ -88,7 +113,7 @@ class ni_scoreboard extends uvm_scoreboard;
             hi = axi_pkg::beat_upper_byte(ar.addr, ar.size, ar.len, ar.burst, AXI_DATA_WIDTH/8, read_beat[s.rsp.r.id]);
             address = axi_pkg::aligned_addr(address, $clog2(AXI_DATA_WIDTH/8));
             for (int lane = lo; lane <= hi; lane++) begin
-                data_check.get_byte(address + lane, expected);
+                data_check[source].get_byte(address + lane, expected);
                 if ($isunknown(expected) || $isunknown(s.rsp.r.data[8*lane+:8]))
                     `uvm_error("AXI_RDATA", "Read comparison contains uninitialized data")
                 checked_bytes++;
@@ -118,10 +143,20 @@ class ni_scoreboard extends uvm_scoreboard;
             if (total_w && s.rsp.r_valid && s.req.r_ready) r_during_write_cnt++;
         end
     endtask
+    function ni_axi_sample indexed_sample(ni_axi_sample sample, int source);
+        ni_axi_sample result = new();
+        result.req = sample.req;
+        result.rsp = sample.rsp;
+        result.req.aw.id = ni_mon_id_t'(source * (1 << NI_MON_ID_WIDTH)) | sample.req.aw.id;
+        result.req.ar.id = ni_mon_id_t'(source * (1 << NI_MON_ID_WIDTH)) | sample.req.ar.id;
+        result.rsp.b.id = ni_mon_id_t'(source * (1 << NI_MON_ID_WIDTH)) | sample.rsp.b.id;
+        result.rsp.r.id = ni_mon_id_t'(source * (1 << NI_MON_ID_WIDTH)) | sample.rsp.r.id;
+        return result;
+    endfunction
     task run_phase(uvm_phase phase);
         uvm_sequence_item item;
-        ni_axi_sample samples[NI_NUM_NSUS+1];
-        ni_mon_req_t source_req;
+        ni_axi_sample samples[NI_NUM_NSUS+NI_NUM_SOURCES];
+        ni_axi_sample indexed;
         forever begin
             foreach (input_fifo[i]) begin
                 input_fifo[i].get(item);
@@ -131,26 +166,31 @@ class ni_scoreboard extends uvm_scoreboard;
             end
             if (samples[0].reset) begin
                 if (active) begin
-                    data_check.stop(); ordering.reset(); active = 0;
+                    foreach (data_check[i]) data_check[i].stop();
+                    ordering.reset(); active = 0;
                 end
                 continue;
             end
             if (!active) begin reset_checker(); active = 1; end
-            source_req = samples[0].req;
-            source_req.aw.user = ni_mon_user_t'(source_req.aw.user[ni_flit_pkg::AXI_USER_WIDTH-1:0]);
-            ordering.source_request(source_req, samples[0].rsp);
+            for (int source = 0; source < NI_NUM_SOURCES; source++) begin
+                indexed = indexed_sample(samples[source], source);
+                ordering.source_request(indexed.req, indexed.rsp, source);
+            end
             for (int i = 0; i < NI_NUM_NSUS; i++)
-                ordering.device_request(i, samples[i+1].req, samples[i+1].rsp);
+                ordering.device_request(i, samples[i+NI_NUM_SOURCES].req, samples[i+NI_NUM_SOURCES].rsp);
             for (int i = 0; i < NI_NUM_NSUS; i++)
-                ordering.device_response(i, samples[i+1].req, samples[i+1].rsp);
-            ordering.source_response(source_req, samples[0].rsp);
-            data_check.accept(samples[0]);
-            check_source(samples[0]);
+                ordering.device_response(i, samples[i+NI_NUM_SOURCES].req, samples[i+NI_NUM_SOURCES].rsp);
+            for (int source = 0; source < NI_NUM_SOURCES; source++) begin
+                indexed = indexed_sample(samples[source], source);
+                ordering.source_response(indexed.req, indexed.rsp);
+                data_check[source].accept(samples[source]);
+                check_source(indexed, source);
+            end
         end
     endtask
     function bit drained();
-        if (!ordering.drained() || data_check == null) return 0;
-        if (!data_check.drained()) return 0;
+        if (!ordering.drained()) return 0;
+        foreach (data_check[i]) if (data_check[i] == null || !data_check[i].drained()) return 0;
         foreach (pending_read[i])
             if (pending_read[i].size() || pending_write[i]) return 0;
         return 1;

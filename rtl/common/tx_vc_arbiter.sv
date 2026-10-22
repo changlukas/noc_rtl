@@ -5,7 +5,7 @@
 
 module tx_vc_arbiter #(
     parameter int unsigned           NUM_DAT_VC  = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned           DAT_VC_MODE = ni_params_pkg::NOC_DAT_VC_MODE,
+    localparam int unsigned           DAT_VC_MODE = (NUM_DAT_VC > 1),
     parameter logic [NUM_DAT_VC-1:0] DAT_VC_MASK =
         DAT_VC_MODE == 1 ? ({NUM_DAT_VC{1'b1}} >> (NUM_DAT_VC/2)) : '1
 ) (

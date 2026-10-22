@@ -1,7 +1,8 @@
 class ni_test extends uvm_test;
     ni_env env;
     virtual ni_tb_if control;
-    ni_pattern_sequence requests, initialization, readback;
+    ni_pattern_sequence requests[NI_NUM_SOURCES], initialization[NI_NUM_SOURCES], readback[NI_NUM_SOURCES];
+    bit [NI_NUM_SOURCES-1:0] source_mask = 1;
     string directory;
     int reset_drain_cycles;
     function new(string name, uvm_component parent);
@@ -14,18 +15,24 @@ class ni_test extends uvm_test;
                 !uvm_config_db #(int)::get(this, "", "reset_drain_cycles", reset_drain_cycles))
             `uvm_fatal("CONFIG", "Missing clock/reset interface configuration")
         if (!$value$plusargs("stim_dir=%s", directory)) `uvm_fatal("CONFIG", "Missing stim_dir")
-        requests = ni_pattern_sequence::type_id::create("requests");
-        requests.load_files(directory);
-        requests.concurrent_rw = $test$plusargs("concurrent_rw");
-        void'($value$plusargs("source_response_hold_cycles=%d", requests.first_response_delay));
-        if (requests.writes.size() + requests.reads.size() == 0) `uvm_fatal("PATTERN", "Empty memory test")
-        if ($test$plusargs("init_phase")) begin
-            initialization = ni_pattern_sequence::type_id::create("initialization");
-            initialization.load_files(directory, "init_write.txt", "");
-        end
-        if ($test$plusargs("readback")) begin
-            readback = ni_pattern_sequence::type_id::create("readback");
-            readback.load_files(directory, "", "verify_read.txt");
+        void'($value$plusargs("source_mask=%h", source_mask));
+        foreach (requests[i]) begin
+            string path;
+            if (!source_mask[i]) continue;
+            path = i == 0 ? directory : $sformatf("%s/source%0d", directory, i);
+            requests[i] = ni_pattern_sequence::type_id::create($sformatf("requests%0d", i));
+            requests[i].load_files(path);
+            requests[i].concurrent_rw = $test$plusargs("concurrent_rw");
+            void'($value$plusargs("source_response_hold_cycles=%d", requests[i].first_response_delay));
+            if (requests[i].writes.size() + requests[i].reads.size() == 0) `uvm_fatal("PATTERN", "Empty memory test")
+            if ($test$plusargs("init_phase")) begin
+                initialization[i] = ni_pattern_sequence::type_id::create($sformatf("initialization%0d", i));
+                initialization[i].load_files(path, "init_write.txt", "");
+            end
+            if ($test$plusargs("readback")) begin
+                readback[i] = ni_pattern_sequence::type_id::create($sformatf("readback%0d", i));
+                readback[i].load_files(path, "", "verify_read.txt");
+            end
         end
     endfunction
     function void expect_sequence(ni_pattern_sequence seq);
@@ -44,13 +51,13 @@ class ni_test extends uvm_test;
         void'($urandom(seed));
         delay_cycles = $urandom_range(2, 24);
         fork
-            warmup.start(env.source.sequencer);
+            warmup.start(env.source[0].sequencer);
             begin
                 wait (env.scoreboard.peak_w != 0 && env.scoreboard.peak_r != 0);
                 repeat (delay_cycles) @(negedge control.clk);
             end
         join_any
-        env.source.sequencer.stop_sequences();
+        env.source[0].sequencer.stop_sequences();
         disable fork;
         if (!env.scoreboard.outstanding(0) || !env.scoreboard.outstanding(1))
             `uvm_fatal("RESET", "Reset missed pending traffic")
@@ -67,13 +74,23 @@ class ni_test extends uvm_test;
         control.release_reset();
         @(posedge control.clk);
         if ($test$plusargs("reset_recovery")) reset_recovery();
-        expect_sequence(requests);
-        if (initialization != null) expect_sequence(initialization);
-        if (readback != null) expect_sequence(readback);
-        env.scoreboard.concurrent_active = requests.concurrent_rw;
-        if (initialization != null) initialization.start(env.source.sequencer);
-        requests.start(env.source.sequencer);
-        if (readback != null) readback.start(env.source.sequencer);
+        foreach (requests[i]) begin
+            if (requests[i] != null) expect_sequence(requests[i]);
+            if (initialization[i] != null) expect_sequence(initialization[i]);
+            if (readback[i] != null) expect_sequence(readback[i]);
+        end
+        env.scoreboard.concurrent_active = $test$plusargs("concurrent_rw");
+        foreach (requests[i]) begin
+            automatic int source = i;
+            if (requests[i] != null) fork
+                begin
+                    if (initialization[source] != null) initialization[source].start(env.source[source].sequencer);
+                    requests[source].start(env.source[source].sequencer);
+                    if (readback[source] != null) readback[source].start(env.source[source].sequencer);
+                end
+            join_none
+        end
+        wait fork;
         env.scoreboard.concurrent_active = 0;
         repeat (10) @(posedge control.clk);
         if (!env.scoreboard.drained()) `uvm_fatal("PENDING", "Scoreboard has pending transactions")

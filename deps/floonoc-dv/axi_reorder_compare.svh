@@ -21,7 +21,8 @@ class axi_reorder_compare_core #(
   parameter type rsp_t = logic,
   // Derived parameters, do not change
   parameter type id_t = logic [AxiIdWidth-1:0],
-  parameter int unsigned NumAxiIds = 2**AxiIdWidth
+  parameter int unsigned NumAxiIds = 2**AxiIdWidth,
+  parameter int unsigned NumMasters = 1
 );
   virtual function void report_error(string message); $error("%s", message); endfunction
   virtual function void report_fatal(string message); $fatal(1, "%s", message); endfunction
@@ -135,13 +136,25 @@ class axi_reorder_compare_core #(
     return 0;
   endfunction
 
+  virtual function logic [NumSlaves-1:0] write_destinations(aw_chan_t aw);
+    return NumSlaves'(1) << AddrRegions[addr_region(aw.addr)].idx;
+  endfunction
+  virtual function aw_chan_t device_aw(aw_chan_t aw, int slave);
+    return aw;
+  endfunction
+  typedef logic [NumSlaves-1:0] destination_mask_t;
+  typedef logic [NumSlaves-1:0][31:0] response_regions_t;
+  destination_mask_t b_destination_queue[NumAxiIds][$];
+  response_regions_t b_region_queue[NumAxiIds][$];
+  int unsigned write_copies[int unsigned][$];
+
   aw_chan_t aw_queue [NumSlaves][$];
   w_chan_t  w_queue  [int unsigned][$];
   int unsigned aw_seq_queue [NumSlaves][$];
   int unsigned w_output_queue [NumSlaves][$];
-  int unsigned w_input_queue[$];
+  int unsigned w_input_queue[NumMasters][$];
   int unsigned write_seq = 0;
-  w_chan_t  w_pending[$];
+  w_chan_t  w_pending[NumMasters][$];
   w_chan_t  w_device_pending[NumSlaves][$];
   ar_chan_t ar_queue [NumSlaves][$];
   b_chan_t  b_queue  [NumAddrRegions][NumAxiIds][$];
@@ -154,9 +167,12 @@ class axi_reorder_compare_core #(
   rsp_id_t ar_id_queue [NumSlaves][NumAxiIds][$];
   function void reset();
     write_seq = 0;
-    w_pending.delete();
-    w_input_queue.delete();
+    foreach (w_pending[i]) begin
+      w_pending[i].delete();
+      w_input_queue[i].delete();
+    end
     w_queue.delete();
+    write_copies.delete();
     for (int i = 0; i < NumSlaves; i++) begin
       aw_queue[i].delete();
       aw_seq_queue[i].delete();
@@ -177,28 +193,47 @@ class axi_reorder_compare_core #(
     for (int id = 0; id < NumAxiIds; id++) begin
       r_out_rsp_queue[id].delete();
       b_out_rsp_queue[id].delete();
+      b_destination_queue[id].delete();
+      b_region_queue[id].delete();
     end
   endfunction
-  function void source_request(req_t mon_mst_req_i, rsp_t mon_mst_rsp_i);
+  function void source_request(req_t mon_mst_req_i, rsp_t mon_mst_rsp_i, int source = 0);
     int aw_slv_idx, ar_slv_idx;
     if (mon_mst_req_i.aw_valid && mon_mst_rsp_i.aw_ready) aw_slv_idx = AddrRegions[addr_region(mon_mst_req_i.aw.addr)].idx;
     if (mon_mst_req_i.ar_valid && mon_mst_rsp_i.ar_ready) ar_slv_idx = AddrRegions[addr_region(mon_mst_req_i.ar.addr)].idx;
     if (mon_mst_req_i.aw_valid && mon_mst_rsp_i.aw_ready) begin
-      aw_queue[aw_slv_idx].push_back(mon_mst_req_i.aw);
-      aw_seq_queue[aw_slv_idx].push_back(write_seq);
-      w_input_queue.push_back(write_seq);
+      automatic destination_mask_t destinations = write_destinations(mon_mst_req_i.aw);
+      automatic response_regions_t regions = '0;
+      if (destinations == '0) report_fatal("Write has no destination");
+      for (int slave = 0; slave < NumSlaves; slave++) begin
+        if (destinations[slave]) begin
+          automatic aw_chan_t aw = device_aw(mon_mst_req_i.aw, slave);
+          automatic int unsigned copy_id = write_seq*NumSlaves + slave;
+          aw_queue[slave].push_back(aw);
+          aw_seq_queue[slave].push_back(copy_id);
+          write_copies[write_seq].push_back(copy_id);
+          regions[slave] = addr_region(aw.addr);
+        end
+      end
+      w_input_queue[source].push_back(write_seq);
       write_seq++;
+      b_destination_queue[mon_mst_req_i.aw.id].push_back(destinations);
+      b_region_queue[mon_mst_req_i.aw.id].push_back(regions);
       b_out_rsp_queue[mon_mst_req_i.aw.id].push_back('{region_id: addr_region(mon_mst_req_i.aw.addr), num_rsp: 0, ar: '0});
       if (Verbose) $info("Issued AW: id=%0d, len=%0d", mon_mst_req_i.aw.id, mon_mst_req_i.aw.len+1);
     end
     if (mon_mst_req_i.w_valid && mon_mst_rsp_i.w_ready) begin
-      w_pending.push_back(mon_mst_req_i.w);
+      w_pending[source].push_back(mon_mst_req_i.w);
       if (Verbose) $info("Issued W");
     end
-    while (w_pending.size() != 0 && w_input_queue.size() != 0) begin
-      automatic w_chan_t w = w_pending.pop_front();
-      w_queue[w_input_queue[0]].push_back(w);
-      if (w.last) void'(w_input_queue.pop_front());
+    while (w_pending[source].size() != 0 && w_input_queue[source].size() != 0) begin
+      automatic w_chan_t w = w_pending[source].pop_front();
+      for (int copy_index = 0; copy_index < write_copies[w_input_queue[source][0]].size(); copy_index++)
+        w_queue[write_copies[w_input_queue[source][0]][copy_index]].push_back(w);
+      if (w.last) begin
+        write_copies.delete(w_input_queue[source][0]);
+        void'(w_input_queue[source].pop_front());
+      end
     end
     if (mon_mst_req_i.ar_valid && mon_mst_rsp_i.ar_ready) begin
       ar_queue[ar_slv_idx].push_back(mon_mst_req_i.ar);
@@ -335,8 +370,21 @@ class axi_reorder_compare_core #(
       if (Verbose) $info("Received B: id=%0d", b_id);
       if (b_out_rsp_queue[b_id].size() == 0) report_error($sformatf("B: id=%0d out rsp queue is empty!", b_id));
       region_id = b_out_rsp_queue[b_id][0].region_id;
-      if (b_queue[region_id][b_id].size() == 0) report_error($sformatf("Region [%0d] B queue is empty!", region_id));
-      b_exp = b_queue[region_id][b_id].pop_front();
+      begin
+        automatic destination_mask_t destinations = b_destination_queue[b_id].pop_front();
+        automatic response_regions_t regions = b_region_queue[b_id].pop_front();
+        automatic bit selected = 0;
+        for (int slave = 0; slave < NumSlaves; slave++) begin
+          if (destinations[slave]) begin
+            automatic b_chan_t response;
+            if (b_queue[regions[slave]][b_id].size() == 0)
+              report_fatal($sformatf("B returned before destination %0d completed", slave));
+            response = b_queue[regions[slave]][b_id].pop_front();
+            if (!selected || response.resp == 2'b10) b_exp = response;
+            selected = 1;
+          end
+        end
+      end
       if (b_exp !== b_act) begin
         report_error($sformatf("B mismatch"));
         print_b(b_exp, b_act);
@@ -391,14 +439,16 @@ class axi_reorder_compare_core #(
     end
   endfunction
   function bit drained();
-    if (w_queue.num() || w_pending.size() || w_input_queue.size()) return 0;
+    foreach (w_pending[i]) if (w_pending[i].size() || w_input_queue[i].size()) return 0;
+    if (w_queue.num() || write_copies.num()) return 0;
     foreach (aw_queue[i]) begin
       if (aw_queue[i].size() || ar_queue[i].size() || aw_seq_queue[i].size() || w_output_queue[i].size() || w_device_pending[i].size()) return 0;
       for (int id = 0; id < NumAxiIds; id++)
         if (aw_id_queue[i][id].size() || ar_id_queue[i][id].size()) return 0;
     end
     foreach (b_queue[i,j]) if (b_queue[i][j].size() || r_queue[i][j].size()) return 0;
-    foreach (b_out_rsp_queue[i]) if (b_out_rsp_queue[i].size() || r_out_rsp_queue[i].size()) return 0;
+    foreach (b_out_rsp_queue[i]) if (b_out_rsp_queue[i].size() || r_out_rsp_queue[i].size() ||
+          b_destination_queue[i].size() || b_region_queue[i].size()) return 0;
     return 1;
   endfunction
 endclass

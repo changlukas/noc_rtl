@@ -5,16 +5,17 @@
 
 // Raw NoC ingress storage. Channel assignment consumes the FIFO heads.
 module rx_credit_buffer #(
+    parameter bit                                          DAT_EN          = 1'b1,
     parameter int unsigned                                 CTRL_FIFO_DEPTH = 32,
     parameter int unsigned                                 NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
-    parameter int unsigned                                 DAT_VC_MODE     = ni_params_pkg::NOC_DAT_VC_MODE,
+    localparam int unsigned                                 DAT_VC_MODE     = (NUM_DAT_VC > 1),
     parameter int unsigned                                 CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
     parameter type                                         ctrl_t          = ni_flit_pkg::rsp_flit_t,
     parameter logic [NUM_DAT_VC-1:0]                       DAT_VC_MASK     = (DAT_VC_MODE == 1 ? ({NUM_DAT_VC{1'b1}} << (NUM_DAT_VC/2)) : '1),
     parameter logic [(1 << ni_flit_pkg::AXI_CH_WIDTH)-1:0] CTRL_CH_MASK    =
         (1 << ni_flit_pkg::AXI_CH_NarrowB) | (1 << ni_flit_pkg::AXI_CH_DataB) |
         (1 << ni_flit_pkg::AXI_CH_NarrowR),
-    parameter logic [(1 << ni_flit_pkg::AXI_CH_WIDTH)-1:0] DAT_CH_MASK     =
+    parameter logic [(1 << ni_flit_pkg::AXI_CH_WIDTH)-1:0] DAT_CH_MASK =
         (1 << ni_flit_pkg::AXI_CH_DataR)
 ) (
     input  wire logic                                    clk_i,
@@ -25,7 +26,7 @@ module rx_credit_buffer #(
     input  wire ni_flit_pkg::dat_flit_t                  s_dat_i,
     input  wire logic                   [NUM_DAT_VC-1:0] s_dat_valid_i,
     output wire logic                   [NUM_DAT_VC-1:0] s_dat_ready_o,
-    output wire logic                   [NUM_DAT_VC-1:0] dat_credit_return_o,
+    output wire logic                   [NUM_DAT_VC-1:0] credit_o,
     output wire ctrl_t                                   m_ctrl_o,
     output wire logic                                    m_ctrl_valid_o,
     input  wire logic                                    m_ctrl_ready_i,
@@ -76,7 +77,7 @@ module rx_credit_buffer #(
     );
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_dat_vc
         assign m_dat_o[vc] = m_dat_valid_o[vc] ? dat_head[vc] : '0;
-        if (DAT_VC_MASK[vc]) begin : gen_active
+        if (DAT_EN && DAT_VC_MASK[vc]) begin : gen_active
             assign dat_push[vc]      = s_dat_valid_i[vc] && s_dat_ready_o[vc];
             assign s_dat_ready_o[vc]  = !dat_full[vc];
             assign dat_pop[vc]       = m_dat_valid_o[vc] && m_dat_ready_i[vc];
@@ -117,11 +118,11 @@ module rx_credit_buffer #(
             credit_return_reg <= credit_return_next;
         end
     end
-    assign dat_credit_return_o = credit_return_reg;
+    assign credit_o = credit_return_reg;
 
     // synthesis translate_off
     always @(posedge clk_i) begin
-        if (rst_n_i && s_dat_valid_i) begin
+        if (rst_n_i && (|s_dat_valid_i)) begin
             if ($isunknown({dat_channel, dat_vc}) || !DAT_CH_MASK[dat_channel] ||
                     int'(dat_vc) >= NUM_DAT_VC || !DAT_VC_MASK[VC_IDX_W'(dat_vc)])
                 $fatal(1, "invalid channel or VC on DAT ingress");

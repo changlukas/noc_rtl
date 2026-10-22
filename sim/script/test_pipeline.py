@@ -27,12 +27,12 @@ cases = [
     ("tb_nmu_request_packetize_stall", {}),
     ("tb_nmu_request_packetize_stress", {"REG_TYPE": 0, "NUM_DAT_VC": 2}),
     ("tb_nmu_request_packetize_stress", {"REG_TYPE": 1, "NUM_DAT_VC": 2}),
-    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 2, "NUM_DAT_VC": 6, "DAT_VC_MODE": 1}),
+    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 2, "NUM_DAT_VC": 8}),
     ("tb_nmu_request_packetize_stress", {"REG_TYPE": 0, "NUM_DAT_VC": 1}),
     ("tb_nmu_request_packetize_stress", {"AW_REG_TYPE": 2, "W_REG_TYPE": 0, "AR_REG_TYPE": 1}),
     ("tb_nmu_request_packetize_stress", {"AW_REG_TYPE": 0, "W_REG_TYPE": 2, "AR_REG_TYPE": 1}),
     ("tb_nmu_response_depacketize", {"NUM_DAT_VC": 2, "CREDIT_DEPTH": 2}),
-    ("tb_nmu_response_depacketize", {"NUM_DAT_VC": 6, "DAT_VC_MODE": 1, "CREDIT_DEPTH": 8}),
+    ("tb_nmu_response_depacketize", {"NUM_DAT_VC": 8, "CREDIT_DEPTH": 8}),
 ]
 if options.ordering_only:
     cases = [("tb_nmu_ordering", {"NUM_IDS": 3})]

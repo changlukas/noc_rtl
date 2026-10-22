@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Passive functional coverage; existing scoreboards own correctness checking.
 `ifdef NI_COVERAGE
-    `define COV_ORDER dut.i_response_path.i_ordering
+    `define COV_ORDER `NI_NMU.i_response_path.i_ordering
     typedef struct packed {
         int id;
         int tag;

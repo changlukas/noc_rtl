@@ -28,11 +28,11 @@ module ni_direct_link #(
     input  wire logic                         [NUM_DAT_VC-1:0] rx_dat_valid_i [NUM_PORTS],
     output wire logic [NUM_DAT_VC-1:0] rx_dat_ready_o [NUM_PORTS],
     input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i [NUM_PORTS],
-    output wire logic                        [NUM_DAT_VC-1:0] rx_dat_crdvalid_o [NUM_PORTS],
+    output wire logic                        [NUM_DAT_VC-1:0] credit_o [NUM_PORTS],
     output wire logic                         [NUM_DAT_VC-1:0] tx_dat_valid_o [NUM_PORTS],
     input wire logic [NUM_DAT_VC-1:0] tx_dat_ready_i [NUM_PORTS],
     output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o [NUM_PORTS],
-    input  wire logic                        [NUM_DAT_VC-1:0] tx_dat_crdvalid_i [NUM_PORTS]
+    input  wire logic                        [NUM_DAT_VC-1:0] credit_i [NUM_PORTS]
 );
     import ni_flit_pkg::*;
     localparam int unsigned NUM_DAT_INPUTS = NUM_PORTS * NUM_DAT_VC;
@@ -110,7 +110,7 @@ module ni_direct_link #(
                 credit_return_reg <= dat_pop[p];
             end
         end
-        assign rx_dat_crdvalid_o[p] = rst_n_i ? credit_return_reg : '0;
+        assign credit_o[p] = rst_n_i ? credit_return_reg : '0;
         for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_vc
             localparam bit ACTIVE = DAT_VC_MODE == 0 || ((p == 0) == (vc < NUM_DAT_VC/2));
             if (ACTIVE) begin : gen_active
@@ -182,7 +182,7 @@ module ni_direct_link #(
                     .rst_ni        (rst_n_i                                                                               ),
                     .clr_i         (1'b0                                                                                  ),
                     .credit_o      (                                                                                      ),
-                    .credit_give_i (rst_n_i && tx_dat_crdvalid_i[q][vc]                                                   ),
+                    .credit_give_i (rst_n_i && credit_i[q][vc]                                                   ),
                     .credit_take_i (tx_dat_valid_o[q][vc] && tx_dat_ready_i[q][vc]),
                     .credit_left_o (credit_left[vc]                                                                       ),
                     .credit_crit_o (                                                                                      ),
@@ -197,7 +197,7 @@ module ni_direct_link #(
                 assign data[p*NUM_DAT_VC+vc] = dat_head[p][vc];
                 assign request[p*NUM_DAT_VC+vc] = rst_n_i && ((p == 0) != (q == 0)) &&
                     dat_valid[p][vc] && dat_head[p][vc].header[DST_ID_LSB +: DST_ID_WIDTH] == NODE_IDS[q] &&
-                    (credit_left[vc] || tx_dat_crdvalid_i[q][vc]);
+                    (credit_left[vc] || credit_i[q][vc]);
             end
         end
         rr_arb_tree #(

@@ -83,11 +83,7 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=8):
             shutil.copytree(block_patterns, root / "cases/standalone")
         else:
             generate_standalone(root / "cases/standalone", repo / "sim/configs/mesh_2x2.yml", id_width)
-        copy_path(repo / "sim/test_patterns/standalone/cases.json")
-        copy_path(repo / "sim/test_patterns/standalone/in_order_perf.json")
-        copy_path(repo / "sim/test_patterns/standalone/out_of_order_perf.json")
-        copy_path(repo / "sim/test_patterns/standalone/mixed_perf.json")
-        copy_path(repo / "sim/test_patterns/standalone/verification.json")
+        copy_path(repo / "sim/test_patterns/cases.json")
         for name in ("gen_standalone_patterns.py", "axi_file_format.py"):
             copy_path(repo / "sim/tools" / name)
         import yaml

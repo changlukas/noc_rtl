@@ -25,7 +25,7 @@ class MatrixExportTest(unittest.TestCase):
                 export(stage, stage / "matrix.json")
 
     def test_all_pattern_ids(self):
-        self.assertEqual(set(TARGETS), {f"P{i:02d}" for i in range(1,23)})
+        self.assertEqual(set(TARGETS), {f"P{i:02d}" for i in range(1,24)} | {"P25", "P26"})
         self.assertIn("write_strobe_cg",metadata("P09")["coverage_targets"])
 
     def test_instance_counts_not_type_counts(self):

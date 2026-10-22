@@ -25,9 +25,9 @@ module tb_nmu_ordering #(
     logic                                         s_r_valid_i, s_r_ready_o, m_r_valid_o, m_r_ready_i;
     logic                                         last_aw_ordering_req, last_ar_ordering_req;
     logic                             [TAG_W-1:0] last_aw_ordering_tag, last_ar_ordering_tag;
-    ni_signals_pkg::noc_axi_b_t                       retired_b [8];
+    ni_signals_pkg::noc_axi_b_t                       retired_b [16];
     ni_signals_pkg::noc_axi_r_t                       retired_r [8];
-    int unsigned                                  retired_b_cycle [8], retired_r_cycle [8];
+    int unsigned                                  retired_b_cycle [16], retired_r_cycle [8];
     int unsigned b_retire_count = 0, r_retire_count = 0, cycle_count = 0;
 
     nmu_ordering #(
@@ -54,11 +54,12 @@ module tb_nmu_ordering #(
         end
     end
 
-    task automatic send_aw(input int id, input int dst);
+    task automatic send_aw(input int id, input int dst, input bit is_data = 0);
         @(negedge clk_i);
         s_aw_i                           = '0;
         s_aw_i.axi.awid                  = ID_W'(id % NUM_IDS);
         s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
+        s_aw_i.route.route.domain.is_data = is_data;
         s_aw_valid_i                     = 1;
         do @(posedge clk_i); while (!s_aw_ready_o);
         last_aw_ordering_req = m_aw_o.meta.ordering_req;
@@ -140,6 +141,43 @@ module tb_nmu_ordering #(
         send_b(1, 0, 0, 2'b00);
         while (b_retire_count < 3) @(negedge clk_i);
         if (retired_b[2].bresp != 2'b10) $fatal(1, "buffered B did not retire after head");
+
+        // Both directions must drain every prior B, including a stalled final B.
+        for (int channel = 0; channel < 2; channel++) begin
+            send_aw(0, 1, channel != 0);
+            send_aw(0, 1, channel != 0);
+            if (last_aw_ordering_req) $fatal(1, "same destination unexpectedly reordered");
+            fork
+                begin
+                    send_aw(0, 2, channel == 0);
+                    if (last_aw_ordering_req) $fatal(1, "drained ID did not bypass");
+                end
+                begin
+                    wait (s_aw_valid_i);
+                    repeat (3) begin
+                        @(negedge clk_i);
+                        if (s_aw_ready_o || m_aw_valid_o) $fatal(1, "channel switch passed pending writes");
+                    end
+                    send_b(0, 0, 0, 0);
+                    repeat (3) begin
+                        @(negedge clk_i);
+                        if (s_aw_ready_o || m_aw_valid_o) $fatal(1, "channel switched after only one B");
+                    end
+                    m_b_ready_i = 0;
+                    fork
+                        send_b(0, 0, 0, 0);
+                        begin
+                            repeat (4) begin
+                                @(negedge clk_i);
+                                if (s_aw_ready_o || m_aw_valid_o) $fatal(1, "channel switched before final B handshake");
+                            end
+                            m_b_ready_i = 1;
+                        end
+                    join
+                end
+            join
+            send_b(0, 0, 0, 0);
+        end
 
         // A two-beat tagged R burst fills behind a bypassed head, then retires
         // one beat per cycle using a separate retirement offset.
