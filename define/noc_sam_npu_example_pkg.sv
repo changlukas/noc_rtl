@@ -20,8 +20,8 @@ package noc_sam_npu_example_pkg;
     localparam int SAM_NUM_RULES = 3;
     //                       START (included)                   END (excluded)                     X  Y  PORT DOMAIN   MC
     localparam sam_rule_t [SAM_NUM_RULES-1:0] SAM = '{
-        sam_rule(64'h0000_0000_0000, 64'h0000_0000_2000, 0, 0, 0, DATA,   1'b0), // ITCM, 8 KiB
-        sam_rule(64'h0000_0001_0000, 64'h0000_0001_8000, 0, 0, 0, DATA,   1'b0), // DTCM, 32 KiB
-        sam_rule(64'h0000_0003_0000, 64'h0000_0003_1000, 0, 0, 0, NARROW, 1'b0)  // CSR, 4 KiB aperture
+        sam_rule(48'h0000_0000_0000, 48'h0000_0000_2000, 0, 0, 0, DATA,   1'b0), // ITCM, 8 KiB
+        sam_rule(48'h0000_0001_0000, 48'h0000_0001_8000, 0, 0, 0, DATA,   1'b0), // DTCM, 32 KiB
+        sam_rule(48'h0000_0003_0000, 48'h0000_0003_1000, 0, 0, 0, NARROW, 1'b0)  // CSR, 4 KiB aperture
     };
 endpackage
