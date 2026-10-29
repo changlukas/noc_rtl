@@ -16,7 +16,7 @@ package noc_sam_pkg;
     localparam bit NARROW = 1'b0;
     localparam bit DATA = 1'b1;
 
-    // Node base = 0x1000_0000 + (4*Y + X)*2 MiB.
+    // Node base = (4*Y + X)*2 MiB, beginning at address zero.
     // Multicast address-mask selectors: X=[22:21], Y=[24:23].
     localparam sam_addr_t TILE_ADDR_STRIDE = sam_addr_t'(48'h0000_0020_0000);
     localparam int X_ADDR_OFFSET = $clog2(TILE_ADDR_STRIDE);
@@ -75,77 +75,78 @@ package noc_sam_pkg;
     //                       START (included)         END (excluded)           X  Y  PORT  DOMAIN
     localparam sam_table_t SAM = '{
         // Node 0: (0,0).
-        sam_rule(48'h0000_1000_0000, 48'h0000_1010_0000, 0, 0, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1010_0000, 48'h0000_1010_1000, 0, 0, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1010_1000, 48'h0000_1010_2000, 0, 0, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0000_0000, 48'h0000_0010_0000, 0, 0, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0010_0000, 48'h0000_0010_1000, 0, 0, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0010_1000, 48'h0000_0010_2000, 0, 0, 0, NARROW), // DMA control, 4 KiB
         // Node 1: (1,0).
-        sam_rule(48'h0000_1020_0000, 48'h0000_1030_0000, 1, 0, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1030_0000, 48'h0000_1030_1000, 1, 0, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1030_1000, 48'h0000_1030_2000, 1, 0, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0020_0000, 48'h0000_0030_0000, 1, 0, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0030_0000, 48'h0000_0030_1000, 1, 0, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0030_1000, 48'h0000_0030_2000, 1, 0, 0, NARROW), // DMA control, 4 KiB
         // Node 2: (2,0).
-        sam_rule(48'h0000_1040_0000, 48'h0000_1050_0000, 2, 0, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1050_0000, 48'h0000_1050_1000, 2, 0, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1050_1000, 48'h0000_1050_2000, 2, 0, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0040_0000, 48'h0000_0050_0000, 2, 0, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0050_0000, 48'h0000_0050_1000, 2, 0, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0050_1000, 48'h0000_0050_2000, 2, 0, 0, NARROW), // DMA control, 4 KiB
         // Node 3: (3,0).
-        sam_rule(48'h0000_1060_0000, 48'h0000_1070_0000, 3, 0, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1070_0000, 48'h0000_1070_1000, 3, 0, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1070_1000, 48'h0000_1070_2000, 3, 0, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0060_0000, 48'h0000_0070_0000, 3, 0, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0070_0000, 48'h0000_0070_1000, 3, 0, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0070_1000, 48'h0000_0070_2000, 3, 0, 0, NARROW), // DMA control, 4 KiB
         // Node 4: (0,1).
-        sam_rule(48'h0000_1080_0000, 48'h0000_1090_0000, 0, 1, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1090_0000, 48'h0000_1090_1000, 0, 1, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1090_1000, 48'h0000_1090_2000, 0, 1, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0080_0000, 48'h0000_0090_0000, 0, 1, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0090_0000, 48'h0000_0090_1000, 0, 1, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0090_1000, 48'h0000_0090_2000, 0, 1, 0, NARROW), // DMA control, 4 KiB
         // Node 5: (1,1).
-        sam_rule(48'h0000_10A0_0000, 48'h0000_10B0_0000, 1, 1, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_10B0_0000, 48'h0000_10B0_1000, 1, 1, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_10B0_1000, 48'h0000_10B0_2000, 1, 1, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_00A0_0000, 48'h0000_00B0_0000, 1, 1, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_00B0_0000, 48'h0000_00B0_1000, 1, 1, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_00B0_1000, 48'h0000_00B0_2000, 1, 1, 0, NARROW), // DMA control, 4 KiB
         // Node 6: (2,1).
-        sam_rule(48'h0000_10C0_0000, 48'h0000_10D0_0000, 2, 1, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_10D0_0000, 48'h0000_10D0_1000, 2, 1, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_10D0_1000, 48'h0000_10D0_2000, 2, 1, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_00C0_0000, 48'h0000_00D0_0000, 2, 1, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_00D0_0000, 48'h0000_00D0_1000, 2, 1, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_00D0_1000, 48'h0000_00D0_2000, 2, 1, 0, NARROW), // DMA control, 4 KiB
         // Node 7: (3,1).
-        sam_rule(48'h0000_10E0_0000, 48'h0000_10F0_0000, 3, 1, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_10F0_0000, 48'h0000_10F0_1000, 3, 1, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_10F0_1000, 48'h0000_10F0_2000, 3, 1, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_00E0_0000, 48'h0000_00F0_0000, 3, 1, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_00F0_0000, 48'h0000_00F0_1000, 3, 1, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_00F0_1000, 48'h0000_00F0_2000, 3, 1, 0, NARROW), // DMA control, 4 KiB
         // Node 8: (0,2).
-        sam_rule(48'h0000_1100_0000, 48'h0000_1110_0000, 0, 2, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1110_0000, 48'h0000_1110_1000, 0, 2, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1110_1000, 48'h0000_1110_2000, 0, 2, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0100_0000, 48'h0000_0110_0000, 0, 2, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0110_0000, 48'h0000_0110_1000, 0, 2, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0110_1000, 48'h0000_0110_2000, 0, 2, 0, NARROW), // DMA control, 4 KiB
         // Node 9: (1,2).
-        sam_rule(48'h0000_1120_0000, 48'h0000_1130_0000, 1, 2, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1130_0000, 48'h0000_1130_1000, 1, 2, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1130_1000, 48'h0000_1130_2000, 1, 2, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0120_0000, 48'h0000_0130_0000, 1, 2, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0130_0000, 48'h0000_0130_1000, 1, 2, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0130_1000, 48'h0000_0130_2000, 1, 2, 0, NARROW), // DMA control, 4 KiB
         // Node 10: (2,2).
-        sam_rule(48'h0000_1140_0000, 48'h0000_1150_0000, 2, 2, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1150_0000, 48'h0000_1150_1000, 2, 2, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1150_1000, 48'h0000_1150_2000, 2, 2, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0140_0000, 48'h0000_0150_0000, 2, 2, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0150_0000, 48'h0000_0150_1000, 2, 2, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0150_1000, 48'h0000_0150_2000, 2, 2, 0, NARROW), // DMA control, 4 KiB
         // Node 11: (3,2).
-        sam_rule(48'h0000_1160_0000, 48'h0000_1170_0000, 3, 2, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1170_0000, 48'h0000_1170_1000, 3, 2, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1170_1000, 48'h0000_1170_2000, 3, 2, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0160_0000, 48'h0000_0170_0000, 3, 2, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0170_0000, 48'h0000_0170_1000, 3, 2, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0170_1000, 48'h0000_0170_2000, 3, 2, 0, NARROW), // DMA control, 4 KiB
         // Node 12: (0,3).
-        sam_rule(48'h0000_1180_0000, 48'h0000_1190_0000, 0, 3, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_1190_0000, 48'h0000_1190_1000, 0, 3, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_1190_1000, 48'h0000_1190_2000, 0, 3, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_0180_0000, 48'h0000_0190_0000, 0, 3, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_0190_0000, 48'h0000_0190_1000, 0, 3, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_0190_1000, 48'h0000_0190_2000, 0, 3, 0, NARROW), // DMA control, 4 KiB
         // Node 13: (1,3).
-        sam_rule(48'h0000_11A0_0000, 48'h0000_11B0_0000, 1, 3, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_11B0_0000, 48'h0000_11B0_1000, 1, 3, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_11B0_1000, 48'h0000_11B0_2000, 1, 3, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_01A0_0000, 48'h0000_01B0_0000, 1, 3, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_01B0_0000, 48'h0000_01B0_1000, 1, 3, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_01B0_1000, 48'h0000_01B0_2000, 1, 3, 0, NARROW), // DMA control, 4 KiB
         // Node 14: (2,3).
-        sam_rule(48'h0000_11C0_0000, 48'h0000_11D0_0000, 2, 3, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_11D0_0000, 48'h0000_11D0_1000, 2, 3, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_11D0_1000, 48'h0000_11D0_2000, 2, 3, 0, NARROW), // DMA control, 4 KiB
+        sam_rule(48'h0000_01C0_0000, 48'h0000_01D0_0000, 2, 3, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_01D0_0000, 48'h0000_01D0_1000, 2, 3, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_01D0_1000, 48'h0000_01D0_2000, 2, 3, 0, NARROW), // DMA control, 4 KiB
         // Node 15: (3,3).
-        sam_rule(48'h0000_11E0_0000, 48'h0000_11F0_0000, 3, 3, 0, DATA), // Local SRAM, 1 MiB
-        sam_rule(48'h0000_11F0_0000, 48'h0000_11F0_1000, 3, 3, 0, NARROW), // NPU control, 4 KiB
-        sam_rule(48'h0000_11F0_1000, 48'h0000_11F0_2000, 3, 3, 0, NARROW), // DMA control, 4 KiB
-        // External Memory: 512 GiB total, four disjoint 128 GiB ranges.
+        sam_rule(48'h0000_01E0_0000, 48'h0000_01F0_0000, 3, 3, 0, DATA), // Local SRAM, 1 MiB
+        sam_rule(48'h0000_01F0_0000, 48'h0000_01F0_1000, 3, 3, 0, NARROW), // NPU control, 4 KiB
+        sam_rule(48'h0000_01F0_1000, 48'h0000_01F0_2000, 3, 3, 0, NARROW), // DMA control, 4 KiB
+        // External Memory starts immediately after the 16 node slots.
+        // 512 GiB total: four separate 128 GiB ranges, unicast-only.
         // External Memory 0: (X=0, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0000_8000_0000, 48'h0020_8000_0000, 0, 0, 2, DATA, 1'b0),
+        sam_rule(48'h0000_0200_0000, 48'h0020_0200_0000, 0, 0, 2, DATA, 1'b0),
         // External Memory 1: (X=1, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0020_8000_0000, 48'h0040_8000_0000, 1, 0, 2, DATA, 1'b0),
+        sam_rule(48'h0020_0200_0000, 48'h0040_0200_0000, 1, 0, 2, DATA, 1'b0),
         // External Memory 2: (X=2, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0040_8000_0000, 48'h0060_8000_0000, 2, 0, 2, DATA, 1'b0),
+        sam_rule(48'h0040_0200_0000, 48'h0060_0200_0000, 2, 0, 2, DATA, 1'b0),
         // External Memory 3: (X=3, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0060_8000_0000, 48'h0080_8000_0000, 3, 0, 2, DATA, 1'b0)
+        sam_rule(48'h0060_0200_0000, 48'h0080_0200_0000, 3, 0, 2, DATA, 1'b0)
     };
 endpackage
