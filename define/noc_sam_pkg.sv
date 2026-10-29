@@ -11,7 +11,7 @@ package noc_sam_pkg;
 
     // The first displayed rule has highest priority in the existing decoder.
     // This explicit default table is for 4x4. Update its rows when changing topology.
-    localparam int SAM_NUM_RULES = 53;
+    localparam int SAM_NUM_RULES = 52;
     localparam int SAM_MASK_SEL_WIDTH = $clog2(AXI_ADDR_WIDTH + 1);
     localparam bit NARROW = 1'b0;
     localparam bit DATA = 1'b1;
@@ -138,9 +138,6 @@ package noc_sam_pkg;
         sam_rule(48'h0000_11E0_0000, 48'h0000_11F0_0000, 3, 3, 0, DATA), // Local SRAM, 1 MiB
         sam_rule(48'h0000_11F0_0000, 48'h0000_11F0_1000, 3, 3, 0, NARROW), // NPU control, 4 KiB
         sam_rule(48'h0000_11F0_1000, 48'h0000_11F0_2000, 3, 3, 0, NARROW), // DMA control, 4 KiB
-        // I/O: four 4 KiB subwindows, decoded at the external West endpoint.
-        // UART 0x4000_0000; GPIO 0x4000_1000; Timer 0x4000_2000; System 0x4000_3000.
-        sam_rule(48'h0000_4000_0000, 48'h0000_4000_4000, 0, 0, 1, NARROW, 1'b0),
         // External Memory: 512 GiB total, four disjoint 128 GiB ranges.
         // External Memory 0: (X=0, Y=0), South endpoint, PORT=2.
         sam_rule(48'h0000_8000_0000, 48'h0020_8000_0000, 0, 0, 2, DATA, 1'b0),
