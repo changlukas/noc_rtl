@@ -10,7 +10,6 @@ module tb_ni_sam;
         dst_id: ni_flit_pkg::DST_ID_WIDTH'(1),
         dst_port_id: ni_flit_pkg::DST_PORT_ID_WIDTH'(0),
         is_data: 1'b1,
-        collective_en: 1'b0,
         mask_x: '0,
         mask_y: '0
     };
@@ -18,7 +17,6 @@ module tb_ni_sam;
         dst_id: ni_flit_pkg::DST_ID_WIDTH'(2),
         dst_port_id: ni_flit_pkg::DST_PORT_ID_WIDTH'(0),
         is_data: 1'b0,
-        collective_en: 1'b0,
         mask_x: '0,
         mask_y: '0
     };

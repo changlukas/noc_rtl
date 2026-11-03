@@ -199,7 +199,7 @@ module nsu_request_depacketize #(
     // synthesis translate_off
     always @(posedge clk_i) begin
         if (rst_n_i && s_aw_valid_i && collective_op != '0 &&
-                (!aw_lookup_valid || aw_lookup_error || !aw_sam.collective_en))
+                (!aw_lookup_valid || aw_lookup_error))
             $fatal(1, "Invalid collective address mapping (instance %m)");
     end
     // synthesis translate_on

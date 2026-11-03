@@ -319,7 +319,6 @@ def _sam_rules(topo: dict):
             mask_y = (0, 0)
         rules.append({
             **entry,
-            "collective_en": collective_enabled,
             "mask_x": mask_x,
             "mask_y": mask_y,
         })
@@ -341,7 +340,6 @@ def _emit_sam_declarations(sam_rules):
     w("        logic [ni_flit_pkg::DST_ID_WIDTH-1:0] dst_id;")
     w("        logic [ni_flit_pkg::DST_PORT_ID_WIDTH-1:0] dst_port_id;")
     w("        logic is_data;")
-    w("        logic collective_en;")
     w("        sam_mask_sel_t mask_x;")
     w("        sam_mask_sel_t mask_y;")
     w("    } sam_result_t;")
@@ -360,7 +358,6 @@ def _emit_sam_declarations(sam_rules):
           f"ni_flit_pkg::DST_ID_WIDTH'({rule['dst_id']}), "
           f"dst_port_id: ni_flit_pkg::DST_PORT_ID_WIDTH'({rule['port']}), "
           f"is_data: 1'b{int(rule['space'] != 'config')}, "
-          f"collective_en: 1'b{int(rule['collective_en'])}, "
           f"mask_x: '{{offset: SAM_MASK_SEL_FIELD_W'({rule['mask_x'][0]}), "
           f"len: SAM_MASK_SEL_FIELD_W'({rule['mask_x'][1]})}}, "
           f"mask_y: '{{offset: SAM_MASK_SEL_FIELD_W'({rule['mask_y'][0]}), "

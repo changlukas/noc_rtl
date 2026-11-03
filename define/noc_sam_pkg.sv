@@ -32,7 +32,6 @@ package noc_sam_pkg;
     typedef struct packed {
         endpoint_id_t dst_id; // Combined {PORT_ID, Y, X}, as in the new header.
         logic is_data;
-        logic collective_en;
         sam_mask_sel_t mask_x;
         sam_mask_sel_t mask_y;
     } sam_result_t;
@@ -45,23 +44,21 @@ package noc_sam_pkg;
     typedef sam_rule_t [SAM_NUM_RULES-1:0] sam_table_t;
 
     // Constant record constructor only: no address expansion or runtime hardware.
-    // MC-enabled rows use this default map's X/Y selectors. Other examples disable MC.
+    // Mask selectors describe address-mask encoding; no per-region enable flag.
     function automatic sam_rule_t sam_rule(
         input sam_addr_t start_addr,
         input sam_addr_t end_addr,
         input int x, y, port_id,
         input bit is_data,
-        input bit collective_en = 1'b1
+        input sam_mask_sel_t mask_x = '{offset: SAM_MASK_SEL_WIDTH'(X_ADDR_OFFSET), len: SAM_MASK_SEL_WIDTH'(X_ADDR_BITS)},
+        input sam_mask_sel_t mask_y = '{offset: SAM_MASK_SEL_WIDTH'(Y_ADDR_OFFSET), len: SAM_MASK_SEL_WIDTH'(Y_ADDR_BITS)}
     );
         sam_result_t result;
         result = '0;
         result.dst_id = '{port_id: PORT_ID_WIDTH'(port_id), y: Y_WIDTH'(y), x: X_WIDTH'(x)};
         result.is_data = is_data;
-        result.collective_en = collective_en;
-        if (collective_en) begin
-            result.mask_x = '{offset: SAM_MASK_SEL_WIDTH'(X_ADDR_OFFSET), len: SAM_MASK_SEL_WIDTH'(X_ADDR_BITS)};
-            result.mask_y = '{offset: SAM_MASK_SEL_WIDTH'(Y_ADDR_OFFSET), len: SAM_MASK_SEL_WIDTH'(Y_ADDR_BITS)};
-        end
+        result.mask_x = mask_x;
+        result.mask_y = mask_y;
         return '{idx: result, start_addr: sam_addr_t'(start_addr), end_addr: sam_addr_t'(end_addr)};
     endfunction
 
@@ -71,7 +68,7 @@ package noc_sam_pkg;
     // The remaining 1016 KiB of each 2 MiB slot is unmapped.
     // PORT=0: Local. PORT=1: X-boundary (West at X=0, East at X=3).
     // PORT=2: Y-boundary (South at Y=0, North at Y=3).
-    // Node rows preserve multicast; external rows are unicast-only.
+    // Node rows use X/Y selectors. External address-mask selectors are unspecified (zero).
     //                       START (included)         END (excluded)           X  Y  PORT  DOMAIN
     localparam sam_table_t SAM = '{
         // Node 0: (0,0).
@@ -139,14 +136,14 @@ package noc_sam_pkg;
         sam_rule(48'h0000_01F0_0000, 48'h0000_01F0_1000, 3, 3, 0, NARROW), // NPU control, 4 KiB
         sam_rule(48'h0000_01F0_1000, 48'h0000_01F0_2000, 3, 3, 0, NARROW), // DMA control, 4 KiB
         // External Memory starts immediately after the 16 node slots.
-        // 512 GiB total: four separate 128 GiB ranges, unicast-only.
+        // 512 GiB total: four separate 128 GiB ranges.
         // External Memory 0: (X=0, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0000_0200_0000, 48'h0020_0200_0000, 0, 0, 2, DATA, 1'b0),
+        sam_rule(48'h0000_0200_0000, 48'h0020_0200_0000, 0, 0, 2, DATA, '0, '0),
         // External Memory 1: (X=1, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0020_0200_0000, 48'h0040_0200_0000, 1, 0, 2, DATA, 1'b0),
+        sam_rule(48'h0020_0200_0000, 48'h0040_0200_0000, 1, 0, 2, DATA, '0, '0),
         // External Memory 2: (X=2, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0040_0200_0000, 48'h0060_0200_0000, 2, 0, 2, DATA, 1'b0),
+        sam_rule(48'h0040_0200_0000, 48'h0060_0200_0000, 2, 0, 2, DATA, '0, '0),
         // External Memory 3: (X=3, Y=0), South endpoint, PORT=2.
-        sam_rule(48'h0060_0200_0000, 48'h0080_0200_0000, 3, 0, 2, DATA, 1'b0)
+        sam_rule(48'h0060_0200_0000, 48'h0080_0200_0000, 3, 0, 2, DATA, '0, '0)
     };
 endpackage

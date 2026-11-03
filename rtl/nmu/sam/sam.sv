@@ -97,7 +97,6 @@ module nmu_sam #(
         case (awuser[9:8])
             2'd0: collective_error = address_mask != '0;
             2'd1: collective_error = address_mask == '0 || awlock ||
-                !sam_idx.collective_en ||
                 (address_mask & ~allowed_address_mask) != '0;
             default: collective_error = 1'b1;
         endcase

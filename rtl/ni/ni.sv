@@ -68,26 +68,26 @@ module ni #(
     axi_if.rd_slv axi_rd_i,
     axi_if.wr_mst axi_wr_o,
     axi_if.rd_mst axi_rd_o,
-    output wire logic                                         tx_req_valid_o,
-    output wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] tx_req_flit_o,
-    input  wire logic                                         tx_req_ready_i,
-    input  wire logic                                         rx_rsp_valid_i,
-    input  wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] rx_rsp_flit_i,
-    output wire logic                                         rx_rsp_ready_o,
-    output wire logic                        [NUM_DAT_VC-1:0] tx_dat_valid_o,
-    input  wire logic                        [NUM_DAT_VC-1:0] tx_dat_ready_i,
-    output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o,
+    output wire logic                                         TXREQFLITV,
+    output wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] TXREQFLIT,
+    input  wire logic                                         TXREQREADY,
+    input  wire logic                                         RXRSPFLITV,
+    input  wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] RXRSPFLIT,
+    output wire logic                                         RXRSPREADY,
+    output wire logic                        [NUM_DAT_VC-1:0] TXDATFLITV,
+    input  wire logic                        [NUM_DAT_VC-1:0] TXDATREADY,
+    output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] TXDATFLIT,
     input  wire logic                        [NUM_DAT_VC-1:0] credit_i,
-    input  wire logic                        [NUM_DAT_VC-1:0] rx_dat_valid_i,
-    output wire logic                        [NUM_DAT_VC-1:0] rx_dat_ready_o,
-    input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i,
+    input  wire logic                        [NUM_DAT_VC-1:0] RXDATFLITV,
+    output wire logic                        [NUM_DAT_VC-1:0] RXDATREADY,
+    input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] RXDATFLIT,
     output wire logic                        [NUM_DAT_VC-1:0] credit_o,
-    input  wire logic                                         rx_req_valid_i,
-    input  wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] rx_req_flit_i,
-    output wire logic                                         rx_req_ready_o,
-    output wire logic                                         tx_rsp_valid_o,
-    output wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] tx_rsp_flit_o,
-    input  wire logic                                         tx_rsp_ready_i
+    input  wire logic                                         RXREQFLITV,
+    input  wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] RXREQFLIT,
+    output wire logic                                         RXREQREADY,
+    output wire logic                                         TXRSPFLITV,
+    output wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] TXRSPFLIT,
+    input  wire logic                                         TXRSPREADY
 );
     import ni_flit_pkg::*;
     wire dat_flit_t [1:0][NUM_DAT_VC-1:0] tx_dat;
@@ -153,19 +153,19 @@ module ni #(
         .noc_rst_n         (noc_rst_n       ),
         .axi_wr_i          (axi_wr_i        ),
         .axi_rd_i          (axi_rd_i        ),
-        .tx_req_valid_o    (tx_req_valid_o  ),
-        .tx_req_flit_o     (tx_req_flit_o   ),
-        .tx_req_ready_i    (tx_req_ready_i  ),
-        .rx_rsp_valid_i    (rx_rsp_valid_i  ),
-        .rx_rsp_flit_i     (rx_rsp_flit_i   ),
-        .rx_rsp_ready_o    (rx_rsp_ready_o  ),
-        .tx_dat_valid_o    (                ),
-        .tx_dat_ready_i    ('0              ),
-        .tx_dat_flit_o     (                ),
+        .TXREQFLITV    (TXREQFLITV  ),
+        .TXREQFLIT     (TXREQFLIT   ),
+        .TXREQREADY    (TXREQREADY  ),
+        .RXRSPFLITV    (RXRSPFLITV  ),
+        .RXRSPFLIT     (RXRSPFLIT   ),
+        .RXRSPREADY    (RXRSPREADY  ),
+        .TXDATFLITV    (                ),
+        .TXDATREADY    ('0              ),
+        .TXDATFLIT     (                ),
         .credit_i          ('0              ),
-        .rx_dat_valid_i    ('0              ),
-        .rx_dat_ready_o    (                ),
-        .rx_dat_flit_i     ('0              ),
+        .RXDATFLITV    ('0              ),
+        .RXDATREADY    (                ),
+        .RXDATFLIT     ('0              ),
         .credit_o          (                )
     );
 
@@ -210,19 +210,19 @@ module ni #(
         .ARESETn           (ARESETn         ),
         .noc_clk           (noc_clk         ),
         .noc_rst_n         (noc_rst_n       ),
-        .rx_req_valid_i    (rx_req_valid_i  ),
-        .rx_req_flit_i     (rx_req_flit_i   ),
-        .rx_req_ready_o    (rx_req_ready_o  ),
-        .rx_dat_valid_i    ('0              ),
-        .rx_dat_ready_o    (                ),
-        .rx_dat_flit_i     ('0              ),
+        .RXREQFLITV    (RXREQFLITV  ),
+        .RXREQFLIT     (RXREQFLIT   ),
+        .RXREQREADY    (RXREQREADY  ),
+        .RXDATFLITV    ('0              ),
+        .RXDATREADY    (                ),
+        .RXDATFLIT     ('0              ),
         .credit_o          (                ),
-        .tx_rsp_valid_o    (tx_rsp_valid_o  ),
-        .tx_rsp_flit_o     (tx_rsp_flit_o   ),
-        .tx_rsp_ready_i    (tx_rsp_ready_i  ),
-        .tx_dat_valid_o    (                ),
-        .tx_dat_ready_i    ('0              ),
-        .tx_dat_flit_o     (                ),
+        .TXRSPFLITV    (TXRSPFLITV  ),
+        .TXRSPFLIT     (TXRSPFLIT   ),
+        .TXRSPREADY    (TXRSPREADY  ),
+        .TXDATFLITV    (                ),
+        .TXDATREADY    ('0              ),
+        .TXDATFLIT     (                ),
         .credit_i          ('0              ),
         .axi_wr_o          (axi_wr_o        ),
         .axi_rd_o          (axi_rd_o        )
@@ -237,9 +237,9 @@ module ni #(
         .s_dat_i   (tx_dat        ),
         .s_valid_i (tx_valid      ),
         .s_ready_o (tx_ready      ),
-        .m_dat_o   (tx_dat_flit_o ),
-        .m_valid_o (tx_dat_valid_o),
-        .m_ready_i (tx_dat_ready_i),
+        .m_dat_o   (TXDATFLIT ),
+        .m_valid_o (TXDATFLITV),
+        .m_ready_i (TXDATREADY),
         .credit_i  (credit_i      )
     );
     // Only the DAT bank is used here; unused control storage is eliminated.
@@ -258,9 +258,9 @@ module ni #(
         .m_ctrl_o       (                          ),
         .m_ctrl_valid_o (                          ),
         .m_ctrl_ready_i (1'b0                      ),
-        .s_dat_i        (dat_flit_t'(rx_dat_flit_i)),
-        .s_dat_valid_i  (rx_dat_valid_i            ),
-        .s_dat_ready_o  (rx_dat_ready_o            ),
+        .s_dat_i        (dat_flit_t'(RXDATFLIT)),
+        .s_dat_valid_i  (RXDATFLITV            ),
+        .s_dat_ready_o  (RXDATREADY            ),
         .credit_o       (credit_o                  ),
         .m_dat_o        (rx_dat                    ),
         .m_dat_valid_o  (rx_valid                  ),
@@ -268,14 +268,14 @@ module ni #(
     );
     // synthesis translate_off
     if (NOC_DAT_VC_MODE == 1) begin : gen_rx_vc_check
-        wire dat_flit_t rx_flit = dat_flit_t'(rx_dat_flit_i);
+        wire dat_flit_t rx_flit = dat_flit_t'(RXDATFLIT);
         wire [AXI_CH_WIDTH-1:0] channel = rx_flit.header[AXI_CH_LSB +: AXI_CH_WIDTH];
         always @(posedge noc_clk) begin
-            if (noc_rst_n && (|rx_dat_valid_i)) begin
+            if (noc_rst_n && (|RXDATFLITV)) begin
                 if (channel == AXI_CH_WIDTH'(AXI_CH_DataR)) begin
-                    assert (!(|rx_dat_valid_i[NUM_DAT_VC/2-1:0])) else $fatal(1, "Read response on write VC");
+                    assert (!(|RXDATFLITV[NUM_DAT_VC/2-1:0])) else $fatal(1, "Read response on write VC");
                 end else begin
-                    assert (!(|rx_dat_valid_i[NUM_DAT_VC-1:NUM_DAT_VC/2])) else $fatal(1, "Write request on read VC");
+                    assert (!(|RXDATFLITV[NUM_DAT_VC-1:NUM_DAT_VC/2])) else $fatal(1, "Write request on read VC");
                 end
             end
         end

@@ -15,9 +15,9 @@ package noc_sam_dla_example_pkg;
     localparam int SAM_NUM_RULES = 2;
     // The source does not define mesh coordinates. Proposed placement only:
     // DLA0 -> tile (0,0) local port 0; DLA1 -> tile (1,0) local port 0.
-    //                       START (included)                   END (excluded)                     X  Y  PORT DOMAIN   MC
+    //                       START (included)                   END (excluded)                     X  Y  PORT DOMAIN   MASK_X MASK_Y
     localparam sam_rule_t [SAM_NUM_RULES-1:0] SAM = '{
-        sam_rule(48'h0000_1588_0000, 48'h0000_158C_0000, 0, 0, 0, NARROW, 1'b0), // DLA0, 256 KiB
-        sam_rule(48'h0000_158C_0000, 48'h0000_1590_0000, 1, 0, 0, NARROW, 1'b0)  // DLA1, 256 KiB
+        sam_rule(48'h0000_1588_0000, 48'h0000_158C_0000, 0, 0, 0, NARROW, '0, '0), // DLA0, 256 KiB
+        sam_rule(48'h0000_158C_0000, 48'h0000_1590_0000, 1, 0, 0, NARROW, '0, '0)  // DLA1, 256 KiB
     };
 endpackage

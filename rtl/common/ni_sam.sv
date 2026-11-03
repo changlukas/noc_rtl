@@ -23,7 +23,7 @@ module ni_sam #(
     localparam int unsigned SAM_MASK_SEL_FIELD_W =
         $clog2(ni_params_pkg::AXI_ADDR_WIDTH + 1);
     localparam int unsigned SAM_RESULT_W =
-        ni_flit_pkg::DST_ID_WIDTH + ni_flit_pkg::DST_PORT_ID_WIDTH + 2 +
+        ni_flit_pkg::DST_ID_WIDTH + ni_flit_pkg::DST_PORT_ID_WIDTH + 1 +
         2 * $bits(sam_mask_sel_t);
 
     if (SAM_NUM_RULES == 0) begin : gen_invalid_rule_count
