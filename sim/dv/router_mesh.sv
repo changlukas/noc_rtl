@@ -8,24 +8,24 @@ module router_mesh #(
 ) (
     input wire logic clk_i,
     input wire logic rst_n_i,
-    input wire logic [NUM_ENDPOINTS-1:0] rx_req_valid_i,
-    input wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] rx_req_flit_i [NUM_ENDPOINTS],
-    output wire logic [NUM_ENDPOINTS-1:0] rx_req_ready_o,
-    output wire logic [NUM_ENDPOINTS-1:0] tx_req_valid_o,
-    output wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] tx_req_flit_o [NUM_ENDPOINTS],
-    input wire logic [NUM_ENDPOINTS-1:0] tx_req_ready_i,
-    input wire logic [NUM_ENDPOINTS-1:0] rx_rsp_valid_i,
-    input wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] rx_rsp_flit_i [NUM_ENDPOINTS],
-    output wire logic [NUM_ENDPOINTS-1:0] rx_rsp_ready_o,
-    output wire logic [NUM_ENDPOINTS-1:0] tx_rsp_valid_o,
-    output wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] tx_rsp_flit_o [NUM_ENDPOINTS],
-    input wire logic [NUM_ENDPOINTS-1:0] tx_rsp_ready_i,
-    input wire logic [NUM_VC-1:0] rx_dat_valid_i [NUM_ENDPOINTS],
-    input wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i [NUM_ENDPOINTS],
-    output wire logic [NUM_VC-1:0] rx_dat_ready_o [NUM_ENDPOINTS],
-    output wire logic [NUM_VC-1:0] tx_dat_valid_o [NUM_ENDPOINTS],
-    output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o [NUM_ENDPOINTS],
-    input wire logic [NUM_VC-1:0] tx_dat_ready_i [NUM_ENDPOINTS],
+    input wire logic [NUM_ENDPOINTS-1:0] RXREQVLD,
+    input wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] RXREQ [NUM_ENDPOINTS],
+    output wire logic [NUM_ENDPOINTS-1:0] RXREQRDY,
+    output wire logic [NUM_ENDPOINTS-1:0] TXREQVLD,
+    output wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] TXREQ [NUM_ENDPOINTS],
+    input wire logic [NUM_ENDPOINTS-1:0] TXREQRDY,
+    input wire logic [NUM_ENDPOINTS-1:0] RXRSPVLD,
+    input wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] RXRSP [NUM_ENDPOINTS],
+    output wire logic [NUM_ENDPOINTS-1:0] RXRSPRDY,
+    output wire logic [NUM_ENDPOINTS-1:0] TXRSPVLD,
+    output wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] TXRSP [NUM_ENDPOINTS],
+    input wire logic [NUM_ENDPOINTS-1:0] TXRSPRDY,
+    input wire logic [NUM_VC-1:0] RXDATVLD [NUM_ENDPOINTS],
+    input wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] RXDAT [NUM_ENDPOINTS],
+    output wire logic [NUM_VC-1:0] RXDATRDY [NUM_ENDPOINTS],
+    output wire logic [NUM_VC-1:0] TXDATVLD [NUM_ENDPOINTS],
+    output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] TXDAT [NUM_ENDPOINTS],
+    input wire logic [NUM_VC-1:0] TXDATRDY [NUM_ENDPOINTS],
     input wire logic [NUM_VC-1:0] credit_i [NUM_ENDPOINTS],
     output wire logic [NUM_VC-1:0] credit_o [NUM_ENDPOINTS]
 );
@@ -90,24 +90,24 @@ module router_mesh #(
                 (port == 2 && X < MESH_X-1) || (port == 3 && Y > 0) || (port == 4 && X > 0);
             if (port == 0) begin : gen_endpoint
                 localparam int E = n;
-                assign rx_req_valid[n][port] = rx_req_valid_i[E];
-                assign tx_req_valid_o[E] = tx_req_valid[n][port];
-                assign rx_req_flit[n][port] = rx_req_flit_i[E];
-                assign tx_req_flit_o[E] = tx_req_flit[n][port];
-                assign rx_req_ready_o[E] = rx_req_ready[n][port];
-                assign tx_req_ready[n][port] = tx_req_ready_i[E];
-                assign rx_rsp_valid[n][port] = rx_rsp_valid_i[E];
-                assign tx_rsp_valid_o[E] = tx_rsp_valid[n][port];
-                assign rx_rsp_flit[n][port] = rx_rsp_flit_i[E];
-                assign tx_rsp_flit_o[E] = tx_rsp_flit[n][port];
-                assign rx_rsp_ready_o[E] = rx_rsp_ready[n][port];
-                assign tx_rsp_ready[n][port] = tx_rsp_ready_i[E];
-                assign rx_dat_valid[n][port] = rx_dat_valid_i[E];
-                assign tx_dat_valid_o[E] = tx_dat_valid[n][port];
-                assign rx_dat_flit[n][port] = rx_dat_flit_i[E];
-                assign tx_dat_flit_o[E] = tx_dat_flit[n][port];
-                assign rx_dat_ready_o[E] = rx_dat_ready[n][port];
-                assign tx_dat_ready[n][port] = tx_dat_ready_i[E];
+                assign rx_req_valid[n][port] = RXREQVLD[E];
+                assign TXREQVLD[E] = tx_req_valid[n][port];
+                assign rx_req_flit[n][port] = RXREQ[E];
+                assign TXREQ[E] = tx_req_flit[n][port];
+                assign RXREQRDY[E] = rx_req_ready[n][port];
+                assign tx_req_ready[n][port] = TXREQRDY[E];
+                assign rx_rsp_valid[n][port] = RXRSPVLD[E];
+                assign TXRSPVLD[E] = tx_rsp_valid[n][port];
+                assign rx_rsp_flit[n][port] = RXRSP[E];
+                assign TXRSP[E] = tx_rsp_flit[n][port];
+                assign RXRSPRDY[E] = rx_rsp_ready[n][port];
+                assign tx_rsp_ready[n][port] = TXRSPRDY[E];
+                assign rx_dat_valid[n][port] = RXDATVLD[E];
+                assign TXDATVLD[E] = tx_dat_valid[n][port];
+                assign rx_dat_flit[n][port] = RXDAT[E];
+                assign TXDAT[E] = tx_dat_flit[n][port];
+                assign RXDATRDY[E] = rx_dat_ready[n][port];
+                assign tx_dat_ready[n][port] = TXDATRDY[E];
                 assign credit_o[E] = rx_credit[n][port];
                 assign tx_credit[n][port] = credit_i[E];
             end else if (CONNECTED) begin : gen_link

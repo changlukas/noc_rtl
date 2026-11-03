@@ -13,12 +13,12 @@ module rsp_router #(
 ) (
     input  wire logic                         clk_i,
     input  wire logic                         rst_n_i,
-    input  wire ni_flit_pkg::rsp_flit_t [4:0] s_flit_i,
-    input  wire logic                   [4:0] s_valid_i,
-    output wire logic                   [4:0] s_ready_o,
-    output wire ni_flit_pkg::rsp_flit_t [4:0] m_flit_o,
-    output wire logic                   [4:0] m_valid_o,
-    input  wire logic                   [4:0] m_ready_i
+    input  wire ni_flit_pkg::rsp_flit_t [4:0] RXRSP,
+    input  wire logic                   [4:0] RXRSPVLD,
+    output wire logic                   [4:0] RXRSPRDY,
+    output wire ni_flit_pkg::rsp_flit_t [4:0] TXRSP,
+    output wire logic                   [4:0] TXRSPVLD,
+    input  wire logic                   [4:0] TXRSPRDY
 );
     import ni_flit_pkg::*;
     wire rsp_flit_t [4:0] head;
@@ -29,7 +29,7 @@ module rsp_router #(
     wire [4:0][4:0] route_mask, merge_mask, branch_valid, branch_ready;
     logic [4:0][4:0] route_reg = '0, route_next;
     logic [4:0] active_reg = '0, active_next;
-    assign s_ready_o = ~full;
+    assign RXRSPRDY = ~full;
     for (genvar i = 0; i < 5; i++) begin : gen_input
         wire [4:0] computed_route;
         assign header[i] = head[i].header;
@@ -50,8 +50,8 @@ module rsp_router #(
             .full_o         (full[i]),
             .empty_o        (empty[i]),
             .usage_o        (),
-            .data_i         (s_flit_i[i]),
-            .push_i         (s_valid_i[i] && s_ready_o[i]),
+            .data_i         (RXRSP[i]),
+            .push_i         (RXRSPVLD[i] && RXRSPRDY[i]),
             .data_o         (head[i]),
             .pop_i          (pop[i])
         );
@@ -154,9 +154,9 @@ module rsp_router #(
             .s_valid_i      (selected_valid),
             .s_ready_o      (selected_ready),
             .s_data_i       (selected_data),
-            .m_valid_o      (m_valid_o[o]),
-            .m_ready_i      (m_ready_i[o]),
-            .m_data_o       (m_flit_o[o])
+            .m_valid_o      (TXRSPVLD[o]),
+            .m_ready_i      (TXRSPRDY[o]),
+            .m_data_o       (TXRSP[o])
         );
     end
     initial begin

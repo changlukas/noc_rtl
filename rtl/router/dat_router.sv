@@ -15,13 +15,13 @@ module dat_router #(
 ) (
     input  wire logic                                     clk_i,
     input  wire logic                                     rst_n_i,
-    input  wire ni_flit_pkg::dat_flit_t             [4:0] s_flit_i,
-    input  wire logic                   [4:0][NUM_VC-1:0] s_valid_i,
-    output wire logic                   [4:0][NUM_VC-1:0] s_ready_o,
+    input  wire ni_flit_pkg::dat_flit_t             [4:0] RXDAT,
+    input  wire logic                   [4:0][NUM_VC-1:0] RXDATVLD,
+    output wire logic                   [4:0][NUM_VC-1:0] RXDATRDY,
     output wire logic                   [4:0][NUM_VC-1:0] credit_o,
-    output wire ni_flit_pkg::dat_flit_t             [4:0] m_flit_o,
-    output wire logic                   [4:0][NUM_VC-1:0] m_valid_o,
-    input  wire logic                   [4:0][NUM_VC-1:0] m_ready_i,
+    output wire ni_flit_pkg::dat_flit_t             [4:0] TXDAT,
+    output wire logic                   [4:0][NUM_VC-1:0] TXDATVLD,
+    input  wire logic                   [4:0][NUM_VC-1:0] TXDATRDY,
     input  wire logic                   [4:0][NUM_VC-1:0] credit_i
 );
     import ni_flit_pkg::*;
@@ -43,7 +43,7 @@ module dat_router #(
         localparam int VC = i%NUM_VC;
         wire [4:0] computed_route;
         wire multicast = fifo_head[i].header[COLLECTIVE_OP_LSB +: COLLECTIVE_OP_WIDTH] == COLLECTIVE_OP_WIDTH'(COLLECTIVE_OP_MULTICAST);
-        assign s_ready_o[PORT][VC] = !full[i];
+        assign RXDATRDY[PORT][VC] = !full[i];
         assign last[i] = fifo_head[i].header[FLIT_TAIL_LSB];
         assign output_last[i] = head[i].header[FLIT_TAIL_LSB];
         assign input_route[i] = active_reg[i] ? route_reg[i] : computed_route;
@@ -77,8 +77,8 @@ module dat_router #(
             .full_o         (full[i]),
             .empty_o        (empty[i]),
             .usage_o        (),
-            .data_i         (s_flit_i[PORT]),
-            .push_i         (s_valid_i[PORT][VC] && s_ready_o[PORT][VC]),
+            .data_i         (RXDAT[PORT]),
+            .push_i         (RXDATVLD[PORT][VC] && RXDATRDY[PORT][VC]),
             .data_o         (fifo_head[i]),
             .pop_i          (fifo_pop[i])
         );
@@ -219,9 +219,9 @@ module dat_router #(
             .s_data_i       (output_head),
             .s_valid_i      (~out_empty),
             .s_ready_o      (out_pop),
-            .m_data_o       (m_flit_o[o]),
-            .m_valid_o      (m_valid_o[o]),
-            .m_ready_i      (m_ready_i[o]),
+            .m_data_o       (TXDAT[o]),
+            .m_valid_o      (TXDATVLD[o]),
+            .m_ready_i      (TXDATRDY[o]),
             .credit_i       (credit_i[o]),
             .credit_available_o (credit_available)
         );

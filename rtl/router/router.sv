@@ -85,12 +85,12 @@ module router #(
     ) i_req_router (
         .clk_i     (clk_i),
         .rst_n_i   (rst_n_i),
-        .s_flit_i  (req_in),
-        .s_valid_i (RXREQVLD),
-        .s_ready_o (RXREQRDY),
-        .m_flit_o  (req_out),
-        .m_valid_o (TXREQVLD),
-        .m_ready_i (TXREQRDY)
+        .RXREQ  (req_in),
+        .RXREQVLD (RXREQVLD),
+        .RXREQRDY (RXREQRDY),
+        .TXREQ  (req_out),
+        .TXREQVLD (TXREQVLD),
+        .TXREQRDY (TXREQRDY)
     );
     rsp_router #(
         .ROUTER_X     (ROUTER_X),
@@ -102,12 +102,12 @@ module router #(
     ) i_rsp_router (
         .clk_i     (clk_i),
         .rst_n_i   (rst_n_i),
-        .s_flit_i  (rsp_in),
-        .s_valid_i (RXRSPVLD),
-        .s_ready_o (RXRSPRDY),
-        .m_flit_o  (rsp_out),
-        .m_valid_o (TXRSPVLD),
-        .m_ready_i (TXRSPRDY)
+        .RXRSP  (rsp_in),
+        .RXRSPVLD (RXRSPVLD),
+        .RXRSPRDY (RXRSPRDY),
+        .TXRSP  (rsp_out),
+        .TXRSPVLD (TXRSPVLD),
+        .TXRSPRDY (TXRSPRDY)
     );
     dat_router #(
         .ROUTER_X       (ROUTER_X),
@@ -120,13 +120,13 @@ module router #(
     ) i_dat_router (
         .clk_i     (clk_i),
         .rst_n_i   (rst_n_i),
-        .s_flit_i  (dat_in),
-        .s_valid_i (dat_valid_in),
-        .s_ready_o (dat_ready_out),
+        .RXDAT  (dat_in),
+        .RXDATVLD (dat_valid_in),
+        .RXDATRDY (dat_ready_out),
         .credit_o  (credit_out),
-        .m_flit_o  (dat_out),
-        .m_valid_o (dat_valid_out),
-        .m_ready_i (dat_ready_in),
+        .TXDAT  (dat_out),
+        .TXDATVLD (dat_valid_out),
+        .TXDATRDY (dat_ready_in),
         .credit_i  (credit_in)
     );
 endmodule

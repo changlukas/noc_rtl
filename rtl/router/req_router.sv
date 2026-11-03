@@ -13,12 +13,12 @@ module req_router #(
 ) (
     input  wire logic                         clk_i,
     input  wire logic                         rst_n_i,
-    input  wire ni_flit_pkg::req_flit_t [4:0] s_flit_i,
-    input  wire logic                   [4:0] s_valid_i,
-    output wire logic                   [4:0] s_ready_o,
-    output wire ni_flit_pkg::req_flit_t [4:0] m_flit_o,
-    output wire logic                   [4:0] m_valid_o,
-    input  wire logic                   [4:0] m_ready_i
+    input  wire ni_flit_pkg::req_flit_t [4:0] RXREQ,
+    input  wire logic                   [4:0] RXREQVLD,
+    output wire logic                   [4:0] RXREQRDY,
+    output wire ni_flit_pkg::req_flit_t [4:0] TXREQ,
+    output wire logic                   [4:0] TXREQVLD,
+    input  wire logic                   [4:0] TXREQRDY
 );
     import ni_flit_pkg::*;
     wire req_flit_t [4:0] head;
@@ -26,7 +26,7 @@ module req_router #(
     wire [4:0][4:0] route_mask, merge_mask, branch_valid, branch_ready;
     logic [4:0][4:0] route_reg = '0, route_next;
     logic [4:0] active_reg = '0, active_next;
-    assign s_ready_o = ~full;
+    assign RXREQRDY = ~full;
     for (genvar i = 0; i < 5; i++) begin : gen_input
         wire [4:0] computed_route;
         assign last[i] = head[i].header[FLIT_TAIL_LSB];
@@ -44,8 +44,8 @@ module req_router #(
             .full_o         (full[i]),
             .empty_o        (empty[i]),
             .usage_o        (),
-            .data_i         (s_flit_i[i]),
-            .push_i         (s_valid_i[i] && s_ready_o[i]),
+            .data_i         (RXREQ[i]),
+            .push_i         (RXREQVLD[i] && RXREQRDY[i]),
             .data_o         (head[i]),
             .pop_i          (pop[i])
         );
@@ -138,9 +138,9 @@ module req_router #(
             .s_valid_i      (selected_valid),
             .s_ready_o      (selected_ready),
             .s_data_i       (selected_data),
-            .m_valid_o      (m_valid_o[o]),
-            .m_ready_i      (m_ready_i[o]),
-            .m_data_o       (m_flit_o[o])
+            .m_valid_o      (TXREQVLD[o]),
+            .m_ready_i      (TXREQRDY[o]),
+            .m_data_o       (TXREQ[o])
         );
     end
     initial begin
