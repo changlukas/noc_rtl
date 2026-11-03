@@ -60,21 +60,21 @@ module nmu #(
     axi_if.wr_slv                                             axi_wr_i,
     axi_if.rd_slv                                             axi_rd_i,
 
-    output wire logic                                         TXREQFLITV,
-    output wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] TXREQFLIT,
-    input  wire logic                                         TXREQREADY,
+    output wire logic                                         TXREQVLD,
+    output wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] TXREQ,
+    input  wire logic                                         TXREQRDY,
 
-    input  wire logic                                         RXRSPFLITV,
-    input  wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] RXRSPFLIT,
-    output wire logic                                         RXRSPREADY,
+    input  wire logic                                         RXRSPVLD,
+    input  wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] RXRSP,
+    output wire logic                                         RXRSPRDY,
 
-    output wire logic                        [NUM_DAT_VC-1:0] TXDATFLITV,
-    input  wire logic                        [NUM_DAT_VC-1:0] TXDATREADY,
-    output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] TXDATFLIT,
+    output wire logic                        [NUM_DAT_VC-1:0] TXDATVLD,
+    input  wire logic                        [NUM_DAT_VC-1:0] TXDATRDY,
+    output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] TXDAT,
     input  wire logic                        [NUM_DAT_VC-1:0] credit_i,
-    input  wire logic                        [NUM_DAT_VC-1:0] RXDATFLITV,
-    output wire logic                        [NUM_DAT_VC-1:0] RXDATREADY,
-    input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] RXDATFLIT,
+    input  wire logic                        [NUM_DAT_VC-1:0] RXDATVLD,
+    output wire logic                        [NUM_DAT_VC-1:0] RXDATRDY,
+    input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] RXDAT,
     output wire logic                        [NUM_DAT_VC-1:0] credit_o
 );
 
@@ -241,12 +241,12 @@ module nmu #(
         .s_r_ready_o          (axi_r_ready      ),
         .axi_wr_i             (axi_wr_i         ),
         .axi_rd_i             (axi_rd_i         ),
-        .tx_req_valid_o       (TXREQFLITV   ),
-        .tx_req_flit_o        (TXREQFLIT    ),
-        .tx_req_ready_i       (TXREQREADY   ),
-        .tx_dat_valid_o       (TXDATFLITV   ),
-        .tx_dat_ready_i       (TXDATREADY   ),
-        .tx_dat_flit_o        (TXDATFLIT    ),
+        .tx_req_valid_o       (TXREQVLD   ),
+        .tx_req_flit_o        (TXREQ    ),
+        .tx_req_ready_i       (TXREQRDY   ),
+        .tx_dat_valid_o       (TXDATVLD   ),
+        .tx_dat_ready_i       (TXDATRDY   ),
+        .tx_dat_flit_o        (TXDAT    ),
         .credit_i             (credit_i         )
     );
     nmu_response_path #(
@@ -296,12 +296,12 @@ module nmu #(
         .m_r_o                (axi_r            ),
         .m_r_valid_o          (axi_r_valid      ),
         .m_r_ready_i          (axi_r_ready      ),
-        .rx_rsp_valid_i       (RXRSPFLITV   ),
-        .rx_rsp_flit_i        (RXRSPFLIT    ),
-        .rx_rsp_ready_o       (RXRSPREADY   ),
-        .rx_dat_valid_i       (RXDATFLITV   ),
-        .rx_dat_ready_o       (RXDATREADY   ),
-        .rx_dat_flit_i        (RXDATFLIT    ),
+        .rx_rsp_valid_i       (RXRSPVLD   ),
+        .rx_rsp_flit_i        (RXRSP    ),
+        .rx_rsp_ready_o       (RXRSPRDY   ),
+        .rx_dat_valid_i       (RXDATVLD   ),
+        .rx_dat_ready_o       (RXDATRDY   ),
+        .rx_dat_flit_i        (RXDAT    ),
         .credit_o             (credit_o         )
     );
 
