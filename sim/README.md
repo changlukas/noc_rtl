@@ -17,7 +17,7 @@ dv/scripts/    Preparation, execution, synchronization and export
 dv/waves/      Grouped NI/router RC template
 sim/Makefile   Integration commands
 build/compile/recipes/      Generated portable compile recipes
-build/compile/<build_id>/  Generated SV, files.f, simv, compile.log, VDB
+build/compile/current/     Active generated SV, files.f, simv, compile.log, VDB
 build/regression/single/   Interactive inputs and case results
 build/regression/<campaign>/
   verification-runs.json   Generated execution list
@@ -73,7 +73,7 @@ existing scoreboard, ordering and completion checks to drain before PASS.
 After reviewing simple cases, run the full matrix with:
 
 ```sh
-make verification JOBS=3
+make verification JOBS=3 WAVE=0
 make report
 ```
 
@@ -125,3 +125,7 @@ The NMU supports same-ID write outstanding on one channel. Switching REQ/DAT wai
 `single_id_reorder` checks B/R response reordering. Capacity checks target per-ID outstanding limits, AW/AR context storage and B/R ROB storage. Same-ID writes may remain outstanding on one channel. Switching REQ/DAT waits for prior B retirement. DAT AW/W use fixed write VC0 at every hop; DAT R uses fixed read VC1.
 
 The standalone `ooo_*_write_same_id` cases exercise B ROB use. Cross-ID write cases require out-of-order completion.
+
+The system build always includes coverage and FSDB support. `WAVE=0` disables
+FSDB output at runtime without recompiling. `build/compile/current` selects the
+last successful compile; the underlying source fingerprint remains in metadata.

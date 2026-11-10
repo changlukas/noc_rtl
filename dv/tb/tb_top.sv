@@ -851,9 +851,10 @@ module tb_top #(
 `ifdef DUMP_WAVE
     initial begin : dump_wave
         string wave_file;
-        if (!$value$plusargs("wave_file=%s", wave_file)) wave_file = "ni.fsdb";
-        $fsdbDumpfile(wave_file);
-        $fsdbDumpvars(0, tb_top, "+all");
+        if ($value$plusargs("wave_file=%s", wave_file)) begin
+            $fsdbDumpfile(wave_file);
+            $fsdbDumpvars(0, tb_top, "+all");
+        end
     end
 `endif
     int perf_cycle = 0, perf_start = -1, perf_end = -1;

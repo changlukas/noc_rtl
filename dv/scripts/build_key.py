@@ -105,6 +105,13 @@ def finish_compile(build):
     record = dict(sha256={name:file_hash(build/name) for name in
         ('simv', 'config.json', 'SHA256SUMS', 'compile-command.txt')})
     write(build/'compile-success.json', (json.dumps(record,indent=2)+'\n').encode())
+    if build.parent.name == 'compile' and build.parent.parent.name == 'build':
+        current = build.parent/'current'
+        if current.exists() and not current.is_symlink():
+            raise ValueError('Refusing to replace non-symlink current build')
+        if current.is_symlink():
+            current.unlink()
+        current.symlink_to(build.name, target_is_directory=True)
 
 
 def valid_compile(build):
