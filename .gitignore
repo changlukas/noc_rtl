@@ -9,3 +9,6 @@
 *.log
 
 /docker/noc-dev/
+
+# Permanent measurement artifacts are retained on disk, not source-synced.
+/performance/*/results/

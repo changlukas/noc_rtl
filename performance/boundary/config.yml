@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "config_status": "specification_only",
+  "execution_enabled": false,
+  "paths_relative_to": "repository_root",
+  "hardware": {
+    "profile": "dv/config/profile.yml",
+    "topology": "dv/config/topology/mesh_4x4.yml",
+    "mesh": [
+      4,
+      4
+    ],
+    "source_axi_ports_per_ni": 1,
+    "axi_data_bits": 512,
+    "narrow_transfer_bits": 64
+  },
+  "execution": {
+    "simulator": "VCS",
+    "host": "workstation",
+    "entrypoint": "sim/Makefile",
+    "make_perf_implemented": false,
+    "seed": 1
+  },
+  "comparison": {
+    "kind": "paper_reference_with_system_differences",
+    "differences": [
+      "4x4 mesh versus 2025 paper 8x4 mesh",
+      "Single AXI interface; narrow and wide selected by SAM",
+      "Ordering/RoB and pipeline are native DUT settings",
+      "VIP target service differs from the cluster/SPM/DRAMSys system"
+    ],
+    "paper_benchmark_commit": null,
+    "byte_unit_verified": false
+  },
+  "retention": {
+    "campaign_path": "performance/{scenario}/results/{campaign}",
+    "validation_file": "validation.json",
+    "overwrite_existing_results": false,
+    "store_binary": false
+  },
+  "measurement": {
+    "read_latency": "source AR handshake to matching RLAST handshake",
+    "write_completion": "source AW handshake to matching B handshake",
+    "write_bytes": "sum accepted WSTRB popcount",
+    "read_bytes": "accepted R beats with original ARSIZE and address",
+    "runtime": null,
+    "exclude": [
+      "reset",
+      "preload",
+      "verification_readback",
+      "drain"
+    ],
+    "device_peak": null
+  },
+  "scenario": "boundary",
+  "issues": [
+    27,
+    29,
+    31,
+    32
+  ],
+  "paper_references": [
+    {
+      "url": "https://arxiv.org/abs/2409.17606v2",
+      "version": "2025 TVLSI / arXiv v2",
+      "pdf_pages": [
+        12
+      ],
+      "figures": [
+        "11a",
+        "11c"
+      ]
+    }
+  ],
+  "measurements": {
+    "load_modes": [
+      "zero_load_one_source",
+      "full_load_all_sources"
+    ],
+    "memory_transfer": {
+      "transactions_per_source": 32,
+      "paper_transaction_size_label": 4,
+      "paper_transaction_size_unit": "KB",
+      "payload_bytes": null,
+      "planned_payload_bytes": 4096,
+      "read_write_operation": null
+    },
+    "memory_attachment": {
+      "proposed_topology": "dv/config/topology/mesh_4x4_memory.yml",
+      "topology_implemented": false,
+      "face": "west",
+      "count": 4,
+      "row_mapping": null
+    },
+    "narrow_latency": {
+      "payload_bytes": 8,
+      "destination": "top_right_tile",
+      "destination_endpoint": null,
+      "destination_self_cell": "N/A"
+    },
+    "memory_service": {
+      "model": null,
+      "latency_cycles": null,
+      "read_peak_bytes_per_cycle": null,
+      "write_peak_bytes_per_cycle": null,
+      "read_write_share_capacity": null
+    },
+    "outputs": [
+      "per_tile_mean_narrow_latency",
+      "per_tile_channel_normalized_memory_bandwidth",
+      "latency_heatmap",
+      "bandwidth_heatmap"
+    ]
+  },
+  "pending": [
+    "Verify precise 4KB byte count and source start synchronization/window",
+    "Implement and verify native boundary mapping without changing DUT defaults",
+    "Calibrate one fixed VIP memory service and its direction-specific peak; otherwise utilization N/A"
+  ]
+}

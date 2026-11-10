@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "config_status": "specification_only",
+  "execution_enabled": false,
+  "paths_relative_to": "repository_root",
+  "hardware": {
+    "profile": "dv/config/profile.yml",
+    "topology": "dv/config/topology/mesh_4x4.yml",
+    "mesh": [
+      4,
+      4
+    ],
+    "source_axi_ports_per_ni": 1,
+    "axi_data_bits": 512,
+    "narrow_transfer_bits": 64
+  },
+  "execution": {
+    "simulator": "VCS",
+    "host": "workstation",
+    "entrypoint": "sim/Makefile",
+    "make_perf_implemented": false,
+    "seed": 1
+  },
+  "comparison": {
+    "kind": "paper_reference_with_system_differences",
+    "differences": [
+      "4x4 mesh versus 2025 paper 8x4 mesh",
+      "Single AXI interface; narrow and wide selected by SAM",
+      "Ordering/RoB and pipeline are native DUT settings",
+      "VIP target service differs from the cluster/SPM/DRAMSys system"
+    ],
+    "paper_benchmark_commit": null,
+    "byte_unit_verified": false
+  },
+  "retention": {
+    "campaign_path": "performance/{scenario}/results/{campaign}",
+    "validation_file": "validation.json",
+    "overwrite_existing_results": false,
+    "store_binary": false
+  },
+  "measurement": {
+    "read_latency": "source AR handshake to matching RLAST handshake",
+    "write_completion": "source AW handshake to matching B handshake",
+    "write_bytes": "sum accepted WSTRB popcount",
+    "read_bytes": "accepted R beats with original ARSIZE and address",
+    "runtime": null,
+    "exclude": [
+      "reset",
+      "preload",
+      "verification_readback",
+      "drain"
+    ],
+    "device_peak": null
+  },
+  "scenario": "unicast",
+  "issues": [
+    27,
+    28,
+    32
+  ],
+  "paper_references": [
+    {
+      "url": "https://arxiv.org/abs/2409.17606v2",
+      "version": "2025 TVLSI / arXiv v2",
+      "pdf_pages": [
+        9
+      ],
+      "figures": [
+        "7",
+        "8"
+      ]
+    }
+  ],
+  "measurements": {
+    "calibration": {
+      "reuse_cases": [
+        "ctrl_read_single",
+        "data_write_single",
+        "routing"
+      ],
+      "purpose": "handshake_and_byte_calibration_only",
+      "single_case_endpoints": {
+        "source": 0,
+        "target": 0,
+        "inter_router_hops": 0
+      },
+      "neighbor_latency_sample": false
+    },
+    "narrow_latency": {
+      "payload_bytes": 8,
+      "burst_beats": 1,
+      "proposed_pairs": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          15
+        ]
+      ],
+      "pairs_verified_against_paper": false
+    },
+    "wide_bandwidth": {
+      "paper_size_labels": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ],
+      "paper_size_unit": "kB",
+      "payload_bytes": null,
+      "planned_bytes": [
+        1024,
+        2048,
+        4096,
+        8192,
+        16384,
+        32768
+      ],
+      "direction": null,
+      "transactions_per_source": null,
+      "axi_max_beats": 256,
+      "axi_boundary_bytes": 4096
+    },
+    "traffic_latency": {
+      "patterns": [
+        "neighbor",
+        "uniform",
+        "bit-complement",
+        "shuffle",
+        "transpose"
+      ],
+      "injection_ratio_range": [
+        0,
+        0.5
+      ],
+      "injection_points": null,
+      "injection_definition": null,
+      "source_destination_pairs": null,
+      "existing_neighbor_mapping": "((x+1)%4,(y+1)%4); not confirmed paper neighbor",
+      "self_pair_policy": null
+    }
+  },
+  "pending": [
+    "Verify paper benchmark revision, kB bytes, all pattern mappings/wrap and injection timing",
+    "Define sample counts, direction, outstanding and measurement windows",
+    "Implement #27 collector and shared performance.py before execution"
+  ]
+}

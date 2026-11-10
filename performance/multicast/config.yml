@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "config_status": "specification_only",
+  "execution_enabled": false,
+  "paths_relative_to": "repository_root",
+  "hardware": {
+    "profile": "dv/config/profile.yml",
+    "topology": "dv/config/topology/mesh_4x4.yml",
+    "mesh": [
+      4,
+      4
+    ],
+    "source_axi_ports_per_ni": 1,
+    "axi_data_bits": 512,
+    "narrow_transfer_bits": 64
+  },
+  "execution": {
+    "simulator": "VCS",
+    "host": "workstation",
+    "entrypoint": "sim/Makefile",
+    "make_perf_implemented": false,
+    "seed": 1
+  },
+  "comparison": {
+    "kind": "paper_reference_with_system_differences",
+    "differences": [
+      "Native 4x4 mesh; collective paper group/topology mapping remains to be verified",
+      "Protocol-level software forwarding excludes Snitch CPU instruction costs",
+      "Native ordering/CollectB and pipeline retained; root/group/service/batch remain to be verified"
+    ],
+    "paper_benchmark_commit": null,
+    "byte_unit_verified": false
+  },
+  "retention": {
+    "campaign_path": "performance/{scenario}/results/{campaign}",
+    "validation_file": "validation.json",
+    "overwrite_existing_results": false,
+    "store_binary": false
+  },
+  "measurement": {
+    "read_latency": "source AR handshake to matching RLAST handshake",
+    "write_completion": "source AW handshake to matching B handshake",
+    "write_bytes": "sum accepted WSTRB popcount",
+    "read_bytes": "accepted R beats with original ARSIZE and address",
+    "runtime": null,
+    "exclude": [
+      "reset",
+      "preload",
+      "verification_readback",
+      "drain"
+    ],
+    "device_peak": null
+  },
+  "scenario": "multicast",
+  "issues": [
+    27,
+    30,
+    31,
+    32
+  ],
+  "paper_references": [
+    {
+      "url": "https://arxiv.org/html/2603.26438v2",
+      "version": "2026 collective paper v2",
+      "sections": [
+        "4.2.2"
+      ],
+      "figures": [
+        "4",
+        "5"
+      ],
+      "equations": [
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  ],
+  "measurements": {
+    "methods": [
+      "seq",
+      "tree",
+      "hw"
+    ],
+    "groups": [
+      "single_row",
+      "2d_2_rows",
+      "2d_4_rows"
+    ],
+    "planned_payload_bytes": [
+      1024,
+      2048,
+      4096,
+      8192,
+      16384,
+      32768
+    ],
+    "payload_bytes_verified": false,
+    "root_endpoint": null,
+    "recipients": null,
+    "batch_candidates": null,
+    "selected_batch": null,
+    "initial_data_location": "legal_source_NI",
+    "runtime": "first required transfer start to final required/merged B completion",
+    "speedup": "min(Tseq,Ttree)/Thw",
+    "overlapping_trees": "serialize per #12",
+    "device_bandwidth": "reuse recipient W and any actual memory-source R from same runs",
+    "group_aliases": {
+      "2d_1_row": "single_row"
+    }
+  },
+  "pending": [
+    "Verify collective benchmark revision, precise sizes, root/group and batch policy",
+    "Express real intermediate-data availability with existing sequence dependencies",
+    "Protocol-level schedule has no Snitch CPU instruction timing; do not claim FlooNoC 2025 multicast baseline"
+  ]
+}
