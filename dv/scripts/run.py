@@ -194,7 +194,8 @@ def preserve_performance(report, binary, stimulus, campaign):
         target = sources / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(str(origin), str(target))
-    for name in ("dv/scripts/run.py", "dv/scripts/axi_file_parser.py", "sim/Makefile", "dv/config/cases.json"):
+    for name in ("dv/scripts/run.py", "dv/scripts/axi_file_parser.py", "dv/scripts/gen_standalone_patterns.py",
+                 "dv/scripts/axi_file_format.py", "sim/Makefile", "dv/config/cases.json"):
         target = sources / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(str(repo / name), str(target))

@@ -166,3 +166,20 @@ readback from another source does not overlap it. Otherwise retain raw device
 events and mark device aggregation unavailable. Device peak and utilization are
 unset until the model capacity is established. These are collector smoke results,
 not validated paper comparisons, injection sweeps, or publication heatmaps.
+
+The `performance_unicast` group in the existing `dv/config/cases.json` adds
+single-source reads without changing functional cases: `perf_ctrl_read_neighbor`
+uses NI0 (0,0) to NI1 (1,0), `perf_ctrl_read_h3` targets NI3 (3,0), and
+`perf_ctrl_read_h6` targets NI15 (3,3). Each narrow case reads one 64-bit beat.
+Hop counts are inter-router edges on the native XY mesh; the measured latency
+is source AR acceptance to final R acceptance, not the paper's core-to-SPM boundary.
+`perf_cal_data_read_1kib` and `perf_cal_data_read_4kib` read exactly 1024 and
+4096 bytes in one 512-bit INCR burst to NI1. These are byte/window calibration
+points, pending verification of the paper benchmark's exact byte counts.
+
+Generate this optional group with the existing generator/prepare extra-catalog
+path, keeping existing inputs intact. A separately prepared directory can be
+selected with `make -C sim perf CASE=perf_ctrl_read_neighbor SINGLE=<directory>`.
+Each result remains a collector/calibration point until its paper conditions
+and independent FSDB comparison are recorded; these cases do not implement the
+traffic/injection sweep or the 8/16/32 KiB logical-message split.

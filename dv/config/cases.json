@@ -744,6 +744,149 @@
         "destinations": "all",
         "num_ids": 1
       }
+    ],
+    "performance_unicast": [
+      {
+        "name": "perf_ctrl_read_neighbor",
+        "mode": "control",
+        "operation": "read",
+        "count": 1,
+        "sources": [
+          0
+        ],
+        "destination_order": [
+          1,
+          0,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      {
+        "name": "perf_ctrl_read_h3",
+        "mode": "control",
+        "operation": "read",
+        "count": 1,
+        "sources": [
+          0
+        ],
+        "destination_order": [
+          3,
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      {
+        "name": "perf_ctrl_read_h6",
+        "mode": "control",
+        "operation": "read",
+        "count": 1,
+        "sources": [
+          0
+        ],
+        "destination_order": [
+          15,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ]
+      },
+      {
+        "name": "perf_cal_data_read_1kib",
+        "mode": "data",
+        "operation": "read",
+        "count": 1,
+        "burst_lengths": [
+          16
+        ],
+        "sources": [
+          0
+        ],
+        "destination_order": [
+          1,
+          0,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      {
+        "name": "perf_cal_data_read_4kib",
+        "mode": "data",
+        "operation": "read",
+        "count": 1,
+        "burst_lengths": [
+          64
+        ],
+        "sources": [
+          0
+        ],
+        "destination_order": [
+          1,
+          0,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      }
     ]
   }
 }
