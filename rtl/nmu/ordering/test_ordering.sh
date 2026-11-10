@@ -4,9 +4,11 @@ task_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 task_tmp=$(mktemp -d "${TMPDIR:-/tmp}/nmu-ordering-XXXXXX")
 trap 'rm -rf "$task_tmp"' EXIT
 task_sources=(
-  "$task_root/specgen/generated/sv/ni_params_pkg.sv"
-  "$task_root/specgen/generated/sv/ni_signals_pkg.sv"
-  "$task_root/specgen/generated/sv/ni_flit_pkg.sv"
+  "$task_root/define/noc_header_pkg.sv"
+  "$task_root/define/noc_payload_pkg.sv"
+  "$task_root/define/noc_unit_params_pkg.sv"
+  "$task_root/define/noc_sam_pkg.sv"
+  "$task_root/rtl/common/ni_signals_pkg.sv"
   "$task_root/rtl/common/ni_types_pkg.sv"
   "$task_root/rtl/nmu/ordering/reorder_storage.sv"
   "$task_root/rtl/nmu/ordering/ordering.sv"
@@ -33,8 +35,8 @@ if [[ "${1:-test}" == test ]]; then
     "${task_sources[@]}" "$task_root/rtl/nmu/ordering/tb_ordering_stall.sv"
   "$task_tmp/obj_dir_stall/nmu_ordering_stall_tb"
 
-  task_tag_w=$(sed -nE 's/.*ORDERING_TAG_WIDTH[[:space:]]*=[[:space:]]*([0-9]+);/\1/p' \
-    "$task_root/specgen/generated/sv/ni_flit_pkg.sv")
+  task_tag_w=$(sed -nE 's/.*ORD_TAG_WIDTH[[:space:]]*=[[:space:]]*([0-9]+);/\1/p' \
+    "$task_root/define/noc_header_pkg.sv")
   test -n "$task_tag_w"
   task_invalid_limit=$(( (1 << task_tag_w) + 1 ))
   task_guard_values=(

@@ -14,11 +14,11 @@ Plan 先列 Feature Description 與 Verification Goals，再列 Coverage Traceab
 
 ## 功能分類與用語
 
-NI Functions 分為 Address Decoding / Translation、Packetization / Depacketization、ID Mapping、Outstanding Transactions、Response Reordering。Ready/valid、credit、容量限制、arbitration、CDC 與 reset 放在 Architecture and Interface Requirements。測試條件不列為功能。
+NI Functions 分為 Address Decoding / Translation、Packetization / Depacketization、ID Mapping、Outstanding Transactions、Response Reordering。Ready/valid、容量限制、arbitration、CDC 與 reset 放在 Architecture and Interface Requirements。測試條件不列為功能。
 
 | 用語 | 定義／撰寫重點 |
 |---|---|
-| Backpressure | 接收端暫停接受，或 credit 不足導致傳送端等待。寫出哪個 channel、哪一端、如何恢復 |
+| Backpressure | 待傳輸資料因接收端尚未 ready 而等待。寫出 channel、受阻的資源與恢復條件 |
 | Head-of-line (HoL) blocking | Queue 最前面的 packet 無法前進，連帶擋住後面原本可以前進的 packet。只延遲某個 destination 不足以證明這個情境 |
 | Request ordering | 比較 requests 在接收端出現的次序。列出 source、ID、destination、control/data region 與 read/write 的範圍 |
 | Response ordering | 比較 responses 回到 Source 的次序。Same-ID 要保序，不同 IDs 可亂序，read/write 分別判定 |
@@ -68,8 +68,7 @@ Functional Coverage Plan 放在功能與驗證目標之後。每列對應 Item�
 | AXI R | `RVALID && RREADY`，每個 beat 取樣。只有 `RLAST=1` 才計一筆 read completion |
 | AXI stability | `VALID && !READY` 後至 handshake 的 VALID 與 payload，reset 期間依規格停用 |
 | REQ／RSP | 所屬 `noc_clk` 的 `valid && ready` |
-| DAT | `noc_clk` 的 `valid` 與 packet VC。DAT 沒有 ready port |
-| Credit | 每個 VC 的 credit-return pulse 與實際 DAT send，按核准初始容量重建 balance |
+| DAT | 在 `noc_clk` 對每個 VC 的 `valid && ready` 取樣。輸出 valid 受 ready 限定；阻塞需觀察內部 pending 狀態 |
 | Reset recovery | Reset 前 pending、reset 期間 response、reset 後新 request／response，分開記錄 reset 前後的 transactions |
 
 Address-derived destination 只代表預期 routing。要證明實際 destination 正確，需配對 NSU AXI 或 NoC top-level packet。Response 到達 NI 的次序與返回 Source AXI 的次序分別觀察。

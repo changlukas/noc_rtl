@@ -52,7 +52,7 @@ module tb_nmu_sam_boundary;
 
     always #5ns clk = !clk;
 
-    task automatic transfer(input logic [ni_params_pkg::AXI_ADDR_WIDTH-1:0] addr, input logic [7:0] len,
+    task automatic transfer(input logic [noc_payload_pkg::AXI_ADDR_WIDTH-1:0] addr, input logic [7:0] len,
         input logic [2:0] size, input logic [1:0] burst);
         @(negedge clk);
         s_aw.awaddr  = addr;

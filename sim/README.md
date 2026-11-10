@@ -1,163 +1,107 @@
 # NI simulation
 
-The default environment is a 4x4 RTL Router mesh with one NI (NMU + NSU) per node.
-Sixteen master and sixteen slave UVM agents connect the mesh endpoints.
-Their monitor analysis ports feed the scoreboard and per-interface AXI coverage subscribers.
-Thirty-two passive NI-link TX/RX views feed credit coverage. Ordering/reset observations and bound
-arbitration assertions retain their existing checks.
+The integration entry is `sim/Makefile`. The existing UVM environment connects
+sixteen NI instances through the 4x4 RTL router mesh.
 
-`ni_pattern_sequence` reads the text patterns and submits tvip items. `ni_test`
-manages reset recovery, sequences, timeout and objections. The scoreboard checks
-observed responses and transaction completion. The static top retains interface
-connections, clocks, model bindings and structural assertions.
-
-NMU loopback also uses the tvip master agent and the same file sequence. Its NoC
-responder and packet checks remain in the loopback fixture. UVM execution uses VCS
-with UVM 1.2. Focused RTL tests retain their existing simulator entry points.
-
-## Prepare
-
-Run from the repository root:
-
-```sh
-make prepare
-```
-
-This reads `sim/profile.yml` and writes `build/sim/stage/`. It does not depend on a
-standalone build. `sim/rtl.f` supplies the compile order. Both SV and C++ parameters
-come from the selected profile.
+## Layout
 
 ```text
-sim/profile.yml                       Hardware settings
-sim/test_patterns/cases.json          Shared input pattern definitions
-sim/tools/gen_standalone_patterns.py  Shared pattern generator
-                 |
-                 v
-build/sim/stage/
-|-- ni_tb_params.svh                  Compiled hardware parameters
-|-- patterns/<case>/
-|   |-- ni_tb_params.svh              Same parameters beside the input files
-|   |-- write.txt / read.txt          AXI transactions
-|   |-- source<N>/                    Additional source transaction files
-|   |-- schedule.txt                  Stimulus timing and active sources
-|   `-- manifest.json                 File list and acceptance checks
-|-- verification/<run>/patterns/      Expanded regression inputs
-|-- verification-runs.json            Generated execution list
-`-- build/                           Binaries, logs, waves and coverage
+dv/tb/         Top, interfaces and existing standalone fixtures
+dv/env/        UVM environment, monitors, scoreboard and seq_lib/
+dv/tests/      Existing test classes
+dv/coverage/   NI and router functional coverage
+dv/checkers/   Assertions and acceptance checks
+dv/config/     Profiles, topology, case catalog and coverage hierarchy
+dv/filelists/  Repository-relative compile order
+dv/scripts/    Preparation, execution, synchronization and export
+dv/waves/      Grouped NI/router RC template
+sim/Makefile   Integration commands
+build/compile/recipes/      Generated portable compile recipes
+build/compile/<build_id>/  Generated SV, files.f, simv, compile.log, VDB
+build/regression/single/   Interactive inputs and case results
+build/regression/<campaign>/
+  verification-runs.json   Generated execution list
+  inputs/<tag>/           Existing transaction files and acceptance manifest
+  results/<tag>/          Simulation log and run.json
+  results.json            Driver results
+  coverage-tests.txt      Native test selection after all runs pass
+  coverage/               Native URG report
 ```
 
-A pattern may also contain memory preload, initialization writes, readback or
-response files. Their use follows its manifest. Generated files are not edited by
-hand. Change the source pattern definition or hardware profile and prepare again.
-`ni_tb_params.svh` is included by the UVM package and supplies TB hardware defaults.
-The runner rejects patterns whose header differs from the compiled binary's copy.
-Hardware parameter overrides that disagree with the include are rejected by the TB.
+Canonical RTL/dependencies are compiled from the checkout. Only the VCS 2017
+`cc_fifo.sv` compatibility expression is generated in the compile directory;
+the dependency source is unchanged. Build IDs hash sources, included headers,
+generated hardware configuration and effective tool flags. A successful compile
+record freezes binary, command, configuration and source-manifest hashes.
 
-## Run
+## Prepare and synchronize
 
-On the simulator machine, set the tool environment first. `vcs`, `urg` and `g++`
-must be on PATH. Set `CXX`, `VCS_HOME`, `VERDI_HOME` or `PLI_DIR` when installation
-paths require them. These machine-local settings may be saved in the stage's
-`tools.mk` and are preserved by source synchronization.
+On the development machine, with Python 3.8+ and PyYAML:
 
 ```sh
-cd build/sim/stage
+cd sim
+make prepare
+make sync
+```
+
+Preparation creates interactive inputs and a new coverage campaign for the existing
+P01-P23, P25 and P26 matrix. It does not simulate. `verification-runs.json` is
+generated data; `run_verification.py` remains in `dv/scripts/`.
+`build/regression/latest.json` points to the prepared matrix campaign.
+
+Sync sends canonical sources and prepared inputs/recipes. Divergent remote files
+are rejected before writes. Workstation `FIFO_TYPE` and `sim/environment.mk`
+settings are retained. The offline workstation requires Python 3.6+, VCS, URG and
+the configured C++ compiler; PyYAML is only needed for preparation/export locally.
+
+## Run existing cases
+
+```sh
+cd /home/mingwei/noc_rtl/sim
 make run CASE=ctrl_write_single
-make run_wave CASE=single_id_reorder MODE=data
-make view CASE=single_id_reorder MODE=data
+make run_wave view CASE=data_write_single
 make list
 ```
 
-`view` opens an existing FSDB. CASE names and options are in [pattern_list.txt](pattern_list.txt).
-Normal directed traffic has zero inserted delay, except the destination delays
-needed by ordering tests. Reset, capacity and delayed-response tests retain their
-explicit acceptance checks. Data and ordering checkers must drain before PASS.
+`run_wave view` runs the case and opens FSDB with the grouped NI/router RC.
+nWave runs in the background, leaving the terminal available. `view` alone opens
+the existing waveform. Hardware settings come from `define/` and the selected
+`dv/config/profile.yml`; `FIFO_TYPE` is selected in the native parameter package.
+The runner checks pattern hardware against the compiled header and requires the
+existing scoreboard, ordering and completion checks to drain before PASS.
 
-## Full input matrix
-
-From the repository root:
+After reviewing simple cases, run the full matrix with:
 
 ```sh
-python3 sim/tools/prepare_ni_verification.py --profile sim/profile.yml --out build/sim/stage
-cd build/sim/stage
-make verification
+make verification JOBS=3
 make report
 ```
 
-The default 4x4 preparation produces 82 runs for P01-P23, P25 and P26, including
-capacity variants, all source/destination pairs and multi-source traffic. P24
-(hol_blocking) is retired. `make regress` runs the default CASE list only and is not this
-expanded matrix. `verification_results/results.json` records results and
-`coverage-tests.txt` selects only successful runs from this invocation for URG.
-Open `build/coverage/dashboard.html`. Code/assertion and functional coverage remain
-separate report metrics. A high group score does not establish every instance bin
-was hit. Existing unhit bins are retained.
+`make regress` aliases this full prepared matrix. Each campaign executes once;
+prepare a new campaign for another run. Report generation uses the campaign's
+recorded binary and test selection. Failed runs retain logs/results without
+producing an all-pass coverage selection. Unhit bins remain visible. The default
+matrix does not generate FSDB for every case.
 
-For the existing Excel matrix, export its data from the same stage and native report:
+To export native bin attribution and transaction data, use Python 3.9+ with
+PyYAML at the repository root after retaining matching compile/campaign artifacts:
 
 ```sh
-python3 sim/tools/verification_matrix.py --stage build/sim/stage --out build/sim/matrix.json
+python3 dv/scripts/verification_matrix.py --campaign build/regression/<campaign> --out build/regression/<campaign>/matrix.json
 ```
 
-Run this command from the repository root after retaining the stage results locally.
-It verifies the run list, stimulus hashes and native test attribution. The JSON is
-an intermediate for the existing workbook, not a second verification report.
+The exporter checks matrix completeness, stimulus/binary provenance and native
+test attribution. It emits JSON; there is no automatic Excel generator.
+Existing profiles remain under `dv/config/profiles/`. Select one with
+`make prepare PROFILE=../dv/config/profiles/<name>.yml` from `sim/` and use the
+same PROFILE for compile/run. Unsupported native ID/VC widths remain rejected.
 
-## Hardware profiles
+Existing focused NMU and direct-link NSU fixtures remain under
+`dv/tb/standalone/`; neither is a prerequisite for integration. The NSU Makefile
+delegates to the same integration entry using direct-link configuration.
 
-```sh
-python3 sim/tools/prepare_ni_verification.py --profile sim/profiles/robless.yml --out build/robless
-```
-
-| Profile | Verification purpose |
-|---|---|
-| `profile.yml` | Default integration configuration |
-| `profiles/single_vc_no_read_reorder.yml` | Single VC without read reorder storage |
-| `profiles/robless.yml` | No read reorder storage, registered outputs and shallow context |
-| `profiles/small_rob.yml` | Reorder storage capacity and recovery |
-| `profiles/split.yml` | Separate read/write VC pools and skid-buffer outputs |
-| `profiles/id1.yml` | One-bit Source, NoC and Device IDs |
-| `profiles/id8_to_id3.yml` | Eight-bit Source/NoC IDs mapped to three-bit Device IDs |
-
-Each profile uses a separate stage. Existing profile files are regression settings,
-not recommendations for area or performance. Depth defaults are not changed by the
-preparation flow. Each generated pattern carries its own `ni_tb_params.svh`.
-The integrated mesh does not compile the C++ Router model. Changing SV hardware
-parameters invalidates the SV build. NoC transport changes regenerate both languages.
-
-## Offline workstation
-
-Prepare locally, then use the existing SHA256-verified SSH synchronization.
-`make sync` transfers the prepared stage without regenerating or replacing its
-selected input matrix:
-
-```sh
-python3 sim/tools/sync_nmu_workstation.py --source build/sim/stage \
-  --host <user>@<host> --remote-dir <work-directory>/sim --key <private-key>
-```
-
-`--ssh` selects a different SSH executable. The workstation does not need Git or
-internet access. Sync updates manifest-owned sources, preserves modified retired
-files and retains existing build/report directories. Run the same Make commands
-inside the remote stage. No separate simulation archive is needed.
-
-## Other environments
-
-| Source entry | Environment |
-|---|---|
-| `sim/standalone/nmu/` | NMU RTL request/response loopback |
-| `sim/standalone/nsu/` | Same UVM TB with direct NMU/four-NSU links |
-
-Prepare these explicitly with `make -C <entry> prepare`. They are not prerequisites
-for integration. Direct-link cycle counts are not router performance results.
-
-## Clean
-
-Root `make clean` removes all default generated outputs and Python caches.
-`make clean` in a prepared stage removes simulator/GUI products and regression
-results, not source patterns.
-A stage can be removed and regenerated after its required results are retained.
-Historical development artifacts are not needed for the commands above.
+`make clean` at the root or in `sim/` removes only `build/compile` and
+`build/regression`. Historical output trees, logs and waves elsewhere are retained.
 
 ### Integrated NI mesh
 
@@ -165,19 +109,19 @@ The integration TB uses a 4x4 RTL Router mesh. Each Local port connects one `ni`
 containing NMU and NSU. Each node has a source agent and a device agent. Existing
 NI cases use source 0. Routing, hotspot and uniform-random cases activate all
 sixteen sources using the same file sequence. Devices provide memory responses. The direct-link
-standalone environment keeps its four targets. `sim/configs/mesh_4x4.yml` defines
+standalone environment keeps its four targets. `dv/config/topology/mesh_4x4.yml` defines
 the mesh address map. `multicast_single`, `multicast_burst`, and `multicast_rand`
 use the existing generator and file-based sequence with `MODE=control/data/rand`.
 
-NI DAT TX retains independent NMU/NSU VC FIFOs, then performs per-VC packet
-arbitration and physical-link arbitration with one downstream credit counter per
-VC. DAT RX uses one FIFO per VC and dispatches each head to NMU or NSU. An RX FIFO
-pop returns credit. No new serial FIFO stage is inserted by the NI wrapper.
+NI DAT TX uses the shared flit arbiter to select a ready write or read VC on
+each transfer, then drives the shared DAT bus with ready-qualified valid. VC0 carries DATA_AW/W;
+VC1 carries DATA_R. NI routes received classes directly to NMU/NSU RX
+`stream_register` cuts before dispatch. REQ/RSP use conventional valid/ready.
 
 ### Write ordering
 
 The NMU supports same-ID write outstanding on one channel. Switching REQ/DAT waits for all prior B responses of that ID to retire into the response CDC FIFO. Different IDs remain independent. Read outstanding and response reordering are unchanged.
 
-`single_id_reorder` checks B/R response reordering. Capacity checks target per-ID outstanding limits, AW/AR context storage and B/R ROB storage. Same-ID writes may remain outstanding on one channel. Switching REQ/DAT waits for prior B retirement. DAT AW/W use a stable VC per source/ID/destination at every hop, independently of `ordering_req`. `NUM_DAT_VC=1` shares VC 0. Larger even counts split the lower half for writes and upper half for reads. `dat_vc_mode` is no longer a profile setting.
+`single_id_reorder` checks B/R response reordering. Capacity checks target per-ID outstanding limits, AW/AR context storage and B/R ROB storage. Same-ID writes may remain outstanding on one channel. Switching REQ/DAT waits for prior B retirement. DAT AW/W use fixed write VC0 at every hop; DAT R uses fixed read VC1.
 
 The standalone `ooo_*_write_same_id` cases exercise B ROB use. Cross-ID write cases require out-of-order completion.

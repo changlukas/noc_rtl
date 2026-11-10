@@ -6,6 +6,8 @@
 
 /* NoC-clock to AXI-clock request-channel FIFO bank. */
 module nsu_request_fifo #(
+    // 0: synchronous FIFO (common clock), 1: asynchronous FIFO.
+    parameter int unsigned FIFO_TYPE      = 1,
     parameter int unsigned AXI_FIFO_DEPTH = 32,
     parameter int unsigned AW_FIFO_DEPTH  = AXI_FIFO_DEPTH,
     parameter int unsigned W_FIFO_DEPTH   = AXI_FIFO_DEPTH,
@@ -53,6 +55,7 @@ module nsu_request_fifo #(
     end
 
     axi_async_fifo #(
+        .FIFO_TYPE      (FIFO_TYPE),
         .AXI_FIFO_DEPTH (AW_FIFO_DEPTH),
         .data_t         (aw_t         )
     ) i_aw_fifo (
@@ -69,6 +72,7 @@ module nsu_request_fifo #(
     );
 
     axi_async_fifo #(
+        .FIFO_TYPE      (FIFO_TYPE),
         .AXI_FIFO_DEPTH (W_FIFO_DEPTH),
         .data_t         (w_t         )
     ) i_w_fifo (
@@ -85,6 +89,7 @@ module nsu_request_fifo #(
     );
 
     axi_async_fifo #(
+        .FIFO_TYPE      (FIFO_TYPE),
         .AXI_FIFO_DEPTH (AR_FIFO_DEPTH),
         .data_t         (ar_t         )
     ) i_ar_fifo (

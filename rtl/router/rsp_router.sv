@@ -6,26 +6,25 @@
 module rsp_router #(
     parameter int unsigned ROUTER_X     = 0,
     parameter int unsigned ROUTER_Y     = 0,
-    parameter int unsigned MESH_X       = ni_params_pkg::NOC_MESH_X_DIM,
-    parameter int unsigned MESH_Y       = ni_params_pkg::NOC_MESH_Y_DIM,
+    parameter int unsigned MESH_X       = noc_unit_params_pkg::MESH_X_DIM,
+    parameter int unsigned MESH_Y       = noc_unit_params_pkg::MESH_Y_DIM,
     parameter int unsigned FIFO_DEPTH   = 32,
     parameter int unsigned OUT_REG_TYPE = 0
 ) (
     input  wire logic                         clk_i,
     input  wire logic                         rst_n_i,
-    input  wire ni_flit_pkg::rsp_flit_t [4:0] RXRSP,
+    input  wire noc_payload_pkg::rsp_flit_t [4:0] RXRSP,
     input  wire logic                   [4:0] RXRSPVLD,
     output wire logic                   [4:0] RXRSPRDY,
-    output wire ni_flit_pkg::rsp_flit_t [4:0] TXRSP,
+    output wire noc_payload_pkg::rsp_flit_t [4:0] TXRSP,
     output wire logic                   [4:0] TXRSPVLD,
     input  wire logic                   [4:0] TXRSPRDY
 );
-    import ni_flit_pkg::*;
-    wire rsp_flit_t [4:0] head;
-    wire [4:0][HEADER_WIDTH-1:0] header;
-    wire [4:0][B_BID_WIDTH-1:0] bid;
-    wire [4:0][B_BRESP_WIDTH-1:0] bresp;
-    wire [4:0] full, empty, pop, last, is_collective;
+    wire noc_payload_pkg::rsp_flit_t [4:0] head;
+    wire noc_header_pkg::header_t [4:0] header;
+    wire [4:0][noc_payload_pkg::B_BID_WIDTH-1:0] bid;
+    wire [4:0][noc_payload_pkg::B_BRESP_WIDTH-1:0] bresp;
+    wire [4:0] full, empty, pop, last, collect_b;
     wire [4:0][4:0] route_mask, merge_mask, branch_valid, branch_ready;
     logic [4:0][4:0] route_reg = '0, route_next;
     logic [4:0] active_reg = '0, active_next;
@@ -33,15 +32,17 @@ module rsp_router #(
     for (genvar i = 0; i < 5; i++) begin : gen_input
         wire [4:0] computed_route;
         assign header[i] = head[i].header;
-        assign bid[i] = head[i].payload[B_BID_LSB +: B_BID_WIDTH];
-        assign bresp[i] = head[i].payload[B_BRESP_LSB +: B_BRESP_WIDTH];
-        assign last[i] = head[i].header[FLIT_TAIL_LSB];
-        assign is_collective[i] = head[i].header[COLLECTIVE_OP_LSB +: COLLECTIVE_OP_WIDTH] == COLLECTIVE_OP_WIDTH'(COLLECTIVE_OP_MULTICAST);
+        assign bid[i] = head[i].payload[noc_payload_pkg::B_BID_LSB +: noc_payload_pkg::B_BID_WIDTH];
+        assign bresp[i] = head[i].payload[noc_payload_pkg::B_BRESP_LSB +: noc_payload_pkg::B_BRESP_WIDTH];
+        assign last[i] = head[i].header.flit_tail;
+        assign collect_b[i] = head[i].header.coll_op == noc_header_pkg::COLL_MULTICAST &&
+            (head[i].header.packet_type == noc_header_pkg::PKT_NARROW_B ||
+             head[i].header.packet_type == noc_header_pkg::PKT_DATA_B);
         assign route_mask[i] = active_reg[i] ? route_reg[i] : computed_route;
         cc_fifo #(
             .Depth          (FIFO_DEPTH),
             .FallThrough    (1'b0),
-            .data_t         (rsp_flit_t)
+            .data_t         (noc_payload_pkg::rsp_flit_t)
         ) i_fifo (
             .clk_i          (clk_i),
             .rst_ni         (rst_n_i),
@@ -68,6 +69,16 @@ module rsp_router #(
         );
         assign branch_valid[i] = {5{!empty[i]}} & route_mask[i];
         assign pop[i] = |branch_ready[i];
+        // synthesis translate_off
+        rsp_packet_type: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+            RXRSPVLD[i] |-> RXRSP[i].header.packet_type inside {
+                noc_header_pkg::PKT_NARROW_B, noc_header_pkg::PKT_DATA_B,
+                noc_header_pkg::PKT_NARROW_R})
+            else $fatal(1, "Invalid RSP packet type (instance %m)");
+        rsp_tail: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+            RXRSPVLD[i] |-> RXRSP[i].header.flit_tail)
+            else $fatal(1, "Each RSP flit must end its packet (instance %m)");
+        // synthesis translate_on
     end
     always_comb begin
         route_next = route_reg;
@@ -115,15 +126,12 @@ module rsp_router #(
         );
         assign req[5] = merged_valid;
         for (genvar i = 0; i < 5; i++) begin : gen_request
-            wire collect_b = is_collective[i] &&
-                (head[i].header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_NarrowB) ||
-                 head[i].header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataB));
-            assign merge_valid[i] = branch_valid[i][o] && collect_b;
-            assign req[i] = branch_valid[i][o] && !collect_b;
+            assign merge_valid[i] = branch_valid[i][o] && collect_b[i];
+            assign req[i] = branch_valid[i][o] && !collect_b[i];
             assign branch_ready[i][o] = grant[i] || merge_ready[i];
         end
         wire selected_valid, selected_ready;
-        wire rsp_flit_t selected_data;
+        wire noc_payload_pkg::rsp_flit_t selected_data;
         switch_allocator #(
             .NUM_INPUTS     (6)
         ) i_switch_allocator (
@@ -139,7 +147,7 @@ module rsp_router #(
         crossbar #(
             .NUM_INPUTS     (5),
             .NUM_OUTPUTS    (1),
-            .flit_t         (rsp_flit_t)
+            .flit_t         (noc_payload_pkg::rsp_flit_t)
         ) i_crossbar (
             .data_i         (head),
             .select_i       (data_select),
@@ -147,7 +155,7 @@ module rsp_router #(
         );
         stream_register #(
             .REG_TYPE       (OUT_REG_TYPE),
-            .data_t         (rsp_flit_t)
+            .data_t         (noc_payload_pkg::rsp_flit_t)
         ) i_output (
             .clk_i          (clk_i),
             .rst_n_i        (rst_n_i),
@@ -158,6 +166,31 @@ module rsp_router #(
             .m_ready_i      (TXRSPRDY[o]),
             .m_data_o       (TXRSP[o])
         );
+        // synthesis translate_off
+        // CollectB forwards one complete response, including its opaque USER.
+        for (genvar i = 0; i < 5; i++) begin : gen_checks
+            // VCS M-2017 samples the scalar comparison reliably for packed structs.
+            wire flit_match = selected_data == head[i];
+            selected_flit: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+                selected_valid && data_select[i] |-> flit_match)
+                else $fatal(1, "Selected response flit mismatch: select=%b data_select=%b data=%h head=%h unknown=%b/%b (instance %m)",
+                    $sampled(select), $sampled(data_select), $sampled(selected_data), $sampled(head[i]),
+                    $isunknown($sampled(selected_data)), $isunknown($sampled(head[i])));
+        end
+        merge_held: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+            merged_valid && !grant[5] |-> !(|merge_ready))
+            else $fatal(1, "Merged response popped before acceptance (instance %m)");
+`ifdef NI_COVERAGE
+        merged_transfer: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            merged_valid && grant[5]);
+        merge_wait: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            (|merge_valid) && !merged_valid ##[1:256] merged_valid && grant[5]);
+        merge_stall: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            merged_valid && !grant[5] ##[1:256] merged_valid && grant[5]);
+        route_transfer: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            TXRSPVLD[o] && TXRSPRDY[o]);
+`endif
+        // synthesis translate_on
     end
     initial begin
         if (FIFO_DEPTH < 2 || (FIFO_DEPTH & (FIFO_DEPTH-1)) != 0)

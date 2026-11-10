@@ -10,10 +10,10 @@ module nmu_response_depacketize #(
 ) (
     input  wire logic                          clk_i,
     input  wire logic                          rst_n_i,
-    input  wire ni_flit_pkg::rsp_flit_t        s_b_i,
+    input  wire noc_payload_pkg::rsp_flit_t        s_b_i,
     input  wire logic                          s_b_valid_i,
     output wire logic                          s_b_ready_o,
-    input  wire ni_flit_pkg::dat_flit_t        s_r_i,
+    input  wire noc_payload_pkg::dat_flit_t        s_r_i,
     input  wire logic                          s_r_valid_i,
     output wire logic                          s_r_ready_o,
     output wire ni_types_pkg::nmu_b_response_t m_b_o,
@@ -23,7 +23,6 @@ module nmu_response_depacketize #(
     output wire logic                          m_r_valid_o,
     input  wire logic                          m_r_ready_i
 );
-    import ni_flit_pkg::*;
     localparam int unsigned DATA_W = $bits(m_r_o.axi.rdata);
     ni_types_pkg::nmu_b_response_t b;
     wire ni_types_pkg::nmu_b_response_t b_output;
@@ -35,26 +34,29 @@ module nmu_response_depacketize #(
         b = '0;
         r = '0;
         if (s_b_valid_i) begin
-            b.axi.bid           = s_b_i.payload[B_BID_LSB +: B_BID_WIDTH];
-            b.axi.bresp         = s_b_i.payload[B_BRESP_LSB +: B_BRESP_WIDTH];
-            b.meta.is_data      = s_b_i.header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataB);
-            b.meta.ordering_req = s_b_i.header[ORDERING_REQ_LSB];
-            b.meta.ordering_tag = s_b_i.header[ORDERING_TAG_LSB +: ORDERING_TAG_WIDTH];
+            b.axi.bid           = s_b_i.payload[noc_payload_pkg::B_BID_LSB +: noc_payload_pkg::B_BID_WIDTH];
+            b.axi.bresp         = s_b_i.payload[noc_payload_pkg::B_BRESP_LSB +: noc_payload_pkg::B_BRESP_WIDTH];
+            b.axi.buser = s_b_i.payload[noc_payload_pkg::B_BUSER_LSB +: noc_payload_pkg::B_BUSER_WIDTH];
+            b.packet_info.packet_type  = s_b_i.header.packet_type;
+            b.packet_info.ordering_req = s_b_i.header.ord_req;
+            b.packet_info.ordering_tag = s_b_i.header.ord_tag;
         end
         if (s_r_valid_i) begin
-            r.meta.is_data      = s_r_i.header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataR);
-            r.meta.ordering_req = s_r_i.header[ORDERING_REQ_LSB];
-            r.meta.ordering_tag = s_r_i.header[ORDERING_TAG_LSB +: ORDERING_TAG_WIDTH];
-            if (r.meta.is_data) begin
-                r.axi.rid   = s_r_i.payload[DATA_R_RID_LSB +: DATA_R_RID_WIDTH];
-                r.axi.rresp = s_r_i.payload[DATA_R_RRESP_LSB +: DATA_R_RRESP_WIDTH];
-                r.axi.rlast = s_r_i.payload[DATA_R_RLAST_LSB];
-                r.axi.rdata = DATA_W'(s_r_i.payload[DATA_R_RDATA_LSB +: DATA_R_RDATA_WIDTH]);
+            r.packet_info.packet_type  = s_r_i.header.packet_type;
+            r.packet_info.ordering_req = s_r_i.header.ord_req;
+            r.packet_info.ordering_tag = s_r_i.header.ord_tag;
+            if (r.packet_info.packet_type == noc_header_pkg::PKT_DATA_R) begin
+                r.axi.rid   = s_r_i.payload[noc_payload_pkg::DATA_R_RID_LSB +: noc_payload_pkg::DATA_R_RID_WIDTH];
+                r.axi.rresp = s_r_i.payload[noc_payload_pkg::DATA_R_RRESP_LSB +: noc_payload_pkg::DATA_R_RRESP_WIDTH];
+                r.axi.rlast = s_r_i.payload[noc_payload_pkg::DATA_R_RLAST_LSB];
+                r.axi.ruser = s_r_i.payload[noc_payload_pkg::DATA_R_RUSER_LSB +: noc_payload_pkg::DATA_R_RUSER_WIDTH];
+                r.axi.rdata = DATA_W'(s_r_i.payload[noc_payload_pkg::DATA_R_RDATA_LSB +: noc_payload_pkg::DATA_R_RDATA_WIDTH]);
             end else begin
-                r.axi.rid   = s_r_i.payload[NARROW_R_RID_LSB +: NARROW_R_RID_WIDTH];
-                r.axi.rresp = s_r_i.payload[NARROW_R_RRESP_LSB +: NARROW_R_RRESP_WIDTH];
-                r.axi.rlast = s_r_i.payload[NARROW_R_RLAST_LSB];
-                r.axi.rdata = DATA_W'(s_r_i.payload[NARROW_R_RDATA_LSB +: NARROW_R_RDATA_WIDTH]);
+                r.axi.rid   = s_r_i.payload[noc_payload_pkg::NARROW_R_RID_LSB +: noc_payload_pkg::NARROW_R_RID_WIDTH];
+                r.axi.rresp = s_r_i.payload[noc_payload_pkg::NARROW_R_RRESP_LSB +: noc_payload_pkg::NARROW_R_RRESP_WIDTH];
+                r.axi.rlast = s_r_i.payload[noc_payload_pkg::NARROW_R_RLAST_LSB];
+                r.axi.ruser = s_r_i.payload[noc_payload_pkg::NARROW_R_RUSER_LSB +: noc_payload_pkg::NARROW_R_RUSER_WIDTH];
+                r.axi.rdata = DATA_W'(s_r_i.payload[noc_payload_pkg::NARROW_R_RDATA_LSB +: noc_payload_pkg::NARROW_R_RDATA_WIDTH]);
             end
         end
     end

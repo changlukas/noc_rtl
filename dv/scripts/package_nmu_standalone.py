@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+"""Prepare a generated standalone run for direct SSH synchronization or optional export."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import tarfile
+import tempfile
+from gen_standalone_patterns import generate as generate_standalone
+from gen_tb_top import native_param
+
+
+def package(run_dir, output, directory=False, block_patterns=None, id_width=None):
+    native_id_width = native_param("noc_payload_pkg", "AXI_ID_WIDTH")
+    id_width = native_id_width if id_width is None else id_width
+    if not 1 <= id_width <= native_id_width:
+        raise ValueError("id_width must fit native AXI_ID_WIDTH")
+    run_dir = Path(run_dir).resolve()
+    repo = Path(__file__).resolve().parents[2]
+    with tempfile.TemporaryDirectory(prefix="nmu-vcs-package-") as temporary:
+        root = Path(temporary) / "nmu-standalone"
+        root.mkdir()
+        copied = {}
+
+        def copy_path(source):
+            source = Path(source).resolve()
+            if source in copied:
+                return copied[source]
+            if source.is_relative_to(repo / "deps"):
+                relative = Path("deps") / source.relative_to(repo / "deps")
+            elif source.is_relative_to(repo):
+                relative = Path("repo") / source.relative_to(repo)
+            elif source.is_relative_to(run_dir):
+                relative = Path("generated") / source.relative_to(run_dir)
+            else:
+                # Dependency checkouts keep their pinned directory names.
+                parts = source.parts
+                pivot = next(i for i, part in enumerate(parts)
+                             if part.startswith(("common_cells", "tech_cells_generic")))
+                relative = Path("deps", *parts[pivot:])
+                dependency = Path(*parts[:pivot+1])
+                for license_file in dependency.glob("LICENSE*"):
+                    target = root / "deps" / dependency.name / license_file.name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(license_file, target)
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if source.is_dir():
+                if source == repo / "dv/env/seq_lib":
+                    target.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source / "ni_pattern_sequence.svh", target / "ni_pattern_sequence.svh")
+                else:
+                    shutil.copytree(source, target, dirs_exist_ok=True)
+            else:
+                shutil.copy2(source, target)
+                if relative.parts[0] == "deps" and source.name == "cc_fifo.sv":
+                    # Size the wrap bound explicitly before comparison. Some older
+                    # simulators mis-evaluate the parameter part-select subtraction.
+                    text = source.read_text()
+                    old = "FifoDepth[PtrWidth-1:0] - 1"
+                    if text.count(old) != 2:
+                        raise ValueError("Pinned cc_fifo wrap expressions changed; review compatibility patch")
+                    target.write_text(text.replace(old, "PtrWidth'(FifoDepth - 1)"))
+            copied[source] = relative.as_posix()
+            return copied[source]
+
+        lines = []
+        for line in (run_dir / "files.f").read_text().splitlines():
+            if line.startswith("+incdir+"):
+                lines.append("+incdir+" + copy_path(line[len("+incdir+"):]))
+            elif line.startswith("+define+"):
+                lines.append(line)
+            elif line.strip():
+                relative = copy_path(line)
+                # Resolve only interfaces actually used by this top from the library.
+                lines.append(("-v " if Path(line).name == "axi_intf.sv" else "") + relative)
+        (root / "files.f").write_text("\n".join(lines) + "\n")
+        for license_file in (repo / "deps").glob("*/LICENSE*"):
+            copy_path(license_file)
+        for name in ("neighbor", "uniform_random", "hotspot", "directed"):
+            source = run_dir / name
+            if name != "directed":
+                source /= "node0"
+            shutil.copytree(source, root / "cases" / name)
+        if block_patterns:
+            shutil.copytree(block_patterns, root / "cases/standalone")
+        else:
+            generate_standalone(root / "cases/standalone", repo / "dv/config/topology/mesh_2x2.yml", id_width)
+        copy_path(repo / "dv/config/cases.json")
+        for name in ("gen_standalone_patterns.py", "axi_file_format.py"):
+            copy_path(repo / "dv/scripts" / name)
+        import yaml
+        from address_map import pack_config
+        _, entries = pack_config(yaml.safe_load((repo / "dv/config/topology/mesh_2x2.yml").read_text()))
+        (root / "cases/topology.json").write_text(json.dumps(entries))
+
+        for name in ("tb_sam.sv", "tb_sam_boundary.sv", "tb_sam_guards.sv"):
+            copy_path(repo / "rtl/nmu/sam" / name)
+        copy_path(repo / "rtl/nmu/top/nmu_lint.vlt")
+        copy_path(repo / "rtl/nmu/response_path/tb_response_path.sv")
+        # Legacy credit storage belongs only to the exported focused TB.
+        copy_path(repo / "rtl/common/rx_credit_buffer.sv")
+        copy_path(repo / "rtl/nmu/response_depacketize/tb_response_depacketize.sv")
+        copy_path(repo / "rtl/nmu/response_depacketize/test_response_depacketize.sh")
+        (root / "script").mkdir()
+        shutil.copy2(repo / "dv/tb/standalone/common/simulator.mk", root / "script/Makefile")
+        shutil.copy2(repo / "dv/tb/standalone/common/clean.sh", root / "script/clean.sh")
+        shutil.copy2(repo / "dv/tb/standalone/nmu/perf.sh", root / "script/perf.sh")
+        shutil.copy2(repo / "dv/tb/standalone/nmu/test_verification.py", root / "script/test_verification.py")
+        config = (repo / "dv/tb/standalone/nmu/config.mk").read_text()
+        config = "\n".join(f"ID_WIDTH ?= {id_width}" if line.startswith("ID_WIDTH ?=") else line
+                           for line in config.splitlines()) + "\n"
+        (root / "script/config.mk").write_text(config)
+        (root / "script/nWaveLog").mkdir()
+        shutil.copy2(repo / "dv/tb/standalone/nmu/signals.rc", root / "script/nWaveLog/signals.rc")
+        shutil.copy2(repo / "dv/tb/standalone/nmu/workstation.mk", root / "Makefile")
+        descriptions = {
+            "ctrl_write_single": "Single control write",
+            "ctrl_read_single": "Single control read",
+            "ctrl_write_burst": "Control write: 8 INCR bursts, 2/4/8/16/32/64/128/256 beats, 64-bit",
+            "ctrl_read_burst": "Control read: 8 INCR bursts, 2/4/8/16/32/64/128/256 beats, 64-bit",
+            "single_id_outstanding": "Same ID, multiple outstanding transactions",
+            "multi_id_outstanding": "Multiple IDs and outstanding transactions",
+            "multi_id_out_of_order": "Out-of-order responses across IDs",
+            "single_id_reorder": "Same ID across destinations, B/R reordering",
+            "outstanding_full_recover": "Capacity pressure and recovery, including ID remap reuse",
+            "backpressure": "REQ and AXI response stalls",
+            "reset_recovery": "Randomized reset recovery",
+            "data_write_single": "Single data write",
+            "data_read_single": "Single data read",
+            "data_write_burst": "Data write: 6 INCR bursts, 2/4/8/16/32/64 beats, 512-bit",
+            "data_read_burst": "Data read: 6 INCR bursts, 2/4/8/16/32/64 beats, 512-bit",
+            "ctrl_rand": "Seeded control requests",
+            "data_rand": "Seeded data requests",
+            "request_rand": "Seeded mixed control/data requests",
+
+        }
+        names = [name for name in (root / "cases/standalone/cases.list").read_text().splitlines()
+                 if name not in ("outstanding_full_recover", "backpressure", "reset_recovery")]
+        (root / "cases.list").write_text("\n".join(names) + "\n")
+        (root / "pattern_list.txt").write_text(
+            "NMU standalone control/data/random patterns\n\n"
+            "First run (compile + simulate): make run CASE=ctrl_write_burst\n"
+            "Ordering/outstanding scenarios: MODE=control|data|rand, default control\n"
+            "Random example: make run CASE=single_id_outstanding MODE=rand SEED=7\n"
+            "Fixed ctrl_*/data_* cases select their own mode; request_rand mixes both.\n"
+            "Waveform: make run_wave CASE=ctrl_write_burst\n"
+            "View existing waveform: make view CASE=ctrl_write_burst\n"
+            "Display this list: make list\n\n"
+            + "\n".join(f"{i:2d}. {name}\n    {descriptions[name]}" for i, name in enumerate(names, 1))
+            + "\n\nSimulator: VCS with UVM 1.2.\n"
+            "AXI requests use the tvip-axi UVM agent and file sequence; no TB outstanding cap.\n"
+            "Changing CASE reuses the binary. Changing DUT settings or WAVE may need compilation.\n"
+            "Pattern ID width must match the compiled DUT.\n"
+)
+        (root / "run_vcs.sh").write_text(r'''#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+make regress "$@"
+''')
+        revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+        (root / "VERSION.txt").write_text(
+            "Issue: 83\nCheckout HEAD: " + revision + "\n"
+            "Compare SHA256SUMS for exact packaged source/config/pattern bytes.\n")
+        (root / "README.txt").write_text(
+            "NMU standalone loopback. NMU/router/NSU co-simulation is in ../sim/.\n"
+            "make run CASE=ctrl_write_single\n"
+            "make run_wave CASE=single_id_reorder\n"
+            "make view CASE=single_id_reorder\n"
+            "make clean\n"
+            "make list\n\n"
+            "Settings: script/config.mk. Waveform groups: script/nWaveLog/signals.rc.\n"
+            "Simulator: VCS with UVM 1.2.\n"
+            "clean removes build products, reports and GUI output; keeps sources, patterns and signal RC files.\n")
+        # Linux tools require LF after a preprocessor/string continuation backslash.
+        # Normalize only staged text; retain the vendored source bytes in the checkout.
+        for file in root.rglob("*"):
+            if file.is_file() and (file.suffix in (".sv", ".svh", ".sh", ".py", ".mk", ".f", ".vlt")
+                                   or file.name == "Makefile"):
+                data = file.read_bytes()
+                if b"\r\n" in data:
+                    file.write_bytes(data.replace(b"\r\n", b"\n"))
+        checksums = []
+        for file in sorted(root.rglob("*")):
+            if file.is_file():
+                checksums.append(hashlib.sha256(file.read_bytes()).hexdigest() + "  " + file.relative_to(root).as_posix())
+        (root / "SHA256SUMS").write_text("\n".join(checksums) + "\n")
+        output = Path(output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        if directory:
+            shutil.copytree(root, output, dirs_exist_ok=True)
+            print(output)
+            return
+        with tarfile.open(output, "w:gz") as archive:
+            archive.add(root, arcname=root.name)
+        print(output)
+        print("SHA256", hashlib.sha256(output.read_bytes()).hexdigest())
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-dir", required=True)
+    parser.add_argument("--block-patterns")
+    parser.add_argument("--id-width", type=int)
+    destination = parser.add_mutually_exclusive_group(required=True)
+    destination.add_argument("--output")
+    destination.add_argument("--output-dir")
+    args = parser.parse_args()
+    package(args.run_dir, args.output_dir or args.output, directory=bool(args.output_dir), block_patterns=args.block_patterns, id_width=args.id_width)

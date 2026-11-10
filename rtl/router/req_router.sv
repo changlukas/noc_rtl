@@ -6,36 +6,35 @@
 module req_router #(
     parameter int unsigned ROUTER_X     = 0,
     parameter int unsigned ROUTER_Y     = 0,
-    parameter int unsigned MESH_X       = ni_params_pkg::NOC_MESH_X_DIM,
-    parameter int unsigned MESH_Y       = ni_params_pkg::NOC_MESH_Y_DIM,
+    parameter int unsigned MESH_X       = noc_unit_params_pkg::MESH_X_DIM,
+    parameter int unsigned MESH_Y       = noc_unit_params_pkg::MESH_Y_DIM,
     parameter int unsigned FIFO_DEPTH   = 32,
     parameter int unsigned OUT_REG_TYPE = 0
 ) (
     input  wire logic                         clk_i,
     input  wire logic                         rst_n_i,
-    input  wire ni_flit_pkg::req_flit_t [4:0] RXREQ,
+    input  wire noc_payload_pkg::req_flit_t [4:0] RXREQ,
     input  wire logic                   [4:0] RXREQVLD,
     output wire logic                   [4:0] RXREQRDY,
-    output wire ni_flit_pkg::req_flit_t [4:0] TXREQ,
+    output wire noc_payload_pkg::req_flit_t [4:0] TXREQ,
     output wire logic                   [4:0] TXREQVLD,
     input  wire logic                   [4:0] TXREQRDY
 );
-    import ni_flit_pkg::*;
-    wire req_flit_t [4:0] head;
+    wire noc_payload_pkg::req_flit_t [4:0] head;
     wire [4:0] full, empty, pop, last, is_collective;
-    wire [4:0][4:0] route_mask, merge_mask, branch_valid, branch_ready;
+    wire [4:0][4:0] route_mask, branch_valid, branch_ready;
     logic [4:0][4:0] route_reg = '0, route_next;
     logic [4:0] active_reg = '0, active_next;
     assign RXREQRDY = ~full;
     for (genvar i = 0; i < 5; i++) begin : gen_input
         wire [4:0] computed_route;
-        assign last[i] = head[i].header[FLIT_TAIL_LSB];
-        assign is_collective[i] = head[i].header[COLLECTIVE_OP_LSB +: COLLECTIVE_OP_WIDTH] == COLLECTIVE_OP_WIDTH'(COLLECTIVE_OP_MULTICAST);
+        assign last[i] = head[i].header.flit_tail;
+        assign is_collective[i] = head[i].header.coll_op == noc_header_pkg::COLL_MULTICAST;
         assign route_mask[i] = active_reg[i] ? route_reg[i] : computed_route;
         cc_fifo #(
             .Depth          (FIFO_DEPTH),
             .FallThrough    (1'b0),
-            .data_t         (req_flit_t)
+            .data_t         (noc_payload_pkg::req_flit_t)
         ) i_fifo (
             .clk_i          (clk_i),
             .rst_ni         (rst_n_i),
@@ -58,7 +57,7 @@ module req_router #(
             .header_i       (head[i].header),
             .multicast_i    (is_collective[i]),
             .route_mask_o   (computed_route),
-            .merge_mask_o   (merge_mask[i])
+            .merge_mask_o   ()
         );
         collective_control #(
             .MODE           ("MULTICAST"),
@@ -78,6 +77,26 @@ module req_router #(
             .m_valid_o      (branch_valid[i]),
             .m_ready_i      (branch_ready[i])
         );
+        // synthesis translate_off
+        req_packet_type: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+            RXREQVLD[i] |-> RXREQ[i].header.packet_type inside {
+                noc_header_pkg::PKT_NARROW_AW, noc_header_pkg::PKT_NARROW_W,
+                noc_header_pkg::PKT_NARROW_AR, noc_header_pkg::PKT_DATA_AR})
+            else $fatal(1, "Invalid REQ packet type (instance %m)");
+        ar_tail: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+            RXREQVLD[i] && (RXREQ[i].header.packet_type == noc_header_pkg::PKT_NARROW_AR ||
+                RXREQ[i].header.packet_type == noc_header_pkg::PKT_DATA_AR) |-> RXREQ[i].header.flit_tail)
+            else $fatal(1, "AR must be a single-flit packet (instance %m)");
+`ifdef NI_COVERAGE
+        packet_bubble: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            active_reg[i] && empty[i] ##[1:256] pop[i] && last[i]);
+        multicast_partial: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            is_collective[i] && (|(branch_valid[i] & branch_ready[i])) && !pop[i]
+            ##[1:256] pop[i]);
+        packet_stall: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            !empty[i] && !pop[i] ##[1:256] pop[i]);
+`endif
+        // synthesis translate_on
     end
     always_comb begin
         route_next = route_reg;
@@ -100,21 +119,19 @@ module req_router #(
     end
     for (genvar o = 0; o < 5; o++) begin : gen_output
         wire [4:0] req, select, grant;
-        wire req_flit_t [4:0] arb_data = head;
-        wire [4:0] arb_last = last;
         for (genvar i = 0; i < 5; i++) begin : gen_request
             assign req[i] = branch_valid[i][o];
             assign branch_ready[i][o] = grant[i];
         end
         wire selected_valid, selected_ready;
-        wire req_flit_t selected_data;
+        wire noc_payload_pkg::req_flit_t selected_data;
         switch_allocator #(
             .NUM_INPUTS     (5)
         ) i_switch_allocator (
             .clk_i          (clk_i),
             .rst_n_i        (rst_n_i),
             .req_i          (req),
-            .last_i         (arb_last),
+            .last_i         (last),
             .select_o       (select),
             .grant_o        (grant),
             .valid_o        (selected_valid),
@@ -123,15 +140,15 @@ module req_router #(
         crossbar #(
             .NUM_INPUTS     (5),
             .NUM_OUTPUTS    (1),
-            .flit_t         (req_flit_t)
+            .flit_t         (noc_payload_pkg::req_flit_t)
         ) i_crossbar (
-            .data_i         (arb_data),
+            .data_i         (head),
             .select_i       (select),
             .data_o         (selected_data)
         );
         stream_register #(
             .REG_TYPE       (OUT_REG_TYPE),
-            .data_t         (req_flit_t)
+            .data_t         (noc_payload_pkg::req_flit_t)
         ) i_output (
             .clk_i          (clk_i),
             .rst_n_i        (rst_n_i),
@@ -142,6 +159,12 @@ module req_router #(
             .m_ready_i      (TXREQRDY[o]),
             .m_data_o       (TXREQ[o])
         );
+        // synthesis translate_off
+`ifdef NI_COVERAGE
+        route_transfer: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            TXREQVLD[o] && TXREQRDY[o]);
+`endif
+        // synthesis translate_on
     end
     initial begin
         if (FIFO_DEPTH < 2 || (FIFO_DEPTH & (FIFO_DEPTH-1)) != 0)

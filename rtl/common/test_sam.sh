@@ -2,32 +2,28 @@
 set -euo pipefail
 
 task_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-task_manifest="$task_root/rtl/Bender.yml"
+task_manifest="$task_root/deps/revisions.json"
 task_revision=63b7c50d43e462b59506f69d341ff1e40202866d
-task_tmp=$(mktemp -d "${TMPDIR:-/tmp}/noc-ni-sam-XXXXXX")
-trap 'rm -rf "$task_tmp"' EXIT
+task_common_cells=${COMMON_CELLS_DIR:-"$task_root/deps/common_cells-v2.0.0-beta.3"}
 
-if [[ -n "${COMMON_CELLS_DIR:-}" ]]; then
-    task_common_cells=$COMMON_CELLS_DIR
-else
-    task_common_cells="$task_tmp/common_cells"
-    git clone --quiet https://github.com/pulp-platform/common_cells.git "$task_common_cells"
-    git -C "$task_common_cells" checkout --quiet "$task_revision"
-fi
-
-[[ $(git -C "$task_common_cells" rev-parse HEAD) == "$task_revision" ]]
-[[ $(git -C "$task_common_cells" describe --tags --exact-match) == "v2.0.0-beta.3" ]]
-grep -Fq "$task_revision" "$task_manifest"
-
-task_generated="$task_tmp/generated/mesh_2x2/topology_pkg.sv"
-mkdir -p "$(dirname "$task_generated")"
-python3 "$task_root/sim/tools/gen_tb_top.py" --topology mesh_2x2 \
-    --emit-topology-pkg --out "$task_generated"
+# Vendored dependency provenance is tracked with the source, not a nested .git.
+python3 - "$task_manifest" "$task_revision" <<'PY'
+import json
+import sys
+from pathlib import Path
+entries = json.loads(Path(sys.argv[1]).read_text())
+assert any(entry.get("name") == "common_cells-v2.0.0-beta.3" and
+           entry.get("revision") == sys.argv[2] for entry in entries), \
+    "common_cells revision does not match deps/revisions.json"
+PY
 
 task_sources=(
-    "$task_root/specgen/generated/sv/ni_params_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_flit_pkg.sv"
-    "$task_generated"
+    "$task_root/define/noc_header_pkg.sv"
+    "$task_root/define/noc_payload_pkg.sv"
+    "$task_root/define/noc_unit_params_pkg.sv"
+    "$task_root/define/noc_sam_pkg.sv"
+    "$task_root/rtl/common/ni_signals_pkg.sv"
+    "$task_root/rtl/common/ni_types_pkg.sv"
     "$task_common_cells/src/cc_pkg.sv"
     "$task_common_cells/src/cc_addr_decode_dync.sv"
     "$task_common_cells/src/cc_addr_decode.sv"
@@ -35,25 +31,30 @@ task_sources=(
     "$task_root/rtl/common/tests/tb_ni_sam.sv"
 )
 
-task_verilator=(
-    verilator --timing --assert -Wall -Wno-fatal -Wno-DECLFILENAME -Wno-TIMESCALEMOD
-    -Wno-UNUSEDPARAM -Wno-UNUSEDSIGNAL -I"$task_common_cells/include"
-    --top-module tb_ni_sam
+# Build outputs must be directed to an explicitly selected workstation directory.
+: "${VCS_BUILD_DIR:?Set VCS_BUILD_DIR to the approved workstation build directory}"
+task_build_dir=$(realpath -m "$VCS_BUILD_DIR")
+mkdir -p "$task_build_dir"
+
+task_vcs=(
+    "${VCS:-vcs}" -full64 -sverilog -assert svaext -timescale=1ns/1ps
+    +incdir+"$task_common_cells/include" -top tb_ni_sam
+    -Mdir="$task_build_dir/csrc" -o "$task_build_dir/simv"
+    -l "$task_build_dir/compile.log"
 )
 
 case "${1:-test}" in
-    lint)
-        "${task_verilator[@]}" --lint-only "${task_sources[@]}"
+    compile|lint)
+        cd "$task_build_dir"
+        "${task_vcs[@]}" "${task_sources[@]}"
         ;;
     test)
-        "${task_verilator[@]}" --lint-only "${task_sources[@]}"
-
-        task_obj_dir="$task_tmp/obj_dir"
-        "${task_verilator[@]}" --binary --Mdir "$task_obj_dir" -o ni_sam_tb "${task_sources[@]}"
-        "$task_obj_dir/ni_sam_tb"
+        cd "$task_build_dir"
+        "${task_vcs[@]}" "${task_sources[@]}"
+        "$task_build_dir/simv" -l "$task_build_dir/simulate.log"
         ;;
     *)
-        echo "usage: $0 [lint|test]" >&2
+        echo "usage: VCS_BUILD_DIR=<directory> $0 [compile|test]" >&2
         exit 2
         ;;
 esac

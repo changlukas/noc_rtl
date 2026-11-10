@@ -8,33 +8,31 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
     logic noc_rst_n;
 
     axi_if #(
-        .DATA_W    (ni_params_pkg::AXI_DATA_WIDTH  ),
-        .ADDR_W    (ni_params_pkg::AXI_ADDR_WIDTH  ),
-        .ID_W      (ni_params_pkg::AXI_ID_WIDTH     ),
+        .DATA_W    (noc_payload_pkg::DATA_WIDTH  ),
+        .ADDR_W    (noc_payload_pkg::AXI_ADDR_WIDTH  ),
+        .ID_W      (noc_payload_pkg::AXI_ID_WIDTH     ),
         .AWUSER_EN (1'b1                           ),
-        .AWUSER_W  (ni_params_pkg::AXI_AWUSER_WIDTH)
+        .AWUSER_W  (noc_payload_pkg::AXI_AWUSER_WIDTH)
     ) axi_if();
 
     logic                                         tx_req_valid_o;
-    logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] tx_req_flit_o;
+    logic [noc_payload_pkg::REQ_FLIT_WIDTH-1:0] tx_req_flit_o;
     logic                                         tx_req_ready_i;
 
     logic                                         rx_rsp_valid_i;
-    logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] rx_rsp_flit_i;
+    logic [noc_payload_pkg::RSP_FLIT_WIDTH-1:0] rx_rsp_flit_i;
     logic                                         rx_rsp_ready_o;
 
-    logic [ni_params_pkg::NUM_DAT_VC-1:0] tx_dat_valid_o;
-    logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] tx_dat_flit_o;
-    logic         [ni_params_pkg::NUM_DAT_VC-1:0] credit_i;
-    logic [ni_params_pkg::NUM_DAT_VC-1:0] rx_dat_valid_i;
-    logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i;
-    logic         [ni_params_pkg::NUM_DAT_VC-1:0] credit_o;
+    logic tx_dat_valid_o;
+    logic [noc_payload_pkg::DAT_FLIT_WIDTH-1:0] tx_dat_flit_o;
+    logic rx_dat_valid_i;
+    logic [noc_payload_pkg::DAT_FLIT_WIDTH-1:0] rx_dat_flit_i;
 
     nmu #(
-        .INPUT_ID_WIDTH (ni_params_pkg::AXI_ID_WIDTH),
-        .AXI_ADDR_WIDTH (INVALID_WIDTH == 1 ? 64 : ni_params_pkg::AXI_ADDR_WIDTH),
-        .AXI_DATA_WIDTH (INVALID_WIDTH == 2 ? 1024 : ni_params_pkg::AXI_DATA_WIDTH),
-        .AXI_AWUSER_WIDTH (INVALID_WIDTH == 3 ? 64 : ni_params_pkg::AXI_AWUSER_WIDTH)
+        .INPUT_ID_WIDTH (noc_payload_pkg::AXI_ID_WIDTH),
+        .AXI_ADDR_WIDTH (INVALID_WIDTH == 1 ? 64 : noc_payload_pkg::AXI_ADDR_WIDTH),
+        .AXI_DATA_WIDTH (INVALID_WIDTH == 2 ? 1024 : noc_payload_pkg::DATA_WIDTH),
+        .AXI_AWUSER_WIDTH (INVALID_WIDTH == 3 ? 64 : noc_payload_pkg::AXI_AWUSER_WIDTH)
     ) dut (
         .ACLK              (ACLK             ),
         .ARESETn           (ARESETn          ),
@@ -51,29 +49,25 @@ module tb_nmu_elaborate #(parameter int unsigned INVALID_WIDTH = 0);
         .TXDATVLD    (tx_dat_valid_o   ),
         .TXDATRDY    ('1),
         .TXDAT     (tx_dat_flit_o    ),
-        .credit_i          (credit_i         ),
         .RXDATVLD    (rx_dat_valid_i   ),
-        .RXDAT     (rx_dat_flit_i    ),
-        .credit_o          (credit_o         )
+        .RXDAT     (rx_dat_flit_i    )
     );
 
     initial begin
-        assert ($bits(axi_if.awid) == 8)
+        assert ($bits(axi_if.awid) == noc_payload_pkg::AXI_ID_WIDTH)
             else $fatal(1, "AXI request ID width mismatch");
-        assert ($bits(axi_if.awaddr) == ni_params_pkg::AXI_ADDR_WIDTH)
+        assert ($bits(axi_if.awaddr) == noc_payload_pkg::AXI_ADDR_WIDTH)
             else $fatal(1, "AXI request address width mismatch");
-        assert ($bits(axi_if.wdata) == ni_params_pkg::AXI_DATA_WIDTH)
+        assert ($bits(axi_if.wdata) == noc_payload_pkg::DATA_WIDTH)
             else $fatal(1, "AXI request data width mismatch");
-        assert ($bits(axi_if.awuser) == ni_params_pkg::AXI_AWUSER_WIDTH)
+        assert ($bits(axi_if.awuser) == noc_payload_pkg::AXI_AWUSER_WIDTH)
             else $fatal(1, "AWUSER width mismatch");
-        assert ($bits(tx_req_flit_o) == ni_params_pkg::NOC_REQ_FLIT_WIDTH)
+        assert ($bits(tx_req_flit_o) == noc_payload_pkg::REQ_FLIT_WIDTH)
             else $fatal(1, "REQ flit width mismatch");
-        assert ($bits(rx_rsp_flit_i) == ni_params_pkg::NOC_RSP_FLIT_WIDTH)
+        assert ($bits(rx_rsp_flit_i) == noc_payload_pkg::RSP_FLIT_WIDTH)
             else $fatal(1, "RSP flit width mismatch");
-        assert ($bits(tx_dat_flit_o) == ni_params_pkg::NOC_DAT_FLIT_WIDTH)
+        assert ($bits(tx_dat_flit_o) == noc_payload_pkg::DAT_FLIT_WIDTH)
             else $fatal(1, "DAT flit width mismatch");
-        assert ($bits(credit_i) == ni_params_pkg::NUM_DAT_VC)
-            else $fatal(1, "DAT credit width mismatch");
         #1ns;
         if (INVALID_WIDTH != 0) $fatal(1, "Invalid width was not detected");
         $finish;

@@ -3,7 +3,7 @@ set -euo pipefail
 
 task_mode=${1:-test}
 task_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
-task_manifest="$task_root/rtl/Bender.yml"
+task_manifest="$task_root/deps/revisions.json"
 task_revision=63b7c50d43e462b59506f69d341ff1e40202866d
 task_tech_revision=3a3de73632a06826b1bd9c65a0a2e92b32016845
 task_tmp=$(mktemp -d "${TMPDIR:-/tmp}/nmu-request-fifo-XXXXXX")
@@ -38,6 +38,7 @@ task_sources=(
     "$task_common_cells/src/cc_stream_register.sv"
     "$task_tech_cells/src/rtl/tc_sync.sv"
     "$task_common_cells/src/cc_cdc_fifo_gray.sv"
+    "$task_common_cells/src/cc_fifo.sv"
     "$task_root/rtl/common/axi_async_fifo.sv"
     "$task_root/rtl/nmu/request_fifo/request_fifo.sv"
     "$task_root/rtl/nmu/request_fifo/tb_request_fifo.sv"

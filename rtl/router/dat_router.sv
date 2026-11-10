@@ -6,46 +6,40 @@
 module dat_router #(
     parameter int unsigned ROUTER_X        = 0,
     parameter int unsigned ROUTER_Y        = 0,
-    parameter int unsigned MESH_X          = ni_params_pkg::NOC_MESH_X_DIM,
-    parameter int unsigned MESH_Y          = ni_params_pkg::NOC_MESH_Y_DIM,
-    parameter int unsigned NUM_VC          = ni_params_pkg::NUM_DAT_VC,
-    localparam int unsigned VC_MODE         = (NUM_VC > 1),
-    parameter int unsigned CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
-    parameter int unsigned OUT_FIFO_DEPTH  = ni_params_pkg::NOC_ROUTER_OUTPUT_FIFO_DEPTH
+    parameter int unsigned MESH_X          = noc_unit_params_pkg::MESH_X_DIM,
+    parameter int unsigned MESH_Y          = noc_unit_params_pkg::MESH_Y_DIM,
+    parameter int unsigned NUM_VC          = noc_unit_params_pkg::DAT_NUM_VC,
+    parameter int unsigned FIFO_DEPTH      = noc_unit_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned OUT_FIFO_DEPTH  = noc_unit_params_pkg::ROUTER_OUTPUT_FIFO_DEPTH
 ) (
     input  wire logic                                     clk_i,
     input  wire logic                                     rst_n_i,
-    input  wire ni_flit_pkg::dat_flit_t             [4:0] RXDAT,
+    input  wire noc_payload_pkg::dat_flit_t             [4:0] RXDAT,
     input  wire logic                   [4:0][NUM_VC-1:0] RXDATVLD,
     output wire logic                   [4:0][NUM_VC-1:0] RXDATRDY,
-    output wire logic                   [4:0][NUM_VC-1:0] credit_o,
-    output wire ni_flit_pkg::dat_flit_t             [4:0] TXDAT,
+    output wire noc_payload_pkg::dat_flit_t             [4:0] TXDAT,
     output wire logic                   [4:0][NUM_VC-1:0] TXDATVLD,
-    input  wire logic                   [4:0][NUM_VC-1:0] TXDATRDY,
-    input  wire logic                   [4:0][NUM_VC-1:0] credit_i
+    input  wire logic                   [4:0][NUM_VC-1:0] TXDATRDY
 );
-    import ni_flit_pkg::*;
     localparam int unsigned NUM_INPUTS = 5*NUM_VC;
     typedef struct packed {
-        dat_flit_t flit;
+        noc_payload_pkg::dat_flit_t flit;
         logic [4:0] route_mask;
     } route_data_t;
-    wire dat_flit_t [NUM_INPUTS-1:0] head, fifo_head;
+    wire noc_payload_pkg::dat_flit_t [NUM_INPUTS-1:0] head, fifo_head;
     wire [NUM_INPUTS-1:0] fifo_pop, route_ready, head_valid;
     wire [NUM_INPUTS-1:0] full, empty, pop, last, output_last;
     wire [NUM_INPUTS-1:0][4:0] route_mask, input_route, branch_valid, branch_ready;
     logic [NUM_INPUTS-1:0][4:0] route_reg = '0, route_next;
     logic [NUM_INPUTS-1:0] active_reg = '0, active_next;
-    logic [4:0][NUM_VC-1:0] credit_reg = '0;
-    assign credit_o = credit_reg;
     for (genvar i = 0; i < NUM_INPUTS; i++) begin : gen_input
         localparam int PORT = i/NUM_VC;
         localparam int VC = i%NUM_VC;
         wire [4:0] computed_route;
-        wire multicast = fifo_head[i].header[COLLECTIVE_OP_LSB +: COLLECTIVE_OP_WIDTH] == COLLECTIVE_OP_WIDTH'(COLLECTIVE_OP_MULTICAST);
+        wire multicast = fifo_head[i].header.coll_op == noc_header_pkg::COLL_MULTICAST;
         assign RXDATRDY[PORT][VC] = !full[i];
-        assign last[i] = fifo_head[i].header[FLIT_TAIL_LSB];
-        assign output_last[i] = head[i].header[FLIT_TAIL_LSB];
+        assign last[i]                    = fifo_head[i].header.flit_tail;
+        assign output_last[i] = head[i].header.flit_tail;
         assign input_route[i] = active_reg[i] ? route_reg[i] : computed_route;
         wire route_data_t route_in = '{flit: fifo_head[i], route_mask: input_route[i]};
         wire route_data_t route_out;
@@ -66,9 +60,9 @@ module dat_router #(
             .m_data_o       (route_out)
         );
         cc_fifo #(
-            .Depth          (CREDIT_DEPTH),
+            .Depth          (FIFO_DEPTH),
             .FallThrough    (1'b0),
-            .data_t         (dat_flit_t)
+            .data_t         (noc_payload_pkg::dat_flit_t)
         ) i_fifo (
             .clk_i          (clk_i),
             .rst_ni         (rst_n_i),
@@ -93,6 +87,14 @@ module dat_router #(
             .route_mask_o   (computed_route),
             .merge_mask_o   ()
         );
+        // synthesis translate_off
+        input_class: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+            RXDATVLD[PORT][VC] |-> noc_unit_params_pkg::dat_class(RXDAT[PORT].header.packet_type) == VC);
+        multicast_partial: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            head_valid[i] && (|branch_valid[i]) && (|(branch_valid[i] & branch_ready[i])) && !pop[i]);
+        packet_bubble: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+            active_reg[i] && empty[i]);
+        // synthesis translate_on
         collective_control #(
             .MODE           ("MULTICAST"),
             .NUM_INPUTS     (1),
@@ -126,111 +128,98 @@ module dat_router #(
         if (~rst_n_i) begin
             active_reg <= '0;
             route_reg <= '0;
-            credit_reg <= '0;
         end else begin
             active_reg <= active_next;
             route_reg <= route_next;
-            credit_reg <= fifo_pop;
         end
     end
     for (genvar o = 0; o < 5; o++) begin : gen_output
-        wire [NUM_INPUTS-1:0] req;
-        wire [NUM_VC-1:0][NUM_INPUTS-1:0] allocation, select, grant;
-        wire [NUM_VC-1:0] release_vc, credit_available;
         wire [NUM_VC-1:0] out_full, out_empty, out_pop;
-        wire dat_flit_t [NUM_VC-1:0] selected_data, output_head;
-        for (genvar i = 0; i < NUM_INPUTS; i++) begin : gen_request
-            logic accepted;
-            assign req[i] = branch_valid[i][o];
-            always_comb begin
-                accepted = 1'b0;
-                for (int v = 0; v < NUM_VC; v++) accepted |= grant[v][i];
-            end
-            assign branch_ready[i][o] = accepted;
-        end
-        vc_allocator #(
-            .NUM_VC         (NUM_VC),
-            .NUM_INPUTS     (NUM_INPUTS),
-            .ROUTER_X       (ROUTER_X),
-            .ROUTER_Y       (ROUTER_Y),
-            .OUTPUT_PORT    (o)
-        ) i_vc_allocator (
-            .clk_i          (clk_i),
-            .rst_n_i        (rst_n_i),
-            .data_i         (head),
-            .req_i          (req),
-            .credit_available_i (credit_available),
-            .release_i      (release_vc),
-            .select_o       (allocation)
-        );
-        crossbar #(
-            .NUM_INPUTS     (NUM_INPUTS),
-            .NUM_OUTPUTS    (NUM_VC),
-            .flit_t         (dat_flit_t)
-        ) i_crossbar (
-            .data_i         (head),
-            .select_i       (select),
-            .data_o         (selected_data)
-        );
+        wire noc_payload_pkg::dat_flit_t [NUM_VC-1:0] output_head;
         for (genvar v = 0; v < NUM_VC; v++) begin : gen_vc
+            wire [4:0] req, last, select, grant;
             wire selected_valid;
-            dat_flit_t output_data;
-            always_comb begin
-                output_data = selected_data[v];
-                output_data.header[VC_ID_LSB +: VC_ID_WIDTH] = VC_ID_WIDTH'(v);
+            wire noc_payload_pkg::dat_flit_t [4:0] data;
+            wire noc_payload_pkg::dat_flit_t selected_data;
+            for (genvar i = 0; i < 5; i++) begin : gen_request
+                // Each class can reach only the same class at this output.
+                assign data[i]                    = head[i*NUM_VC+v];
+                assign req[i]                     = branch_valid[i*NUM_VC+v][o];
+                assign last[i]                    = output_last[i*NUM_VC+v];
+                assign branch_ready[i*NUM_VC+v][o] = grant[i];
             end
-            assign release_vc[v] = selected_valid && !out_full[v] && selected_data[v].header[FLIT_TAIL_LSB];
             switch_allocator #(
-                .NUM_INPUTS     (NUM_INPUTS)
+                .NUM_INPUTS (5)
             ) i_switch_allocator (
-                .clk_i          (clk_i),
-                .rst_n_i        (rst_n_i),
-                .req_i          (req & allocation[v]),
-                .last_i         (output_last),
-                .select_o       (select[v]),
-                .grant_o        (grant[v]),
-                .valid_o        (selected_valid),
-                .ready_i        (!out_full[v])
+                .clk_i    (clk_i),
+                .rst_n_i  (rst_n_i),
+                .req_i    (req),
+                .last_i   (last),
+                .select_o (select),
+                .grant_o  (grant),
+                .valid_o  (selected_valid),
+                .ready_i  (!out_full[v])
+            );
+            crossbar #(
+                .NUM_INPUTS  (5),
+                .NUM_OUTPUTS (1),
+                .flit_t      (noc_payload_pkg::dat_flit_t)
+            ) i_crossbar (
+                .data_i   (data),
+                .select_i (select),
+                .data_o   (selected_data)
             );
             cc_fifo #(
-                .Depth          (OUT_FIFO_DEPTH),
-                .FallThrough    (1'b0),
-                .data_t         (dat_flit_t)
+                .Depth       (OUT_FIFO_DEPTH),
+                .FallThrough (1'b0),
+                .data_t      (noc_payload_pkg::dat_flit_t)
             ) i_fifo (
-                .clk_i          (clk_i),
-                .rst_ni         (rst_n_i),
-                .clr_i          (1'b0),
-                .flush_i        (1'b0),
-                .full_o         (out_full[v]),
-                .empty_o        (out_empty[v]),
-                .usage_o        (),
-                .data_i         (output_data),
-                .push_i         (selected_valid && !out_full[v]),
-                .data_o         (output_head[v]),
-                .pop_i          (out_pop[v])
+                .clk_i   (clk_i),
+                .rst_ni  (rst_n_i),
+                .clr_i   (1'b0),
+                .flush_i (1'b0),
+                .full_o  (out_full[v]),
+                .empty_o (out_empty[v]),
+                .usage_o (),
+                .data_i  (selected_data),
+                .push_i  (selected_valid && !out_full[v]),
+                .data_o  (output_head[v]),
+                .pop_i   (out_pop[v])
             );
+            // synthesis translate_off
+            output_class: assert property (@(posedge clk_i) disable iff (!rst_n_i)
+                selected_valid |-> noc_unit_params_pkg::dat_class(selected_data.header.packet_type) == v);
+            contention: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+                $countones(req) > 1 && selected_valid && !out_full[v]);
+            fifo_backpressure: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+                selected_valid && out_full[v]);
+            tail_stall: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+                selected_valid && selected_data.header.flit_tail && out_full[v]);
+            class_progress: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+                !out_empty[1-v] && !TXDATRDY[o][1-v] && out_pop[v]);
+            route_transfer: cover property (@(posedge clk_i) disable iff (!rst_n_i)
+                out_pop[v]);
+            // synthesis translate_on
         end
-        vc_arbiter #(
-            .NUM_VC         (NUM_VC),
-            .CREDIT_DEPTH   (CREDIT_DEPTH)
-        ) i_vc_arbiter (
-            .clk_i          (clk_i),
-            .rst_n_i        (rst_n_i),
-            .s_data_i       (output_head),
-            .s_valid_i      (~out_empty),
-            .s_ready_o      (out_pop),
-            .m_data_o       (TXDAT[o]),
-            .m_valid_o      (TXDATVLD[o]),
-            .m_ready_i      (TXDATRDY[o]),
-            .credit_i       (credit_i[o]),
-            .credit_available_o (credit_available)
+        flit_rr_arbiter #(
+            .NUM_DAT_VC  (NUM_VC),
+            .DAT_VC_MASK ('1)
+        ) i_flit_arbiter (
+            .clk_i         (clk_i),
+            .rst_n_i       (rst_n_i),
+            .s_dat_i       (output_head),
+            .s_dat_valid_i (~out_empty),
+            .s_dat_ready_o (out_pop),
+            .m_dat_o       (TXDAT[o]),
+            .m_dat_valid_o (TXDATVLD[o]),
+            .m_dat_ready_i (TXDATRDY[o])
         );
     end
     initial begin
-        if (NUM_VC < 1 || NUM_VC > (1 << VC_ID_WIDTH) || VC_MODE > 1 ||
-                (VC_MODE == 1 && (NUM_VC < 2 || NUM_VC%2 != 0)))
-            $fatal(1, "Invalid router VC configuration (instance %m)");
-        if (CREDIT_DEPTH < 2 || (CREDIT_DEPTH & (CREDIT_DEPTH-1)) != 0 ||
+        if (NUM_VC != 2 || NUM_VC != noc_unit_params_pkg::DAT_NUM_VC ||
+                noc_unit_params_pkg::DAT_WRITE_VC != 0 || noc_unit_params_pkg::DAT_READ_VC != 1)
+            $fatal(1, "DAT router requires write VC0 and read VC1 (instance %m)");
+        if (FIFO_DEPTH < 2 || (FIFO_DEPTH & (FIFO_DEPTH-1)) != 0 ||
                 OUT_FIFO_DEPTH < 1 || (OUT_FIFO_DEPTH & (OUT_FIFO_DEPTH-1)) != 0)
             $fatal(1, "Invalid router FIFO depth (instance %m)");
     end

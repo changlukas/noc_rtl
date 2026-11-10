@@ -6,6 +6,8 @@
 
 /* Independent AXI-clock to NoC-clock response-channel CDC FIFO bank. */
 module nsu_response_fifo #(
+    // 0: synchronous FIFO (common clock), 1: asynchronous FIFO.
+    parameter int unsigned FIFO_TYPE      = 1,
     parameter int unsigned AXI_FIFO_DEPTH = 32,
     parameter int unsigned B_FIFO_DEPTH   = AXI_FIFO_DEPTH,
     parameter int unsigned R_FIFO_DEPTH   = AXI_FIFO_DEPTH,
@@ -36,6 +38,7 @@ module nsu_response_fifo #(
     end
 
     axi_async_fifo #(
+        .FIFO_TYPE      (FIFO_TYPE),
         .AXI_FIFO_DEPTH (B_FIFO_DEPTH),
         .data_t         (b_t         )
     ) i_b_fifo (
@@ -52,6 +55,7 @@ module nsu_response_fifo #(
     );
 
     axi_async_fifo #(
+        .FIFO_TYPE      (FIFO_TYPE),
         .AXI_FIFO_DEPTH (R_FIFO_DEPTH),
         .data_t         (r_t         )
     ) i_r_fifo (

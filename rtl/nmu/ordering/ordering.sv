@@ -6,11 +6,11 @@
 
 /* Shared NMU request-ordering and response-reordering subsystem. */
 module nmu_ordering #(
-    parameter int unsigned NUM_IDS                = 1 << ni_params_pkg::NOC_ID_WIDTH,
-    parameter int unsigned B_ROB_DEPTH            = ni_params_pkg::NMU_ROB_B_DEPTH,
-    parameter int unsigned R_ROB_DEPTH            = ni_params_pkg::NMU_ROB_R_DEPTH,
-    parameter int unsigned MAX_OUTSTANDING_PER_ID = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
-    parameter bit          R_ROB_EN               = bit'(ni_params_pkg::NMU_R_ROB_EN)
+    parameter int unsigned NUM_IDS                = 1 << noc_payload_pkg::NOC_ID_WIDTH,
+    parameter int unsigned B_ROB_DEPTH            = noc_unit_params_pkg::NMU_ROB_B_DEPTH,
+    parameter int unsigned R_ROB_DEPTH            = noc_unit_params_pkg::NMU_ROB_R_DEPTH,
+    parameter int unsigned MAX_OUTSTANDING_PER_ID = noc_unit_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
+    parameter bit          R_ROB_EN               = bit'(noc_unit_params_pkg::NMU_R_ROB_EN)
 ) (
     input  wire logic                             clk_i,
     input  wire logic                             rst_n_i,
@@ -51,9 +51,9 @@ module nmu_ordering #(
 
     localparam int unsigned ID_W              = $bits(s_aw_i.axi.awid);
     localparam int unsigned ID_IDX_W          = NUM_IDS > 1 ? $clog2(NUM_IDS) : 1;
-    localparam int unsigned TAG_W             = ni_flit_pkg::ORDERING_TAG_WIDTH;
+    localparam int unsigned TAG_W             = noc_header_pkg::ORD_TAG_WIDTH;
     localparam int unsigned NUM_TAGS          = 1 << TAG_W;
-    localparam int unsigned BEAT_COUNT_W      = ni_flit_pkg::AXI_LEN_WIDTH + 1;
+    localparam int unsigned BEAT_COUNT_W      = noc_payload_pkg::AXI_LEN_WIDTH + 1;
     localparam int unsigned OUTSTANDING_CNT_W = $clog2(MAX_OUTSTANDING_PER_ID + 1);
     localparam int unsigned ORDER_PTR_W       = MAX_OUTSTANDING_PER_ID > 1 ? $clog2(MAX_OUTSTANDING_PER_ID) : 1;
     localparam int unsigned B_ROB_ADDR_W      = B_ROB_DEPTH > 1 ? $clog2(B_ROB_DEPTH) : 1;
@@ -79,13 +79,13 @@ module nmu_ordering #(
     typedef ni_types_pkg::nmu_rob_order_entry_t order_entry_t;
     typedef ni_types_pkg::nmu_ordering_domain_t domain_t;
 
-    localparam int unsigned BYTE_OFFSET_W = $clog2(ni_params_pkg::AXI_DATA_WIDTH/8);
+    localparam int unsigned BYTE_OFFSET_W = $clog2(noc_payload_pkg::DATA_WIDTH/8);
     typedef struct packed {
         logic [BYTE_OFFSET_W-1:0] addr;
         logic               [7:0] len;
         logic               [2:0] size;
         logic               [1:0] burst;
-        logic                     is_data;
+        noc_header_pkg::packet_type_t packet_type;
     } read_lane_context_t;
     read_lane_context_t rd_lane_context_reg [NUM_IDS][MAX_OUTSTANDING_PER_ID];
     read_lane_context_t     retire_context;
@@ -177,7 +177,7 @@ module nmu_ordering #(
              !wr_collective_active_reg[ID_IDX_W'(s_aw_i.axi.awid)] &&
              (s_aw_i.route.collective_op == 0 || wr_outstanding_cnt_reg[ID_IDX_W'(s_aw_i.axi.awid)] == 0) &&
              (wr_outstanding_cnt_reg[ID_IDX_W'(s_aw_i.axi.awid)] == 0 ||
-              wr_domain_reg[ID_IDX_W'(s_aw_i.axi.awid)].is_data == s_aw_i.route.route.domain.is_data) &&
+              wr_domain_reg[ID_IDX_W'(s_aw_i.axi.awid)].packet_type == s_aw_i.route.route.domain.packet_type) &&
              (!aw_reorder || b_free_cnt != 0));
         ar_can_accept = ar_hold_reg ||
             (rd_outstanding_cnt_reg[ID_IDX_W'(s_ar_i.axi.arid)] < OUTSTANDING_CNT_W'(MAX_OUTSTANDING_PER_ID) &&
@@ -186,9 +186,9 @@ module nmu_ordering #(
     end
 
     assign m_aw_o.axi               = s_aw_i.axi;
-    assign m_aw_o.meta.route        = s_aw_i.route.route;
-    assign m_aw_o.meta.ordering_req = aw_reorder;
-    assign m_aw_o.meta.ordering_tag = aw_tag;
+    assign m_aw_o.packet_info.route        = s_aw_i.route.route;
+    assign m_aw_o.packet_info.ordering_req = aw_reorder;
+    assign m_aw_o.packet_info.ordering_tag = aw_tag;
     assign m_aw_o.user              = s_aw_i.route.user;
     assign m_aw_o.collective_op     = s_aw_i.route.collective_op;
     assign m_aw_o.collective_mask   = s_aw_i.route.collective_mask;
@@ -198,9 +198,9 @@ module nmu_ordering #(
     assign m_w_valid_o              = s_w_valid_i;
     assign s_w_ready_o              = m_w_ready_i;
     assign m_ar_o.axi               = s_ar_i.axi;
-    assign m_ar_o.meta.route        = s_ar_i.route;
-    assign m_ar_o.meta.ordering_req = ar_reorder;
-    assign m_ar_o.meta.ordering_tag = ar_tag;
+    assign m_ar_o.packet_info.route        = s_ar_i.route;
+    assign m_ar_o.packet_info.ordering_req = ar_reorder;
+    assign m_ar_o.packet_info.ordering_tag = ar_tag;
     assign m_ar_valid_o             = s_ar_valid_i && ar_can_accept;
     assign s_ar_ready_o             = m_ar_ready_i && ar_can_accept;
 
@@ -215,9 +215,9 @@ module nmu_ordering #(
         end
         b_direct = !b_sel_valid && s_b_valid_i &&
             wr_outstanding_cnt_reg[ID_IDX_W'(s_b_i.axi.bid)] != 0 &&
-            ((!wr_order_head[ID_IDX_W'(s_b_i.axi.bid)].ordering_req && !s_b_i.meta.ordering_req) ||
-             (wr_order_head[ID_IDX_W'(s_b_i.axi.bid)].ordering_req && s_b_i.meta.ordering_req &&
-              wr_order_head[ID_IDX_W'(s_b_i.axi.bid)].base == s_b_i.meta.ordering_tag));
+            ((!wr_order_head[ID_IDX_W'(s_b_i.axi.bid)].ordering_req && !s_b_i.packet_info.ordering_req) ||
+             (wr_order_head[ID_IDX_W'(s_b_i.axi.bid)].ordering_req && s_b_i.packet_info.ordering_req &&
+              wr_order_head[ID_IDX_W'(s_b_i.axi.bid)].base == s_b_i.packet_info.ordering_tag));
         if (b_hold_reg) begin
             b_sel_valid = !b_hold_direct_reg;
             b_sel_id    = b_hold_id_reg;
@@ -230,7 +230,7 @@ module nmu_ordering #(
     assign b_storage_free_addr = wr_order_head[ID_IDX_W'(b_retire_id)].base;
     assign m_b_o               = b_sel_valid ? b_storage_rd_data : s_b_i.axi;
     assign s_b_ready_o         = (b_direct ? m_b_ready_i :
-        (s_b_i.meta.ordering_req && b_storage_wr_ready));
+        (s_b_i.packet_info.ordering_req && b_storage_wr_ready));
     assign b_retire_id = b_sel_valid ? b_sel_id : s_b_i.axi.bid;
 
     always_comb begin
@@ -243,9 +243,9 @@ module nmu_ordering #(
             end
         end
         r_direct = !r_sel_valid && s_r_valid_i && rd_outstanding_cnt_reg[ID_IDX_W'(s_r_i.axi.rid)] != 0 &&
-            ((!rd_order_head[ID_IDX_W'(s_r_i.axi.rid)].ordering_req && !s_r_i.meta.ordering_req) ||
-             (rd_order_head[ID_IDX_W'(s_r_i.axi.rid)].ordering_req && s_r_i.meta.ordering_req &&
-              rd_order_head[ID_IDX_W'(s_r_i.axi.rid)].base == s_r_i.meta.ordering_tag));
+            ((!rd_order_head[ID_IDX_W'(s_r_i.axi.rid)].ordering_req && !s_r_i.packet_info.ordering_req) ||
+             (rd_order_head[ID_IDX_W'(s_r_i.axi.rid)].ordering_req && s_r_i.packet_info.ordering_req &&
+              rd_order_head[ID_IDX_W'(s_r_i.axi.rid)].base == s_r_i.packet_info.ordering_tag));
         if (r_hold_reg) begin
             r_sel_valid = !r_hold_direct_reg;
             r_sel_id    = r_hold_id_reg;
@@ -272,13 +272,13 @@ module nmu_ordering #(
                 retire_byte_addr = (int'(retire_context.addr) & ~(retire_span-1)) |
                     (retire_byte_addr & (retire_span-1));
         end
-        retire_lane     = (retire_byte_addr % (ni_params_pkg::AXI_DATA_WIDTH/8)) / 8;
+        retire_lane     = (retire_byte_addr % (noc_payload_pkg::DATA_WIDTH/8)) / 8;
         retire_response = retire_r;
-        if (!retire_context.is_data)
-            retire_response.rdata = ni_params_pkg::AXI_DATA_WIDTH'(retire_r.rdata[63:0]) << (retire_lane*64);
+        if (retire_context.packet_type == noc_header_pkg::PKT_NARROW_AR)
+            retire_response.rdata = noc_payload_pkg::DATA_WIDTH'(retire_r.rdata[63:0]) << (retire_lane*64);
     end
     assign s_r_ready_o = (r_direct ? m_r_ready_i :
-        (R_ROB_EN && s_r_i.meta.ordering_req && r_storage_wr_ready));
+        (R_ROB_EN && s_r_i.packet_info.ordering_req && r_storage_wr_ready));
     assign r_retire_id = r_sel_valid ? r_sel_id : s_r_i.axi.rid;
 
     always_comb begin
@@ -472,7 +472,7 @@ module nmu_ordering #(
                 rd_lane_context_reg[ID_IDX_W'(s_ar_i.axi.arid)][rd_order_wr_ptr_reg[ID_IDX_W'(s_ar_i.axi.arid)]] <= '{
                     addr: BYTE_OFFSET_W'(s_ar_i.axi.araddr), len: s_ar_i.axi.arlen,
                     size: s_ar_i.axi.arsize, burst: s_ar_i.axi.arburst,
-                    is_data: s_ar_i.route.domain.is_data
+                    packet_type: s_ar_i.route.domain.packet_type
                 };
                 rd_order_reg[ID_IDX_W'(s_ar_i.axi.arid)][rd_order_wr_ptr_reg[ID_IDX_W'(s_ar_i.axi.arid)]] <= '{
                     base: ar_tag, beat_count: ar_beat_cnt,
@@ -497,11 +497,11 @@ module nmu_ordering #(
         .alloc_cnt_i   ((TAG_W+1)'(1)                                                       ),
         .next_base_o   (b_next_base                                                         ),
         .free_cnt_o    (b_free_cnt                                                          ),
-        .wr_valid_i    (s_b_valid_i && s_b_i.meta.ordering_req && (!b_direct || m_b_ready_i)),
+        .wr_valid_i    (s_b_valid_i && s_b_i.packet_info.ordering_req && (!b_direct || m_b_ready_i)),
         .wr_bypass_i   (b_direct                                                            ),
         .wr_ready_o    (b_storage_wr_ready                                                  ),
-        .wr_base_i     (s_b_valid_i && s_b_i.meta.ordering_req ?
-            s_b_i.meta.ordering_tag : '0),
+        .wr_base_i     (s_b_valid_i && s_b_i.packet_info.ordering_req ?
+            s_b_i.packet_info.ordering_tag : '0),
         .wr_last_i           (1'b1                                                          ),
         .wr_data_i           (s_b_i.axi                                                     ),
         .rd_en_i             (b_sel_valid                                                   ),
@@ -525,12 +525,12 @@ module nmu_ordering #(
             .alloc_cnt_i   ((TAG_W+1)'(ar_beat_cnt)                                             ),
             .next_base_o   (r_next_base                                                         ),
             .free_cnt_o    (r_free_cnt                                                          ),
-            .wr_valid_i    (s_r_valid_i && s_r_i.meta.ordering_req && (!r_direct || m_r_ready_i)),
+            .wr_valid_i    (s_r_valid_i && s_r_i.packet_info.ordering_req && (!r_direct || m_r_ready_i)),
             .wr_bypass_i   (r_direct                                                            ),
             .wr_ready_o    (r_storage_wr_ready                                                  ),
-            .wr_base_i     (s_r_valid_i && s_r_i.meta.ordering_req ?
-                s_r_i.meta.ordering_tag : '0),
-            .wr_last_i           (s_r_valid_i && s_r_i.meta.ordering_req && s_r_i.axi.rlast     ),
+            .wr_base_i     (s_r_valid_i && s_r_i.packet_info.ordering_req ?
+                s_r_i.packet_info.ordering_tag : '0),
+            .wr_last_i           (s_r_valid_i && s_r_i.packet_info.ordering_req && s_r_i.axi.rlast     ),
             .wr_data_i           (s_r_i.axi                                                     ),
             .rd_en_i             (r_sel_valid                                                   ),
             .rd_addr_i           (r_storage_rd_addr                                             ),
@@ -551,7 +551,7 @@ module nmu_ordering #(
     always @(posedge clk_i) begin
         if (rst_n_i) begin
             if (aw_accept && wr_outstanding_cnt_reg[ID_IDX_W'(s_aw_i.axi.awid)] != 0 &&
-                wr_domain_reg[ID_IDX_W'(s_aw_i.axi.awid)].is_data != s_aw_i.route.route.domain.is_data)
+                wr_domain_reg[ID_IDX_W'(s_aw_i.axi.awid)].packet_type != s_aw_i.route.route.domain.packet_type)
                 $fatal(1, "Write channel changed before prior B retirement (%m)");
             if ((s_aw_valid_i && int'(s_aw_i.axi.awid) >= NUM_IDS) ||
                 (s_ar_valid_i && int'(s_ar_i.axi.arid) >= NUM_IDS) ||

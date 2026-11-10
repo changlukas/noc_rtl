@@ -20,11 +20,11 @@ module nmu_write_context (
     output wire logic                                                           m_w_valid_o,
     input  wire logic                                                           m_w_ready_i,
     output wire ni_types_pkg::nmu_aw_request_t                                  m_w_aw_o,
-    output wire logic                          [ni_flit_pkg::AXI_LEN_WIDTH-1:0] m_w_beat_o
+    output wire logic                          [noc_payload_pkg::AXI_LEN_WIDTH-1:0] m_w_beat_o
 );
     ni_types_pkg::nmu_aw_request_t aw_reg, aw_next;
     logic active_reg, active_next;
-    logic [ni_flit_pkg::AXI_LEN_WIDTH-1:0] beat_reg, beat_next;
+    logic [noc_payload_pkg::AXI_LEN_WIDTH-1:0] beat_reg, beat_next;
     wire w_accept = m_w_valid_o && m_w_ready_i;
     wire aw_space = !active_reg || (w_accept && s_w_i.wlast);
     wire aw_accept = m_aw_valid_o && m_aw_ready_i;

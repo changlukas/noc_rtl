@@ -3,7 +3,7 @@ set -euo pipefail
 ulimit -c 0
 
 task_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
-task_manifest="$task_root/rtl/Bender.yml"
+task_manifest="$task_root/deps/revisions.json"
 task_revision=63b7c50d43e462b59506f69d341ff1e40202866d
 task_tmp=$(mktemp -d "${TMPDIR:-/tmp}/noc-nmu-sam-XXXXXX")
 trap 'rm -rf "$task_tmp"' EXIT
@@ -22,15 +22,17 @@ grep -Fq "$task_revision" "$task_manifest"
 task_topology=mesh_2x2
 task_generated="$task_tmp/generated/$task_topology/topology_pkg.sv"
 mkdir -p "$(dirname "$task_generated")"
-python3 "$task_root/sim/tools/gen_tb_top.py" --topology "$task_topology" \
+python3 "$task_root/dv/scripts/gen_tb_top.py" --topology "$task_topology" \
     --emit-topology-pkg --out "$task_generated"
 
 task_sources=(
-    "$task_root/specgen/generated/sv/ni_params_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_signals_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_flit_pkg.sv"
-    "$task_generated"
+    "$task_root/define/noc_header_pkg.sv"
+    "$task_root/define/noc_payload_pkg.sv"
+    "$task_root/define/noc_unit_params_pkg.sv"
+    "$task_root/define/noc_sam_pkg.sv"
+    "$task_root/rtl/common/ni_signals_pkg.sv"
     "$task_root/rtl/common/ni_types_pkg.sv"
+    "$task_generated"
     "$task_common_cells/src/cc_pkg.sv"
     "$task_common_cells/src/cc_addr_decode_dync.sv"
     "$task_common_cells/src/cc_addr_decode.sv"
@@ -41,7 +43,7 @@ task_sources=(
     "$task_root/rtl/common/stream_register.sv"
     "$task_root/rtl/nmu/sam/sam.sv"
     "$task_root/deps/axi-0.39.7/src/axi_pkg.sv"
-    "$task_root/sim/dv/nmu_sam_burst_checker.sv"
+    "$task_root/dv/checkers/nmu_sam_burst_checker.sv"
     "$task_root/rtl/nmu/sam/tb_sam.sv"
 )
 
@@ -70,9 +72,9 @@ case "${1:-test}" in
         for task_topology in mesh_2x2 mesh_2x2_periph mesh_4x4 mesh_4x4_periph4; do
             task_generated="$task_tmp/generated/$task_topology/topology_pkg.sv"
             mkdir -p "$(dirname "$task_generated")"
-            python3 "$task_root/sim/tools/gen_tb_top.py" --topology "$task_topology" \
+            python3 "$task_root/dv/scripts/gen_tb_top.py" --topology "$task_topology" \
                 --emit-topology-pkg --out "$task_generated"
-            task_sources[3]="$task_generated"
+            task_sources[6]="$task_generated"
             task_obj_dir="$task_tmp/obj_dir_vectors_$task_topology"
             "${task_verilator[@]}" --top-module tb_nmu_sam_vectors --binary \
                 --Mdir "$task_obj_dir" -o nmu_sam_vectors_tb "${task_sources[@]}" \
@@ -82,7 +84,7 @@ case "${1:-test}" in
 
         task_topology=mesh_2x2_periph
         task_generated="$task_tmp/generated/$task_topology/topology_pkg.sv"
-        task_sources[3]="$task_generated"
+        task_sources[6]="$task_generated"
 
         task_guard_messages=(
             "AW_SAM_REG_TYPE must be 0, 1, or 2"

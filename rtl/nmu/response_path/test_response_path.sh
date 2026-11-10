@@ -25,8 +25,12 @@ fi
 [[ $(git -C "$task_tech_cells" rev-parse HEAD) == "$task_tech_revision" ]]
 
 task_sources=(
-    "$task_root/specgen/generated/sv/ni_params_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_signals_pkg.sv"
+    "$task_root/define/noc_header_pkg.sv"
+    "$task_root/define/noc_payload_pkg.sv"
+    "$task_root/define/noc_unit_params_pkg.sv"
+    "$task_root/define/noc_sam_pkg.sv"
+    "$task_root/rtl/common/ni_signals_pkg.sv"
+    "$task_root/rtl/common/ni_types_pkg.sv"
     "$task_common_cells/src/cc_pkg.sv"
     "$task_common_cells/src/cc_binary_to_gray.sv"
     "$task_common_cells/src/cc_gray_to_binary.sv"
@@ -35,6 +39,7 @@ task_sources=(
     "$task_common_cells/src/cc_stream_register.sv"
     "$task_tech_cells/src/rtl/tc_sync.sv"
     "$task_common_cells/src/cc_cdc_fifo_gray.sv"
+    "$task_common_cells/src/cc_fifo.sv"
     "$task_root/rtl/common/axi_async_fifo.sv"
     "$task_root/rtl/nmu/response_fifo/response_fifo.sv"
 )

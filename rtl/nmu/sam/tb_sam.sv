@@ -83,7 +83,7 @@ module tb_nmu_sam;
         ni_signals_pkg::noc_axi_aw_t value;
 
         value             = '0;
-        value.awid        = index[ni_params_pkg::NOC_ID_WIDTH-1:0];
+        value.awid        = index[noc_payload_pkg::NOC_ID_WIDTH-1:0];
         value.awlen       = index[0] ? 8'd3 : 8'd1;
         value.awsize      = 3'd3;
         value.awburst     = 2'(index % 3);
@@ -100,7 +100,7 @@ module tb_nmu_sam;
         ni_signals_pkg::noc_axi_ar_t value;
 
         value         = '0;
-        value.arid    = index[ni_params_pkg::NOC_ID_WIDTH-1:0];
+        value.arid    = index[noc_payload_pkg::NOC_ID_WIDTH-1:0];
         value.arlen   = index[0] ? 8'd3 : 8'd1;
         value.arsize  = 3'd3;
         value.arburst = 2'(index % 3);
@@ -152,9 +152,9 @@ module tb_nmu_sam;
         input_value                          = make_aw(index);
         rule_index                           = 7;
         value.axi                            = input_value;
-        value.route.route.domain.dst_id      = SAM[rule_index].idx.dst_id;
-        value.route.route.domain.dst_port_id = SAM[rule_index].idx.dst_port_id;
-        value.route.route.domain.is_data     = SAM[rule_index].idx.is_data;
+        value.route.route.domain.dst_id      = {SAM[rule_index].idx.dst_id.y, SAM[rule_index].idx.dst_id.x};
+        value.route.route.domain.dst_port_id = SAM[rule_index].idx.dst_id.port_id;
+        value.route.route.domain.packet_type = noc_header_pkg::packet_type_t'(SAM[rule_index].idx.is_data ? noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_NARROW_AW);
         value.route.user                     = input_value.awuser[7:0];
         value.route.collective_op            = input_value.awuser[9:8];
         value.route.collective_mask          = input_value.awuser[9:8] == 2'd1 ? 8'h11 : '0;
@@ -170,9 +170,9 @@ module tb_nmu_sam;
         value                          = '0;
         rule_index                     = 3;
         value.axi                      = make_ar(index);
-        value.route.domain.dst_id      = SAM[rule_index].idx.dst_id;
-        value.route.domain.dst_port_id = SAM[rule_index].idx.dst_port_id;
-        value.route.domain.is_data     = SAM[rule_index].idx.is_data;
+        value.route.domain.dst_id      = {SAM[rule_index].idx.dst_id.y, SAM[rule_index].idx.dst_id.x};
+        value.route.domain.dst_port_id = SAM[rule_index].idx.dst_id.port_id;
+        value.route.domain.packet_type = noc_header_pkg::packet_type_t'(SAM[rule_index].idx.is_data ? noc_header_pkg::PKT_DATA_AR : noc_header_pkg::PKT_NARROW_AR);
         return value;
     endfunction
 

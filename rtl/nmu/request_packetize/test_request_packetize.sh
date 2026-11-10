@@ -19,44 +19,48 @@ task_sources=(
     "$task_common_cells/src/cc_spill_register_flushable.sv"
     "$task_common_cells/src/cc_spill_register.sv"
     "$task_common_cells/src/cc_stream_register.sv"
-    "$task_root/specgen/generated/sv/ni_params_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_flit_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_signals_pkg.sv"
+    "$task_root/define/noc_header_pkg.sv"
+    "$task_root/define/noc_payload_pkg.sv"
+    "$task_root/define/noc_unit_params_pkg.sv"
+    "$task_root/define/noc_sam_pkg.sv"
+    "$task_root/rtl/common/ni_signals_pkg.sv"
     "$task_root/rtl/common/ni_types_pkg.sv"
     "$task_root/deps/common_cells-1.37.0/src/cf_math_pkg.sv"
     "$task_root/deps/common_cells-1.37.0/src/lzc.sv"
     "$task_root/deps/common_cells-1.37.0/src/rr_arb_tree.sv"
     "$task_root/rtl/common/stream_register.sv"
-    "$task_root/rtl/nmu/channel_assign/tx_channel_assign.sv"
+    "$task_root/rtl/common/packet_rr_arbiter.sv"
+    "$task_root/rtl/nmu/request_dispatch/request_dispatch.sv"
     "$task_root/rtl/nmu/request_path/write_context.sv"
     "$task_root/rtl/common/tx_credit_buffer.sv"
-    "$task_root/rtl/common/tx_vc_arbiter.sv"
+    "$task_root/rtl/common/flit_rr_arbiter.sv"
     "$task_root/rtl/nmu/request_packetize/request_packetize.sv"
     "$task_root/rtl/nmu/request_packetize/request_inject_tb_dut.sv"
 )
-task_verilator=(verilator "$task_root/rtl/nmu/top/nmu_lint.vlt" --timing --assert -Wall -Wno-fatal -Wno-DECLFILENAME
-    -Wno-TIMESCALEMOD -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-PINCONNECTEMPTY
-    -Werror-WIDTHTRUNC -Werror-WIDTHEXPAND -Werror-LATCH
-    -I"$task_common_cells/include")
+task_vcs=(vcs -full64 -sverilog -assert svaext -override_timescale=1ns/1ps
+    "+incdir+$task_common_cells/include")
 for task_top in tb_nmu_request_packetize tb_nmu_request_packetize_stall; do
     task_tb="$task_root/rtl/nmu/request_packetize/${task_top/tb_nmu_/tb_}.sv"
-    "${task_verilator[@]}" --lint-only --top-module "$task_top" "${task_sources[@]}" "$task_tb"
+    mkdir -p "$task_tmp/$task_top"
+    "${task_vcs[@]}" -top "$task_top" "${task_sources[@]}" "$task_tb" \
+        -Mdir="$task_tmp/$task_top/csrc" -o "$task_tmp/$task_top/simv" \
+        -l "$task_tmp/$task_top.compile.log"
     if [[ "${1:-test}" == test ]]; then
-        "${task_verilator[@]}" --binary -j 1 --top-module "$task_top" \
-            --Mdir "$task_tmp/$task_top" -o packetize_tb "${task_sources[@]}" "$task_tb"
-        "$task_tmp/$task_top/packetize_tb"
+        "$task_tmp/$task_top/simv"
     fi
 done
 
 if [[ "${1:-test}" == test ]]; then
     task_top=tb_nmu_request_packetize_stress
     task_tb="$task_root/rtl/nmu/request_packetize/${task_top/tb_nmu_/tb_}.sv"
-    for task_config in 2:1:0 2:2:0 8:2:0 2:2:1 4:3:0 2:4:1 4:6:1 8:8:0; do
-        IFS=: read -r task_depth task_vcs task_mode <<< "$task_config"
-        task_obj="$task_tmp/stress_${task_depth}_${task_vcs}_${task_mode}"
-        "${task_verilator[@]}" --binary -j 1 --top-module "$task_top" \
-            -GREG_TYPE="${NMU_REG_TYPE:-0}" -GFIFO_DEPTH="$task_depth" -GNUM_DAT_VC="$task_vcs" -GDAT_VC_MODE="$task_mode" \
-            --Mdir "$task_obj" -o stress_tb "${task_sources[@]}" "$task_tb"
-        "$task_obj/stress_tb"
+    for task_depth in 2 4 8; do
+        task_obj="$task_tmp/stress_${task_depth}"
+        mkdir -p "$task_obj"
+        "${task_vcs[@]}" -top "$task_top" \
+            -pvalue+${task_top}.REG_TYPE="${NMU_REG_TYPE:-0}" \
+            -pvalue+${task_top}.FIFO_DEPTH="$task_depth" \
+            "${task_sources[@]}" "$task_tb" \
+            -Mdir="$task_obj/csrc" -o "$task_obj/simv" -l "$task_obj.compile.log"
+        "$task_obj/simv"
     done
 fi

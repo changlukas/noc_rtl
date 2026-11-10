@@ -67,25 +67,27 @@ module tb_nmu_sam_vectors;
     );
         s_aw             = '0;
         s_ar             = '0;
-        s_aw.awid        = ni_params_pkg::NOC_ID_WIDTH'(aw_rule);
+        s_aw.awid        = noc_payload_pkg::NOC_ID_WIDTH'(aw_rule);
         s_aw.awaddr      = rule_address(aw_rule, point);
         s_aw.awuser[7:0] = 8'h80 + 8'(aw_rule);
-        s_ar.arid        = ni_params_pkg::NOC_ID_WIDTH'(ar_rule);
+        s_ar.arid        = noc_payload_pkg::NOC_ID_WIDTH'(ar_rule);
         s_ar.araddr      = rule_address(ar_rule, point);
         s_aw_valid       = 1'b1;
         s_ar_valid       = 1'b1;
         #1ps;
         assert (s_aw_ready && s_ar_ready && m_aw_valid && m_ar_valid)
             else $fatal(1, "Mode-0 AW/AR pair did not remain independent");
-        assert (m_aw.axi == s_aw && m_aw.route.route.domain.dst_id == SAM[aw_rule].idx.dst_id &&
-                m_aw.route.route.domain.dst_port_id == SAM[aw_rule].idx.dst_port_id &&
-                m_aw.route.route.domain.is_data == SAM[aw_rule].idx.is_data &&
+        assert (m_aw.axi == s_aw && m_aw.route.route.domain.dst_id == {SAM[aw_rule].idx.dst_id.y, SAM[aw_rule].idx.dst_id.x} &&
+                m_aw.route.route.domain.dst_port_id == SAM[aw_rule].idx.dst_id.port_id &&
+                m_aw.route.route.domain.packet_type == (SAM[aw_rule].idx.is_data ?
+                    noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_NARROW_AW) &&
                 m_aw.route.user == s_aw.awuser[7:0] && m_aw.route.collective_op == '0 &&
                 m_aw.route.collective_mask == '0)
             else $fatal(1, "AW vector %0d point %0d lost address or SAM metadata", aw_rule, point);
-        assert (m_ar.axi == s_ar && m_ar.route.domain.dst_id == SAM[ar_rule].idx.dst_id &&
-                m_ar.route.domain.dst_port_id == SAM[ar_rule].idx.dst_port_id &&
-                m_ar.route.domain.is_data == SAM[ar_rule].idx.is_data)
+        assert (m_ar.axi == s_ar && m_ar.route.domain.dst_id == {SAM[ar_rule].idx.dst_id.y, SAM[ar_rule].idx.dst_id.x} &&
+                m_ar.route.domain.dst_port_id == SAM[ar_rule].idx.dst_id.port_id &&
+                m_ar.route.domain.packet_type == (SAM[ar_rule].idx.is_data ?
+                    noc_header_pkg::PKT_DATA_AR : noc_header_pkg::PKT_NARROW_AR))
             else $fatal(1, "AR vector %0d point %0d lost address or SAM metadata", ar_rule, point);
     endtask
 

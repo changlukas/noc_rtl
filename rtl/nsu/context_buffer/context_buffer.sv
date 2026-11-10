@@ -4,9 +4,9 @@
 `default_nettype none
 
 module nsu_context_buffer #(
-    parameter int unsigned OUTPUT_ID_WIDTH  = ni_params_pkg::NSU_AXI_ID_WIDTH,
-    parameter int unsigned AW_CONTEXT_DEPTH = ni_params_pkg::NSU_MAX_OUTSTANDING,
-    parameter int unsigned AR_CONTEXT_DEPTH = ni_params_pkg::NSU_MAX_OUTSTANDING,
+    parameter int unsigned OUTPUT_ID_WIDTH  = noc_unit_params_pkg::NSU_AXI_ID_WIDTH,
+    parameter int unsigned AW_CONTEXT_DEPTH = noc_unit_params_pkg::NSU_MAX_OUTSTANDING,
+    parameter int unsigned AR_CONTEXT_DEPTH = noc_unit_params_pkg::NSU_MAX_OUTSTANDING,
 
     parameter type b_t = ni_signals_pkg::noc_axi_b_t,
     parameter type r_t = ni_signals_pkg::noc_axi_r_t
@@ -23,7 +23,7 @@ module nsu_context_buffer #(
     output wire logic                                     [OUTPUT_ID_WIDTH-1:0] m_arid_o,
     output wire ni_types_pkg::nsu_w_context_t                                   m_w_context_o,
     output wire logic                                                           m_w_context_valid_o,
-    output wire logic                          [ni_flit_pkg::AXI_LEN_WIDTH-1:0] m_w_beat_o,
+    output wire logic                          [noc_payload_pkg::AXI_LEN_WIDTH-1:0] m_w_beat_o,
     input  wire logic                                                           w_accept_i,
     input  wire logic                                                           w_last_i,
     input  wire b_t                                                             s_b_i,
@@ -41,8 +41,8 @@ module nsu_context_buffer #(
 );
     import ni_types_pkg::*;
     localparam int unsigned NUM_IDS = 1 << OUTPUT_ID_WIDTH;
-    localparam int unsigned KEY_W   = ni_flit_pkg::SRC_ID_WIDTH +
-        ni_flit_pkg::SRC_PORT_ID_WIDTH + ni_params_pkg::NOC_ID_WIDTH;
+    localparam int unsigned KEY_W   = ni_types_pkg::NODE_ID_W +
+        noc_header_pkg::PORT_ID_WIDTH + noc_payload_pkg::NOC_ID_WIDTH;
     if (OUTPUT_ID_WIDTH < 1 || OUTPUT_ID_WIDTH > 8 ||
             AW_CONTEXT_DEPTH < 1 || AR_CONTEXT_DEPTH < 1) begin : gen_invalid_config
         initial $fatal(0, "Error: invalid NSU ID/context capacity (instance %m)");
@@ -70,9 +70,9 @@ module nsu_context_buffer #(
     wire                                                w_full, w_empty, w_pop;
     wire                                                nsu_context_t b_context, r_context;
     wire                                                nsu_w_context_t w_head;
-    wire                                                nsu_w_context_t w_context = '{response: s_aw_i.response, vc_id: s_aw_i.vc_id};
-    logic              [ni_flit_pkg::AXI_LEN_WIDTH-1:0] w_beat_reg, w_beat_next;
-    logic [NUM_IDS-1:0][ni_flit_pkg::AXI_LEN_WIDTH-1:0] r_beat_reg, r_beat_next;
+    wire                                                nsu_w_context_t w_context = '{response: s_aw_i.response};
+    logic              [noc_payload_pkg::AXI_LEN_WIDTH-1:0] w_beat_reg, w_beat_next;
+    logic [NUM_IDS-1:0][noc_payload_pkg::AXI_LEN_WIDTH-1:0] r_beat_reg, r_beat_next;
     nsu_b_response_t b;
     nsu_r_response_t r;
 
@@ -95,12 +95,14 @@ module nsu_context_buffer #(
         b            = '0;
         b.axi.bid    = b_context.noc_id;
         b.axi.bresp  = s_b_i.bresp;
+        b.axi.buser  = s_b_i.buser;
         b.response   = b_context;
         r            = '0;
         r.axi.rid    = r_context.noc_id;
         r.axi.rdata  = s_r_i.rdata;
         r.axi.rresp  = s_r_i.rresp;
         r.axi.rlast  = s_r_i.rlast;
+        r.axi.ruser  = s_r_i.ruser;
         r.response   = r_context;
         r.beat_index = r_beat_reg[s_r_i.rid];
         w_beat_next  = w_beat_reg;

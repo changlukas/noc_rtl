@@ -6,13 +6,12 @@ module tb_nmu_response_depacketize #(
     parameter int CREDIT_DEPTH = 2,
     parameter int REG_TYPE     = 0
 );
-    import ni_flit_pkg::*;
     import ni_types_pkg::*;
     localparam int FIRST_VC = DAT_VC_MODE == 1 ? NUM_DAT_VC/2 : 0;
     logic clk = 0, rst_n_i = 0;
     always #5 clk = ~clk;
-    rsp_flit_t rsp;
-    dat_flit_t dat;
+    noc_payload_pkg::rsp_flit_t rsp;
+    noc_payload_pkg::dat_flit_t dat;
     logic rsp_valid = 0, rsp_ready, dat_valid = 0;
     logic            [NUM_DAT_VC-1:0] credit_return;
     nmu_b_response_t                  b;
@@ -30,11 +29,11 @@ module tb_nmu_response_depacketize #(
     int fault = 0;
     initial void'($value$plusargs("fault=%d", fault));
 
-    rsp_flit_t buffered_b;
-    dat_flit_t buffered_r;
+    noc_payload_pkg::rsp_flit_t buffered_b;
+    noc_payload_pkg::dat_flit_t buffered_r;
     wire buffered_b_valid, buffered_b_ready, buffered_r_valid, buffered_r_ready;
-    wire ni_flit_pkg::rsp_flit_t rx_rsp_head;
-    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] rx_dat_head;
+    wire noc_payload_pkg::rsp_flit_t rx_rsp_head;
+    wire noc_payload_pkg::dat_flit_t [NUM_DAT_VC-1:0] rx_dat_head;
     wire rx_rsp_valid, rx_rsp_ready;
     wire [NUM_DAT_VC-1:0] rx_dat_valid, rx_dat_ready;
     rx_credit_buffer #(
@@ -48,7 +47,7 @@ module tb_nmu_response_depacketize #(
         .s_ctrl_valid_i       (rsp_valid    ),
         .s_ctrl_ready_o       (rsp_ready    ),
         .s_dat_i             (dat          ),
-        .s_dat_valid_i       (dat_valid ? (NUM_DAT_VC'(1) << dat.header[VC_ID_LSB +: VC_ID_WIDTH]) : '0),
+        .s_dat_valid_i       (dat_valid ? (NUM_DAT_VC'(1) << (fault == 3 ? noc_unit_params_pkg::DAT_WRITE_VC : FIRST_VC)) : '0),
         .credit_o            (credit_return),
         .m_ctrl_o             (rx_rsp_head  ),
         .m_ctrl_valid_o       (rx_rsp_valid ),
@@ -57,13 +56,14 @@ module tb_nmu_response_depacketize #(
         .m_dat_valid_o       (rx_dat_valid ),
         .m_dat_ready_i       (rx_dat_ready )
     );
-    wire ni_flit_pkg::rsp_flit_t selected_rsp;
+    wire noc_payload_pkg::rsp_flit_t selected_rsp;
     wire selected_rsp_valid, selected_rsp_ready;
-    wire ni_flit_pkg::dat_flit_t selected_dat;
+    wire noc_payload_pkg::dat_flit_t selected_dat;
     wire selected_dat_valid, selected_dat_ready;
-    rx_vc_arbiter #(
-        .NUM_DAT_VC (NUM_DAT_VC)
-    ) i_rx_vc_arbiter (
+    for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_unused_read
+        if (vc != FIRST_VC) assign rx_dat_ready[vc] = 1'b0;
+    end
+    nmu_read_response_arbiter i_read_response_arbiter (
         .s_rsp_i       (rx_rsp_head       ),
         .s_rsp_valid_i (rx_rsp_valid      ),
         .s_rsp_ready_o (rx_rsp_ready      ),
@@ -72,15 +72,14 @@ module tb_nmu_response_depacketize #(
         .m_rsp_ready_i (selected_rsp_ready),
         .clk_i         (clk               ),
         .rst_n_i       (rst_n_i           ),
-        .s_dat_i       (rx_dat_head       ),
-        .s_dat_valid_i (rx_dat_valid      ),
-        .s_dat_ready_o (rx_dat_ready      ),
+        .s_dat_i       (rx_dat_head[FIRST_VC]       ),
+        .s_dat_valid_i (rx_dat_valid[FIRST_VC]      ),
+        .s_dat_ready_o (rx_dat_ready[FIRST_VC]      ),
         .m_dat_o       (selected_dat      ),
         .m_dat_valid_o (selected_dat_valid),
         .m_dat_ready_i (selected_dat_ready)
     );
-    rx_channel_assign i_rx_channel_assign (
-        .rst_n_i       (rst_n_i           ),
+    nmu_response_dispatch i_response_dispatch (
         .s_rsp_i       (selected_rsp      ),
         .s_rsp_valid_i (selected_rsp_valid),
         .s_rsp_ready_o (selected_rsp_ready),
@@ -108,15 +107,16 @@ module tb_nmu_response_depacketize #(
     function automatic nmu_r_response_t expected(input int vc, input int seq);
         nmu_r_response_t value;
         value           = '0;
-        value.axi.rid   = DATA_R_RID_WIDTH'(vc);
+        value.axi.rid   = noc_payload_pkg::DATA_R_RID_WIDTH'(vc);
         value.axi.rresp = 2'(seq % 3);
         value.axi.rlast = seq % 3 == 2;
         value.axi.rdata = '0;
         for (int lane = 0; lane < (vc == NUM_DAT_VC ? 2 : 16); lane++)
             value.axi.rdata[lane*32 +: 32] = 32'(seq + lane*1024 + vc*65536);
-        value.meta.is_data      = vc != NUM_DAT_VC;
-        value.meta.ordering_req = 1;
-        value.meta.ordering_tag = ORDERING_TAG_WIDTH'(seq);
+        value.packet_info.packet_type = noc_header_pkg::packet_type_t'(vc != NUM_DAT_VC ?
+            noc_header_pkg::PKT_DATA_R : noc_header_pkg::PKT_NARROW_R);
+        value.packet_info.ordering_req = 1;
+        value.packet_info.ordering_tag = noc_header_pkg::ORD_TAG_WIDTH'(seq);
         return value;
     endfunction
 
@@ -124,15 +124,14 @@ module tb_nmu_response_depacketize #(
         nmu_r_response_t value;
         value                                               = expected(vc, wr_cnt[vc]);
         dat                                                 = '0;
-        dat.header[AXI_CH_LSB +: AXI_CH_WIDTH]              = AXI_CH_WIDTH'(AXI_CH_DataR);
-        dat.header[VC_ID_LSB +: VC_ID_WIDTH]                = VC_ID_WIDTH'(vc);
-        dat.header[FLIT_TAIL_LSB]                           = 1;
-        dat.header[ORDERING_REQ_LSB]                        = value.meta.ordering_req;
-        dat.header[ORDERING_TAG_LSB +: ORDERING_TAG_WIDTH]  = value.meta.ordering_tag;
-        dat.payload[DATA_R_RID_LSB +: DATA_R_RID_WIDTH]     = value.axi.rid;
-        dat.payload[DATA_R_RRESP_LSB +: DATA_R_RRESP_WIDTH] = value.axi.rresp;
-        dat.payload[DATA_R_RLAST_LSB]                       = value.axi.rlast;
-        dat.payload[DATA_R_RDATA_LSB +: DATA_R_RDATA_WIDTH] = value.axi.rdata;
+        dat.header.packet_type = noc_header_pkg::packet_type_t'(noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_DATA_R));
+        dat.header.flit_tail                           = 1;
+        dat.header.ord_req                        = value.packet_info.ordering_req;
+        dat.header.ord_tag  = value.packet_info.ordering_tag;
+        dat.payload[noc_payload_pkg::DATA_R_RID_LSB +: noc_payload_pkg::DATA_R_RID_WIDTH]     = value.axi.rid;
+        dat.payload[noc_payload_pkg::DATA_R_RRESP_LSB +: noc_payload_pkg::DATA_R_RRESP_WIDTH] = value.axi.rresp;
+        dat.payload[noc_payload_pkg::DATA_R_RLAST_LSB]                       = value.axi.rlast;
+        dat.payload[noc_payload_pkg::DATA_R_RDATA_LSB +: noc_payload_pkg::DATA_R_RDATA_WIDTH] = value.axi.rdata;
         dat_valid                                           = 1;
     endtask
 
@@ -140,17 +139,17 @@ module tb_nmu_response_depacketize #(
         nmu_r_response_t value;
         value                                              = expected(NUM_DAT_VC, wr_cnt[NUM_DAT_VC]);
         rsp                                                = '0;
-        rsp.header[AXI_CH_LSB +: AXI_CH_WIDTH]             = AXI_CH_WIDTH'(read_rsp ? AXI_CH_NarrowR : AXI_CH_DataB);
-        rsp.header[ORDERING_REQ_LSB]                       = 1;
-        rsp.header[ORDERING_TAG_LSB +: ORDERING_TAG_WIDTH] = value.meta.ordering_tag;
+        rsp.header.packet_type = noc_header_pkg::packet_type_t'(noc_header_pkg::PACKET_TYPE_WIDTH'(read_rsp ? noc_header_pkg::PKT_NARROW_R : noc_header_pkg::PKT_DATA_B));
+        rsp.header.ord_req                       = 1;
+        rsp.header.ord_tag = value.packet_info.ordering_tag;
         if (read_rsp) begin
-            rsp.payload[NARROW_R_RID_LSB +: NARROW_R_RID_WIDTH]     = value.axi.rid;
-            rsp.payload[NARROW_R_RRESP_LSB +: NARROW_R_RRESP_WIDTH] = value.axi.rresp;
-            rsp.payload[NARROW_R_RLAST_LSB]                         = value.axi.rlast;
-            rsp.payload[NARROW_R_RDATA_LSB +: NARROW_R_RDATA_WIDTH] = value.axi.rdata[63:0];
+            rsp.payload[noc_payload_pkg::NARROW_R_RID_LSB +: noc_payload_pkg::NARROW_R_RID_WIDTH]     = value.axi.rid;
+            rsp.payload[noc_payload_pkg::NARROW_R_RRESP_LSB +: noc_payload_pkg::NARROW_R_RRESP_WIDTH] = value.axi.rresp;
+            rsp.payload[noc_payload_pkg::NARROW_R_RLAST_LSB]                         = value.axi.rlast;
+            rsp.payload[noc_payload_pkg::NARROW_R_RDATA_LSB +: noc_payload_pkg::NARROW_R_RDATA_WIDTH] = value.axi.rdata[63:0];
         end else begin
-            rsp.payload[B_BID_LSB +: B_BID_WIDTH]     = 3;
-            rsp.payload[B_BRESP_LSB +: B_BRESP_WIDTH] = 2;
+            rsp.payload[noc_payload_pkg::B_BID_LSB +: noc_payload_pkg::B_BID_WIDTH]     = 3;
+            rsp.payload[noc_payload_pkg::B_BRESP_LSB +: noc_payload_pkg::B_BRESP_WIDTH] = 2;
         end
         rsp_valid = 1;
     endtask
@@ -170,10 +169,10 @@ module tb_nmu_response_depacketize #(
             end
             if (credit_return !== '0) $fatal(1, "credit pulse during reset");
         end else if (fault == 0) begin
-            if (buffered_r_ready && |i_rx_vc_arbiter.r_valid && !buffered_r_valid)
+            if (buffered_r_ready && |i_read_response_arbiter.r_valid && !buffered_r_valid)
                 $fatal(1, "avoidable R output bubble");
-            for (int n = 0; n <= NUM_DAT_VC; n++) begin
-                if (!i_rx_vc_arbiter.r_valid[n] || i_rx_vc_arbiter.r_ready[n])
+            for (int n = 0; n < 2; n++) begin
+                if (!i_read_response_arbiter.r_valid[n] || i_read_response_arbiter.r_ready[n])
                     grant_wait[n] = 0;
                 else if (buffered_r_valid && buffered_r_ready) begin
                     grant_wait[n]++;
@@ -186,7 +185,7 @@ module tb_nmu_response_depacketize #(
             held = r_valid && !r_ready; held_r = r;
             if (!$onehot0(credit_return)) $fatal(1, "multiple DAT pops");
             if (r_valid && r_ready) begin
-                vc = r.meta.is_data ? int'(r.axi.rid) : NUM_DAT_VC;
+                vc = (r.packet_info.packet_type == noc_header_pkg::PKT_DATA_R) ? int'(r.axi.rid) : NUM_DAT_VC;
                 if (rd_cnt[vc] >= wr_cnt[vc] || r !== expected(vc, rd_cnt[vc]))
                     $fatal(1, "response mismatch vc=%0d seq=%0d", vc, rd_cnt[vc]);
                 rd_cnt[vc]++; total_r++;
@@ -194,26 +193,26 @@ module tb_nmu_response_depacketize #(
             if (credit_return !== expected_credit) $fatal(1, "registered credit mismatch");
             expected_credit = '0;
             if (buffered_r_valid && buffered_r_ready &&
-                    buffered_r.header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataR)) begin
-                vc = int'(buffered_r.header[VC_ID_LSB +: VC_ID_WIDTH]);
+                    buffered_r.header.packet_type == noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_DATA_R)) begin
+                vc = int'(noc_unit_params_pkg::dat_class(buffered_r.header.packet_type));
                 expected_credit[vc] = 1'b1;
                 fifo_rd_cnt[vc]++;
             end
             for (int n = 0; n < NUM_DAT_VC; n++) credit[n] += int'(credit_return[n]);
             if (dat_valid) begin
-                vc = int'(dat.header[VC_ID_LSB +: VC_ID_WIDTH]);
+                vc = int'(noc_unit_params_pkg::dat_class(dat.header.packet_type));
                 if (credit[vc] <= 0) $fatal(1, "sender violated credits");
                 if (credit[vc] == 1 && credit_return[vc]) recoveries++;
                 credit[vc]--; wr_cnt[vc]++;
                 if (rsp_valid && rsp_ready) parallel_ingress++;
             end
-            if (rsp_valid && rsp_ready && rsp.header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_NarrowR))
+            if (rsp_valid && rsp_ready && rsp.header.packet_type == noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_NARROW_R))
                 wr_cnt[NUM_DAT_VC]++;
             for (int n = FIRST_VC; n < NUM_DAT_VC; n++)
                 if (credit[n] + wr_cnt[n] - fifo_rd_cnt[n] + int'(expected_credit[n]) != CREDIT_DEPTH)
                     $fatal(1, "per-VC conservation mismatch");
             if (b_valid && b_ready) begin
-                if (b.axi.bid != 3 || b.axi.bresp != 2 || !b.meta.is_data || !b.meta.ordering_req)
+                if (b.axi.bid != 3 || b.axi.bresp != 2 || b.packet_info.packet_type != noc_header_pkg::PKT_DATA_B || !b.packet_info.ordering_req)
                     $fatal(1, "B decode mismatch");
                 total_b++;
             end
@@ -235,9 +234,9 @@ module tb_nmu_response_depacketize #(
         repeat (3) @(negedge clk); rst_n_i = 1;
         if (fault != 0) begin
             set_dat(FIRST_VC);
-            if (fault == 1) dat.header[AXI_CH_LSB +: AXI_CH_WIDTH] = AXI_CH_WIDTH'(AXI_CH_DataW);
-            if (fault == 2) dat.header[VC_ID_LSB +: VC_ID_WIDTH] = VC_ID_WIDTH'(NUM_DAT_VC);
-            if (fault == 3) dat.header[VC_ID_LSB +: VC_ID_WIDTH] = '0;
+            if (fault == 1) dat.header.packet_type = noc_header_pkg::packet_type_t'(noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_DATA_W));
+            if (fault == 2) dat.header.packet_type = noc_header_pkg::PKT_NARROW_R;
+            // fault 3 drives a write valid lane for the read packet below.
             repeat (CREDIT_DEPTH+3) @(negedge clk);
             $fatal(1, "fault escaped ingress checks");
         end

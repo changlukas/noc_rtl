@@ -7,39 +7,38 @@
 module rx_credit_buffer #(
     parameter bit                                          DAT_EN          = 1'b1,
     parameter int unsigned                                 CTRL_FIFO_DEPTH = 32,
-    parameter int unsigned                                 NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
+    parameter int unsigned                                 NUM_DAT_VC      = noc_unit_params_pkg::DAT_NUM_VC,
     localparam int unsigned                                 DAT_VC_MODE     = (NUM_DAT_VC > 1),
-    parameter int unsigned                                 CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
-    parameter type                                         ctrl_t          = ni_flit_pkg::rsp_flit_t,
+    parameter int unsigned                                 CREDIT_DEPTH    = noc_unit_params_pkg::CREDIT_DEPTH,
+    parameter type                                         ctrl_t          = noc_payload_pkg::rsp_flit_t,
     parameter logic [NUM_DAT_VC-1:0]                       DAT_VC_MASK     = (DAT_VC_MODE == 1 ? ({NUM_DAT_VC{1'b1}} << (NUM_DAT_VC/2)) : '1),
-    parameter logic [(1 << ni_flit_pkg::AXI_CH_WIDTH)-1:0] CTRL_CH_MASK    =
-        (1 << ni_flit_pkg::AXI_CH_NarrowB) | (1 << ni_flit_pkg::AXI_CH_DataB) |
-        (1 << ni_flit_pkg::AXI_CH_NarrowR),
-    parameter logic [(1 << ni_flit_pkg::AXI_CH_WIDTH)-1:0] DAT_CH_MASK =
-        (1 << ni_flit_pkg::AXI_CH_DataR)
+    parameter logic [(1 << noc_header_pkg::PACKET_TYPE_WIDTH)-1:0] CTRL_CH_MASK    =
+        (1 << noc_header_pkg::PKT_NARROW_B) | (1 << noc_header_pkg::PKT_DATA_B) |
+        (1 << noc_header_pkg::PKT_NARROW_R),
+    parameter logic [(1 << noc_header_pkg::PACKET_TYPE_WIDTH)-1:0] DAT_CH_MASK =
+        (1 << noc_header_pkg::PKT_DATA_R)
 ) (
     input  wire logic                                    clk_i,
     input  wire logic                                    rst_n_i,
     input  wire ctrl_t                                   s_ctrl_i,
     input  wire logic                                    s_ctrl_valid_i,
     output wire logic                                    s_ctrl_ready_o,
-    input  wire ni_flit_pkg::dat_flit_t                  s_dat_i,
+    input  wire noc_payload_pkg::dat_flit_t                  s_dat_i,
     input  wire logic                   [NUM_DAT_VC-1:0] s_dat_valid_i,
     output wire logic                   [NUM_DAT_VC-1:0] s_dat_ready_o,
     output wire logic                   [NUM_DAT_VC-1:0] credit_o,
     output wire ctrl_t                                   m_ctrl_o,
     output wire logic                                    m_ctrl_valid_o,
     input  wire logic                                    m_ctrl_ready_i,
-    output wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
+    output wire noc_payload_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
     output wire logic                   [NUM_DAT_VC-1:0] m_dat_valid_o,
     input  wire logic                   [NUM_DAT_VC-1:0] m_dat_ready_i
 );
-    import ni_flit_pkg::*;
     if (CTRL_FIFO_DEPTH < 1 || CTRL_FIFO_DEPTH > 1024) begin : gen_invalid_depth
         initial $fatal(0, "Error: response FIFO depths must be in [1, 1024] (instance %m)");
     end
-    if (NUM_DAT_VC < 1 || NUM_DAT_VC > (1 << VC_ID_WIDTH)) begin : gen_invalid_vcs
-        initial $fatal(0, "NUM_DAT_VC is outside the encoded VC range");
+    if (NUM_DAT_VC != noc_unit_params_pkg::DAT_NUM_VC) begin : gen_invalid_vcs
+        initial $fatal(0, "NUM_DAT_VC is must match the native DAT class count");
     end
     if (DAT_VC_MODE > 1 || (DAT_VC_MODE == 1 && (NUM_DAT_VC < 2 || NUM_DAT_VC % 2 != 0))) begin : gen_invalid_mode
         initial $fatal(0, "DAT_VC_MODE split requires a positive even VC count");
@@ -48,11 +47,12 @@ module rx_credit_buffer #(
         initial $fatal(0, "CREDIT_DEPTH must be a power of two and at least 2");
     end
     localparam int unsigned VC_IDX_W   = NUM_DAT_VC > 1 ? $clog2(NUM_DAT_VC) : 1;
-    wire [VC_ID_WIDTH-1:0] dat_vc = s_dat_i.header[VC_ID_LSB +: VC_ID_WIDTH];
-    wire [AXI_CH_WIDTH-1:0] dat_channel = s_dat_i.header[AXI_CH_LSB +: AXI_CH_WIDTH];
+    wire [ni_types_pkg::DAT_VC_IDX_W-1:0] dat_vc =
+        ni_types_pkg::DAT_VC_IDX_W'(noc_unit_params_pkg::dat_class(s_dat_i.header.packet_type));
+    wire [noc_header_pkg::PACKET_TYPE_WIDTH-1:0] dat_channel = s_dat_i.header.packet_type;
     wire [NUM_DAT_VC-1:0] dat_full, dat_empty, dat_push, dat_pop;
-    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] dat_head;
-    wire [AXI_CH_WIDTH-1:0] channel = s_ctrl_i.header[AXI_CH_LSB +: AXI_CH_WIDTH];
+    wire noc_payload_pkg::dat_flit_t [NUM_DAT_VC-1:0] dat_head;
+    wire [noc_header_pkg::PACKET_TYPE_WIDTH-1:0] channel = s_ctrl_i.header.packet_type;
     wire ctrl_full, ctrl_empty;
     wire ctrl_t ctrl_head;
     assign s_ctrl_ready_o = !ctrl_full;
@@ -85,7 +85,7 @@ module rx_credit_buffer #(
             cc_fifo #(
                 .Depth       (CREDIT_DEPTH           ),
                 .FallThrough (1'b0                   ),
-                .data_t      (ni_flit_pkg::dat_flit_t)
+                .data_t      (noc_payload_pkg::dat_flit_t)
             ) i_fifo (
                 .clk_i   (clk_i        ),
                 .rst_ni  (rst_n_i      ),
@@ -127,7 +127,7 @@ module rx_credit_buffer #(
                     int'(dat_vc) >= NUM_DAT_VC || !DAT_VC_MASK[VC_IDX_W'(dat_vc)])
                 $fatal(1, "invalid channel or VC on DAT ingress");
             if (!$onehot(s_dat_valid_i) || !s_dat_valid_i[VC_IDX_W'(dat_vc)])
-                $fatal(1, "DAT valid vector does not match header VC");
+                $fatal(1, "DAT valid vector does not match packet class");
         end
         if (rst_n_i && s_ctrl_valid_i && !CTRL_CH_MASK[channel])
             $fatal(1, "invalid channel on control ingress");

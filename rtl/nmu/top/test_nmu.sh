@@ -13,15 +13,17 @@ task_tech_cells=${TECH_CELLS_GENERIC_DIR:-$task_root/deps/tech_cells_generic-v0.
 [[ -f "$task_tech_cells/src/rtl/tc_sync.sv" ]]
 
 task_generated="$task_tmp/topology_pkg.sv"
-"${PYTHON3:-python3}" "$task_root/sim/tools/gen_tb_top.py" --topology mesh_2x2 \
+"${PYTHON3:-python3}" "$task_root/dv/scripts/gen_tb_top.py" --topology mesh_2x2 \
     --emit-topology-pkg --out "$task_generated"
 
 task_sources=(
-    "$task_root/specgen/generated/sv/ni_params_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_signals_pkg.sv"
-    "$task_root/specgen/generated/sv/ni_flit_pkg.sv"
-    "$task_generated"
+    "$task_root/define/noc_header_pkg.sv"
+    "$task_root/define/noc_payload_pkg.sv"
+    "$task_root/define/noc_unit_params_pkg.sv"
+    "$task_root/define/noc_sam_pkg.sv"
+    "$task_root/rtl/common/ni_signals_pkg.sv"
     "$task_root/rtl/common/ni_types_pkg.sv"
+    "$task_generated"
     "$task_common_cells/src/cc_pkg.sv"
     "$task_common_cells/src/cc_binary_to_gray.sv"
     "$task_common_cells/src/cc_gray_to_binary.sv"
@@ -32,6 +34,7 @@ task_sources=(
     "$task_common_cells/src/cc_cdc_fifo_gray.sv"
     "$task_common_cells/src/cc_addr_decode_dync.sv"
     "$task_common_cells/src/cc_addr_decode.sv"
+    "$task_common_cells/src/cc_fifo.sv"
     "$task_root/rtl/common/axi_async_fifo.sv"
     "$task_root/rtl/common/ni_sam.sv"
     "$task_root/rtl/common/stream_register.sv"
@@ -41,25 +44,22 @@ task_sources=(
     "$task_root/deps/common_cells-1.37.0/src/lzc.sv"
     "$task_root/deps/common_cells-1.37.0/src/rr_arb_tree.sv"
     "$task_root/deps/axi-0.39.7/src/axi_pkg.sv"
-    "$task_common_cells/src/cc_credit_counter.sv"
-    "$task_common_cells/src/cc_fifo.sv"
     "$task_root/rtl/common/axi_if.sv"
     "$task_root/rtl/nmu/ordering/reorder_storage.sv"
     "$task_root/rtl/nmu/ordering/ordering.sv"
-    "$task_root/rtl/nmu/channel_assign/tx_channel_assign.sv"
+    "$task_root/rtl/common/packet_rr_arbiter.sv"
+    "$task_root/rtl/nmu/request_dispatch/request_dispatch.sv"
     "$task_root/rtl/nmu/request_path/write_context.sv"
-    "$task_root/rtl/common/tx_credit_buffer.sv"
-    "$task_root/rtl/common/tx_vc_arbiter.sv"
+    "$task_root/rtl/common/flit_rr_arbiter.sv"
     "$task_root/rtl/nmu/request_packetize/request_packetize.sv"
-    "$task_root/rtl/common/rx_credit_buffer.sv"
-    "$task_root/rtl/nmu/channel_assign/rx_channel_assign.sv"
-    "$task_root/rtl/nmu/channel_assign/rx_vc_arbiter.sv"
+    "$task_root/rtl/nmu/response_dispatch/response_dispatch.sv"
+    "$task_root/rtl/nmu/response_dispatch/read_response_arbiter.sv"
     "$task_root/rtl/nmu/response_depacketize/response_depacketize.sv"
     "$task_root/rtl/nmu/response_fifo/response_fifo.sv"
     "$task_root/rtl/nmu/response_path/response_path.sv"
     "$task_root/rtl/nmu/request_path/request_path.sv"
     "$task_root/rtl/nmu/top/nmu.sv"
-    "$task_root/sim/dv/nmu_sam_burst_checker.sv"
+    "$task_root/dv/checkers/nmu_sam_burst_checker.sv"
     "${NMU_PATH_TB:-$task_root/rtl/nmu/top/tb_nmu_elaborate.sv}"
 )
 
@@ -79,35 +79,37 @@ if [[ "${1:-test}" == standalone || "${1:-test}" == prepare ]]; then
         "$task_root/deps/tue/src/tue_pkg.sv"
         "$task_root/deps/tvip-common/src/tvip_common_pkg.sv"
         "$task_root/deps/tvip-axi/src/tvip_axi_pkg.sv"
-        "$task_root/sim/standalone/nmu/ni_nmu_if.sv"
-        "$task_root/sim/standalone/nmu/ni_nmu_test_pkg.sv"
-        "$task_root/sim/standalone/nmu/tb_nmu_standalone.sv"
+        "$task_root/dv/tb/standalone/nmu/ni_nmu_if.sv"
+        "$task_root/dv/tb/standalone/nmu/ni_nmu_test_pkg.sv"
+        "$task_root/dv/tb/standalone/nmu/tb_nmu_standalone.sv"
     )
     task_output=${NMU_TEST_OUTPUT:-$task_tmp/standalone}
     mkdir -p "$task_output"
     cp "$task_generated" "$task_output/topology_pkg.sv"
-    task_sources[3]="$task_output/topology_pkg.sv"
+    task_sources[6]="$task_output/topology_pkg.sv"
     printf '%s\n' '+define+NMU_SAM_CHECKS' "+incdir+$task_common_cells/include" \
         "+incdir+$task_root/deps/axi-0.39.7/include" \
         "+incdir+$task_root/deps/common_cells-1.37.0/include" \
         "+incdir+$task_root/deps/tue/src" \
         "+incdir+$task_root/deps/tvip-common/src" \
         "+incdir+$task_root/deps/tvip-axi/src" \
-        "+incdir+$task_root/sim/uvm" \
+        "+incdir+$task_root/dv/env" \
+    "+incdir+$task_root/dv/env/seq_lib" \
         "${task_sources[@]}" > "$task_output/files.f"
+    task_id_width=${NMU_ID_WIDTH:-$(PYTHONPATH="$task_root/dv/scripts" python3 -B -c 'from gen_tb_top import native_param; print(native_param("noc_payload_pkg", "AXI_ID_WIDTH"))')}
     for task_pattern in neighbor uniform_random hotspot; do
-        python3 "$task_root/sim/tools/gen_test_patterns.py" --pattern "$task_pattern" \
+        python3 "$task_root/dv/scripts/gen_test_patterns.py" --pattern "$task_pattern" \
             --topology mesh_2x2 --space config --size 3 --len 3 --transactions-per-node 16 \
             --ids-per-initiator 1 --hotspot 1 --seed 17 --out "$task_output/$task_pattern"
     done
-    python3 "$task_root/sim/tools/gen_nmu_standalone_patterns.py" \
-        --out "$task_output/directed" --topology "$task_root/sim/configs/mesh_2x2.yml" \
-        --id-width "${NMU_ID_WIDTH:-8}"
-    task_block_patterns="$task_root/sim/test_patterns/standalone/generated/i${NMU_ID_WIDTH:-8}"
-    python3 "$task_root/sim/tools/gen_standalone_patterns.py" --out "$task_block_patterns" \
-        --id-width "${NMU_ID_WIDTH:-8}"
-    python3 "$task_root/sim/tools/package_nmu_standalone.py" --run-dir "$task_output" \
-        --block-patterns "$task_block_patterns" --id-width "${NMU_ID_WIDTH:-8}" --output-dir "$task_output/stage"
+    python3 "$task_root/dv/scripts/gen_nmu_standalone_patterns.py" \
+        --out "$task_output/directed" --topology "$task_root/dv/config/topology/mesh_2x2.yml" \
+        --id-width "$task_id_width"
+    task_block_patterns="$task_root/build/standalone/patterns/i$task_id_width"
+    python3 "$task_root/dv/scripts/gen_standalone_patterns.py" --out "$task_block_patterns" \
+        --id-width "$task_id_width"
+    python3 "$task_root/dv/scripts/package_nmu_standalone.py" --run-dir "$task_output" \
+        --block-patterns "$task_block_patterns" --id-width "$task_id_width" --output-dir "$task_output/stage"
     if [[ ${1:-test} != prepare ]]; then
         make -C "$task_output/stage" run CASE=ctrl_write_single SIMULATOR=vcs
     fi

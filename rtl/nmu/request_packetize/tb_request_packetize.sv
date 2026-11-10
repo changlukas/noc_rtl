@@ -14,9 +14,9 @@ module tb_nmu_request_packetize;
     logic                                           s_w_valid, s_w_ready;
     ni_types_pkg::nmu_ar_request_t                  s_ar;
     logic                                           s_ar_valid, s_ar_ready;
-    ni_flit_pkg::req_flit_t                         m_req;
+    noc_payload_pkg::req_flit_t                         m_req;
     logic                                           m_req_valid, m_req_ready;
-    ni_flit_pkg::dat_flit_t                         m_dat;
+    noc_payload_pkg::dat_flit_t                         m_dat;
     logic                                           m_dat_valid;
     logic                          [NUM_DAT_VC-1:0] dat_credit_return;
 
@@ -55,8 +55,8 @@ module tb_nmu_request_packetize;
         s_aw.axi.awaddr        = addr;
         s_aw.axi.awsize        = is_data ? 3'd6 : 3'd3;
         s_aw.axi.awburst       = 2'b01;
-        s_aw.axi.awuser        = ni_params_pkg::AXI_AWUSER_WIDTH'(8'h5a);
-        s_aw.meta.route.domain = '{dst_id: dst, dst_port_id: 2'h1, is_data: is_data};
+        s_aw.axi.awuser        = noc_payload_pkg::AXI_AWUSER_WIDTH'(8'h5a);
+        s_aw.packet_info.route.domain = '{dst_id: dst, dst_port_id: 2'h1, packet_type: is_data ? noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_NARROW_AW};
         s_aw.user              = 8'h5a;
         s_aw_valid             = 1'b1;
         do @(posedge clk); while (!s_aw_ready);
@@ -79,13 +79,13 @@ module tb_nmu_request_packetize;
     always @(posedge clk) begin
         if (rst_n_i && m_dat_valid) begin
             if (dat_count % 2 == 0) begin
-                if (m_dat.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB] != ni_flit_pkg::AXI_CH_WIDTH'(ni_flit_pkg::AXI_CH_DataAw) ||
-                        m_dat.header[ni_flit_pkg::DST_ID_MSB:ni_flit_pkg::DST_ID_LSB] != 8'h32)
+                if (m_dat.header.packet_type != noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_DATA_AW) ||
+                        m_dat.header[(noc_header_pkg::DST_ID_LSB + ni_types_pkg::NODE_ID_W - 1):noc_header_pkg::DST_ID_LSB] != 8'h32)
                     $fatal(1, "DAT AW mismatch");
             end else begin
-                if (m_dat.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB] != ni_flit_pkg::AXI_CH_WIDTH'(ni_flit_pkg::AXI_CH_DataW) ||
-                        m_dat.payload[ni_flit_pkg::DATA_W_WDATA_MSB:ni_flit_pkg::DATA_W_WDATA_LSB] != (dat_count == 1 ? 512'hfeed_face : 512'h1234_5678) ||
-                        !m_dat.header[ni_flit_pkg::FLIT_TAIL_LSB])
+                if (m_dat.header.packet_type != noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_DATA_W) ||
+                        m_dat.payload[(noc_payload_pkg::DATA_W_WDATA_LSB + noc_payload_pkg::DATA_W_WDATA_WIDTH - 1):noc_payload_pkg::DATA_W_WDATA_LSB] != (dat_count == 1 ? 512'hfeed_face : 512'h1234_5678) ||
+                        !m_dat.header.flit_tail)
                     $fatal(1, "DAT W mismatch");
             end
             dat_count++;
@@ -118,36 +118,36 @@ module tb_nmu_request_packetize;
         #1;
         assert (m_req_valid)
             else $fatal(1, "REQ and DAT AW were not independently available");
-        assert (m_req.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB] ==
-                ni_flit_pkg::AXI_CH_WIDTH'(ni_flit_pkg::AXI_CH_NarrowAw));
-        assert (m_req.header[ni_flit_pkg::SRC_ID_MSB:ni_flit_pkg::SRC_ID_LSB] == 8'h12);
+        assert (m_req.header.packet_type ==
+                noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_NARROW_AW));
+        assert (m_req.header[(noc_header_pkg::SRC_ID_LSB + ni_types_pkg::NODE_ID_W - 1):noc_header_pkg::SRC_ID_LSB] == 8'h12);
         @(posedge clk);
         #1;
         assert (m_req_valid)
             else $fatal(1, "REQ and DAT W did not transfer in parallel");
-        assert (m_req.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB] ==
-                ni_flit_pkg::AXI_CH_WIDTH'(ni_flit_pkg::AXI_CH_NarrowW));
-        assert (m_req.payload[ni_flit_pkg::NARROW_W_WDATA_MSB:
-                              ni_flit_pkg::NARROW_W_WDATA_LSB] ==
+        assert (m_req.header.packet_type ==
+                noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_NARROW_W));
+        assert (m_req.payload[(noc_payload_pkg::NARROW_W_WDATA_LSB + noc_payload_pkg::NARROW_W_WDATA_WIDTH - 1):
+                              noc_payload_pkg::NARROW_W_WDATA_LSB] ==
                 64'h0123_4567_89ab_cdef)
             else $fatal(1, "narrow W did not extract the AW-addressed lane");
-        assert (m_req.header[ni_flit_pkg::FLIT_TAIL_LSB]);
+        assert (m_req.header.flit_tail);
         @(posedge clk);
 
         // A Data-class AR always rides REQ and is a single-flit packet.
         s_ar                   = '0;
         s_ar.axi.arid          = 3'h3;
         s_ar.axi.araddr        = 48'h2000;
-        s_ar.meta.route.domain = '{dst_id: 8'h43, dst_port_id: 2'h3, is_data: 1'b1};
+        s_ar.packet_info.route.domain = '{dst_id: 8'h43, dst_port_id: 2'h3, packet_type: noc_header_pkg::PKT_DATA_AR};
         s_ar_valid             = 1'b1;
         do @(posedge clk); while (!s_ar_ready);
         @(negedge clk);
         s_ar_valid = 1'b0;
         #1;
         assert (m_req_valid);
-        assert (m_req.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB] ==
-                ni_flit_pkg::AXI_CH_WIDTH'(ni_flit_pkg::AXI_CH_DataAr));
-        assert (m_req.header[ni_flit_pkg::FLIT_TAIL_LSB]);
+        assert (m_req.header.packet_type ==
+                noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_DATA_AR));
+        assert (m_req.header.flit_tail);
         @(posedge clk);
 
         // The first Data packet consumed both VC0 credits.  A same-domain AW
@@ -161,7 +161,7 @@ module tb_nmu_request_packetize;
         dat_credit_return[0] = 1'b1;
         #1;
         assert (m_dat_valid);
-        assert (m_dat.header[ni_flit_pkg::VC_ID_MSB:ni_flit_pkg::VC_ID_LSB] == 0);
+        assert (noc_unit_params_pkg::dat_class(m_dat.header.packet_type) == 0);
         @(posedge clk);
         @(negedge clk);
         dat_credit_return = '0;

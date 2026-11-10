@@ -1,13 +1,10 @@
 .DEFAULT_GOAL := help
 .NOTPARALLEL:
-.PHONY: help prepare sync run run_wave view regress verification report clean check
+.PHONY: help clean check
 help:
-	@echo 'make prepare | make run CASE=<case> | make verification | make report | make clean'
-	@echo 'Standalone: make -C sim/standalone/nmu or sim/standalone/nsu'
-prepare sync run run_wave view regress verification report:
-	$(MAKE) -C sim $@
+	@echo 'Simulation: cd sim; make run CASE=<case> | make run_wave view CASE=<case>'
+	@echo 'Standalone: make -C dv/tb/standalone/nmu or dv/tb/standalone/nsu'
 clean:
-	python3 sim/tools/clean.py
+	python3 dv/scripts/clean.py
 check:
-	python3 specgen/tools/codegen.py --check
-	python3 -m pytest -q specgen/tests sim/tools/test_gen_standalone_patterns.py sim/tools/test_standalone_clean.py sim/tools/test_coverage_build_key.py sim/tools/test_tb_runner.py sim/tools/test_verification_matrix.py
+	python3 -m pytest -q dv/scripts/test_gen_standalone_patterns.py dv/scripts/test_standalone_clean.py dv/scripts/test_coverage_build_key.py dv/scripts/test_tb_runner.py dv/scripts/test_verification_matrix.py

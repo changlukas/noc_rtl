@@ -50,7 +50,7 @@ module tb_nmu_request_path;
     assign axi.rready   = 1'b1;
 
     nmu_request_path #(
-        .AXI_ID_WIDTH   (3             ),
+        .INPUT_ID_WIDTH   (3             ),
         .AXI_FIFO_DEPTH (4             ),
         .SAM_NUM_RULES  (SAM_NUM_RULES ),
         .addr_t         (sam_addr_t    ),
@@ -94,8 +94,7 @@ module tb_nmu_request_path;
         .tx_req_ready_i       (1'b1        ),
         .tx_dat_valid_o       (            ),
         .tx_dat_ready_i       ('1),
-        .tx_dat_flit_o        (            ),
-        .credit_i             ('0          )
+        .tx_dat_flit_o        (            )
     );
 
     always #3ns axi_clk_i = !axi_clk_i;

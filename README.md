@@ -1,30 +1,60 @@
 # NoC RTL
 
-NMU and NSU RTL with AXI4 interfaces. The integration testbench connects one NMU,
-one C++ router and four NSUs to five AXI UVM agents. The router is a reference model,
-not router RTL.
+NMU and NSU RTL with AXI4 interfaces. The existing AXI UVM integration testbench
+supports direct NMU-to-NSU links and an RTL router mesh.
 
 ## DAT link interface
 
-NMU, NSU and the router wrapper use shared DAT flit data with per-VC
-`valid`, `ready` and credit-return vectors. At most one valid bit is asserted.
-The selected VC transfers on `valid[vc] && ready[vc]`. Until acceptance,
-valid, VC and flit data remain stable.
+NMU exposes scalar `TXREQ`, `RXRSP`, `TXDAT` and `RXDAT` streams, each with
+`VLD` and `RDY`. A transfer occurs on `VLD && RDY`; valid and flit data remain
+stable while stalled. NMU has no VC bank or credit ports. NSU likewise exposes scalar RXREQ, RXDAT,
+TXRSP and TXDAT streams.
 
-TX arbitration considers FIFO heads with available credit, including same-cycle
-credit return. NI TX credit is consumed on handshake. RX credit is returned when
-the receive FIFO is read. The C++ router reserves credit at output-FIFO admission
-and does not decrement it again at the link handshake.
+NMU TXREQ and TXDAT use `stream_register`, configured by `REQ_REG_TYPE` and
+`DAT_REG_TYPE`: 0 bypass, 1 single register (default), 2 spill register.
+The NI wrapper exposes these as `NMU_REQ_REG_TYPE` and `NMU_DAT_REG_TYPE`.
+AXI CDC FIFOs and response ordering storage retain their existing capacities.
+NSU merges REQ and DAT writes with Packet RR through each accepted packet tail.
+The existing AW/W context remains separate from the AXI AWREADY handshake.
+NSU TXRSP and TXDAT use RSP_REG_TYPE and DAT_REG_TYPE (default 1), exposed by NI
+as NSU_RSP_REG_TYPE and NSU_DAT_REG_TYPE. Source-aware ID mapping, return context,
+FIFO/CDC depths and B/final-RLAST context retirement remain unchanged.
+The shared NI/router DAT links use valid/ready with fixed write VC0 (AW/W)
+and read VC1 (R). Each router output arbitrates packets independently per class,
+then selects one ready class per flit through `flit_rr_arbiter`. Input and
+per-class output FIFOs retain their existing depths; there is no credit interface.
+
+NI TX uses `flit_rr_arbiter` to select one ready flit from NMU writes or NSU
+reads, then maps the selected source onto write/read class valid/ready. Its shared DAT valid is ready-qualified. NMU and NSU NoC RX cuts use the same `stream_register` as TX:
+1 simple register (default), 2 spill register. REQ/RSP also support 0 bypass;
+DAT requires type 1 or 2 to break the ready-qualified valid feedback path. The RX cuts are inside each unit,
+before dispatch/arbitration: RSP and DAT in NMU, REQ and DAT in NSU. NI directly
+wires the fixed DAT classes to these units and has no additional RX FIFO.
+REQ connects NMU to NSU; RSP connects NSU to NMU. Data AR travels on REQ,
+data R travels on DAT, and data AW/W travels on DAT. Read and write DAT traffic
+share the physical bus.
+
+The mesh uses the generated endpoint table for both local and boundary NI
+attachments. Boundary endpoints share their host router coordinates; PORT_ID 1
+selects the X boundary and PORT_ID 2 the Y boundary. SAM ranges and endpoint
+locations come from the existing topology configuration.
+
+SAM performs first-match
+address-to-endpoint/network lookup. Ordinary unicast preserves the original
+address without subtracting the rule base. Same-ID ordering and AW/W context
+remain in the existing NMU ordering and write-context blocks.
+
+The default read RoB stores 128 entries of 512-bit raw RDATA (8 KiB);
+metadata is additional storage. Inferred arrays are not SRAM macro signoff.
 
 ## Source layout
 
 | Directory | Content |
 |---|---|
 | `rtl/` | NMU, NSU and shared RTL |
-| `specgen/` | Signal/packet definitions and SV/C++ generation |
-| `ref_model/` | C++ reference models and router DPI support |
 | `deps/` | Vendored dependencies, licenses and pinned revisions |
-| `sim/` | UVM testbench, pattern generation and simulation commands |
+| `dv/` | Testbench, UVM environment, coverage, configuration and scripts |
+| `sim/` | Single integration simulation entry |
 | `docs/` | Verification plan, guidelines and accepted results |
 | `build/` | Generated inputs, compiled binaries, logs and coverage. Not source |
 
@@ -39,6 +69,7 @@ also requires Verdi. The validated versions and scope are recorded in
 ```sh
 python3 -m pip install -r requirements-dev.txt
 make check
+cd sim
 make prepare
 ```
 
@@ -59,22 +90,17 @@ Dependencies retain their own licenses. See `LICENSE` and `deps/revisions.json`.
 
 | Files | Required use |
 |---|---|
-| `rtl/` production modules, `Bender.yml` | NMU/NSU design and compile dependencies |
+| `rtl/` production modules | NMU/NSU design sources |
 | `rtl/**/tb_*.sv`, fixtures and `test_*.sh` | Focused RTL checks invoked by the adjacent test script |
-| `sim/uvm/`, `sim/dv/`, `sim/tb_top.sv` | UVM agents, checkers, coverage and integration TB |
-| `sim/script/`, `sim/tools/`, `sim/standalone/` | Preparation, execution, report export, cleanup and focused tests |
-| `sim/test_patterns/`, `sim/profiles/`, `sim/topology.yml` | Stimulus definitions, hardware settings and integration topology |
-| `sim/configs/` | SAM/topology fixtures used by model tests and standalone generation |
-| `ref_model/` | Router DPI and NI reference-model unit tests |
-| `specgen/source/`, `generated/`, `ni_spec/`, `tools/` | Protocol contracts, checked generated interfaces and code generation |
-| `specgen/tests/`, `examples/` | Contract tests, golden references and compile checks |
+| `dv/tb/`, `dv/env/`, `dv/tests/`, `dv/checkers/`, `dv/coverage/` | UVM agents, checkers, coverage and integration TB |
+| `dv/scripts/`, `dv/tb/standalone/` | Preparation, execution, report export, cleanup and focused tests |
+| `dv/config/` | Stimulus definitions, hardware profiles and topology |
+| `dv/filelists/`, `dv/waves/` | Compile order and waveform groups |
 | `deps/` | Required library sources, include files, focused VIP test inputs and licenses |
 | `docs/` | Verification rules, plan and accepted evidence |
 
 Dependency distributions omit unused upstream CI, examples and self-tests. Pinned
-revisions and subset notes are in `deps/revisions.json`. Project model tests use
-GoogleTest, not GoogleMock. They can be configured with
-`cmake -S ref_model/c_model -B build/cmodel` and run with CTest after building.
+revisions and subset notes are in `deps/revisions.json`.
 
 From the repository root:
 
@@ -82,12 +108,7 @@ From the repository root:
 make clean
 ```
 
-This removes generated stages, all builds under `build/`, standalone `output/`,
-generated pattern directories, logs, waves, coverage and Python caches. Tracked
-sources, specgen contracts, `tools.mk` and the local `build/backlog.md` are retained.
-Save any required reports outside these output directories before cleaning.
-
-On the offline workstation, run `make clean` inside the deployed simulation
-stage. It removes VCS/Verdi products, coverage and run results, while retaining the
-supplied source and stimulus files. An explicitly selected output directory outside
-the checkout must be cleaned from its own stage.
+This removes only `build/compile/` and `build/regression/`, including their
+inputs, binaries, logs, waves and coverage. Retained historical outputs elsewhere
+and canonical sources/settings are untouched. Save required evidence before cleaning.
+The workstation uses the same `make clean` command from its `sim/` directory.

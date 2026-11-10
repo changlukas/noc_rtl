@@ -15,19 +15,19 @@ module nsu_request_depacketize #(
     parameter type sam_rule_t     = topology_pkg::sam_rule_t,
 
     parameter sam_rule_t [SAM_NUM_RULES-1:0]        SAM    = topology_pkg::SAM,
-    parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0] SRC_ID = '0
+    parameter logic [ni_types_pkg::NODE_ID_W-1:0] SRC_ID = '0
 ) (
     input  wire logic                                                           clk_i,
     input  wire logic                                                           rst_n_i,
-    input  wire ni_flit_pkg::dat_flit_t                                         s_aw_i,
+    input  wire noc_payload_pkg::dat_flit_t                                         s_aw_i,
     input  wire logic                                                           s_aw_valid_i,
     output wire logic                                                           s_aw_ready_o,
-    input  wire ni_flit_pkg::dat_flit_t                                         s_w_i,
+    input  wire noc_payload_pkg::dat_flit_t                                         s_w_i,
     input  wire logic                                                           s_w_valid_i,
     output wire logic                                                           s_w_ready_o,
     input  wire ni_types_pkg::nsu_w_context_t                                   w_context_i,
-    input  wire logic                          [ni_flit_pkg::AXI_LEN_WIDTH-1:0] w_beat_i,
-    input  wire ni_flit_pkg::req_flit_t                                         s_ar_i,
+    input  wire logic                          [noc_payload_pkg::AXI_LEN_WIDTH-1:0] w_beat_i,
+    input  wire noc_payload_pkg::req_flit_t                                         s_ar_i,
     input  wire logic                                                           s_ar_valid_i,
     output wire logic                                                           s_ar_ready_o,
     output wire ni_types_pkg::nsu_aw_request_t                                  m_aw_o,
@@ -42,40 +42,45 @@ module nsu_request_depacketize #(
     output wire logic                                                           w_accept_o,
     output wire logic                                                           w_last_o
 );
-    import ni_flit_pkg::*;
     import ni_types_pkg::*;
-    localparam int unsigned DATA_W = ni_params_pkg::AXI_DATA_WIDTH;
+    localparam int unsigned DATA_W = noc_payload_pkg::DATA_WIDTH;
     localparam int unsigned STRB_W = DATA_W/8;
-    localparam int unsigned LANE_W = $clog2(DATA_W/NOC_NARROW_DATA_WIDTH);
+    localparam int unsigned LANE_W = $clog2(DATA_W/noc_payload_pkg::NARROW_DATA_WIDTH);
     nsu_aw_request_t aw;
     nsu_ar_request_t ar;
     ni_signals_pkg::noc_axi_w_t w;
     sam_result_t aw_sam;
     wire                                     aw_lookup_valid, aw_lookup_error;
-    wire [ni_params_pkg::AXI_ADDR_WIDTH-1:0] aw_addr = s_aw_i.payload[AW_AWADDR_LSB +: AW_AWADDR_WIDTH];
-    wire           [COLLECTIVE_OP_WIDTH-1:0] collective_op = s_aw_i.header[COLLECTIVE_OP_LSB +: COLLECTIVE_OP_WIDTH];
+    wire [noc_payload_pkg::AXI_ADDR_WIDTH-1:0] aw_addr = s_aw_i.payload[noc_payload_pkg::AW_AWADDR_LSB +: noc_payload_pkg::AW_AWADDR_WIDTH];
+    wire           [noc_header_pkg::COLL_OP_WIDTH-1:0] collective_op = s_aw_i.header.coll_op;
     axi_pkg::largest_addr_t w_addr;
     logic [LANE_W-1:0] w_lane;
 
-    function automatic nsu_context_t decode_context(input logic [HEADER_WIDTH-1:0] header);
+    function automatic nsu_context_t decode_context(input logic [noc_header_pkg::HEADER_WIDTH-1:0] header);
         nsu_context_t value;
         value              = '0;
-        value.src_id       = header[SRC_ID_LSB +: SRC_ID_WIDTH];
-        value.src_port_id  = header[SRC_PORT_ID_LSB +: SRC_PORT_ID_WIDTH];
-        value.ordering_req = header[ORDERING_REQ_LSB];
-        value.ordering_tag = header[ORDERING_TAG_LSB +: ORDERING_TAG_WIDTH];
-        value.is_data      = header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataAw) ||
-            header[AXI_CH_LSB +: AXI_CH_WIDTH] == AXI_CH_WIDTH'(AXI_CH_DataAr);
+        value.src_id       = header[noc_header_pkg::SRC_ID_LSB +: ni_types_pkg::NODE_ID_W];
+        value.src_port_id  = header[(noc_header_pkg::SRC_ID_LSB + noc_header_pkg::EP_PORT_ID_LSB) +: noc_header_pkg::PORT_ID_WIDTH];
+        value.ordering_req = header[noc_header_pkg::ORD_REQ_LSB];
+        value.ordering_tag = header[noc_header_pkg::ORD_TAG_LSB +: noc_header_pkg::ORD_TAG_WIDTH];
+        // Keep the exact return packet kind in the existing response context.
+        case (noc_header_pkg::packet_type_t'(header[noc_header_pkg::PACKET_TYPE_LSB +: noc_header_pkg::PACKET_TYPE_WIDTH]))
+            noc_header_pkg::PKT_NARROW_AW: value.packet_type = noc_header_pkg::PKT_NARROW_B;
+            noc_header_pkg::PKT_DATA_AW:   value.packet_type = noc_header_pkg::PKT_DATA_B;
+            noc_header_pkg::PKT_NARROW_AR: value.packet_type = noc_header_pkg::PKT_NARROW_R;
+            noc_header_pkg::PKT_DATA_AR:   value.packet_type = noc_header_pkg::PKT_DATA_R;
+            default: value.packet_type = noc_header_pkg::PKT_NARROW_B;
+        endcase
         return value;
     endfunction
 
     function automatic addr_t replace_coords(input addr_t addr, input sam_result_t rule);
         addr_t x_mask, y_mask, value;
-        x_mask = (addr_t'('1) >> (ni_params_pkg::AXI_ADDR_WIDTH-int'(rule.mask_x.len))) << rule.mask_x.offset;
-        y_mask = (addr_t'('1) >> (ni_params_pkg::AXI_ADDR_WIDTH-int'(rule.mask_y.len))) << rule.mask_y.offset;
+        x_mask = (addr_t'('1) >> (noc_payload_pkg::AXI_ADDR_WIDTH-int'(rule.mask_x.len))) << rule.mask_x.offset;
+        y_mask = (addr_t'('1) >> (noc_payload_pkg::AXI_ADDR_WIDTH-int'(rule.mask_y.len))) << rule.mask_y.offset;
         value  = addr & ~(x_mask | y_mask);
-        value |= (addr_t'(SRC_ID[X_WIDTH-1:0]) << rule.mask_x.offset) & x_mask;
-        value |= (addr_t'(SRC_ID[X_WIDTH +: Y_WIDTH]) << rule.mask_y.offset) & y_mask;
+        value |= (addr_t'(SRC_ID[noc_header_pkg::X_WIDTH-1:0]) << rule.mask_x.offset) & x_mask;
+        value |= (addr_t'(SRC_ID[noc_header_pkg::X_WIDTH +: noc_header_pkg::Y_WIDTH]) << rule.mask_y.offset) & y_mask;
         return value;
     endfunction
     ni_sam #(
@@ -100,19 +105,19 @@ module nsu_request_depacketize #(
         w_addr = axi_pkg::beat_addr(axi_pkg::largest_addr_t'(w_context_i.response.local_addr),
             w_context_i.response.size, w_context_i.response.len, w_context_i.response.burst,
             16'(w_beat_i));
-        w_lane = LANE_W'(w_addr >> $clog2(NOC_NARROW_DATA_WIDTH/8));
+        w_lane = LANE_W'(w_addr >> $clog2(noc_payload_pkg::NARROW_DATA_WIDTH/8));
         if (s_aw_valid_i) begin
-            aw.axi.awid     = $bits(aw.axi.awid)'(s_aw_i.payload[AW_AWID_LSB +: AW_AWID_WIDTH]);
-            aw.axi.awaddr   = $bits(aw.axi.awaddr)'(s_aw_i.payload[AW_AWADDR_LSB +: AW_AWADDR_WIDTH]);
-            aw.axi.awlen    = $bits(aw.axi.awlen)'(s_aw_i.payload[AW_AWLEN_LSB +: AW_AWLEN_WIDTH]);
-            aw.axi.awsize   = $bits(aw.axi.awsize)'(s_aw_i.payload[AW_AWSIZE_LSB +: AW_AWSIZE_WIDTH]);
-            aw.axi.awburst  = $bits(aw.axi.awburst)'(s_aw_i.payload[AW_AWBURST_LSB +: AW_AWBURST_WIDTH]);
-            aw.axi.awcache  = $bits(aw.axi.awcache)'(s_aw_i.payload[AW_AWCACHE_LSB +: AW_AWCACHE_WIDTH]);
-            aw.axi.awlock   = $bits(aw.axi.awlock)'(s_aw_i.payload[AW_AWLOCK_LSB +: AW_AWLOCK_WIDTH]);
-            aw.axi.awprot   = $bits(aw.axi.awprot)'(s_aw_i.payload[AW_AWPROT_LSB +: AW_AWPROT_WIDTH]);
-            aw.axi.awregion = $bits(aw.axi.awregion)'(s_aw_i.payload[AW_AWREGION_LSB +: AW_AWREGION_WIDTH]);
-            aw.axi.awqos    = $bits(aw.axi.awqos)'(s_aw_i.payload[AW_AWQOS_LSB +: AW_AWQOS_WIDTH]);
-            aw.axi.awuser   = $bits(aw.axi.awuser)'(s_aw_i.payload[AW_AWUSER_LSB +: AW_AWUSER_WIDTH]);
+            aw.axi.awid     = $bits(aw.axi.awid)'(s_aw_i.payload[noc_payload_pkg::AW_AWID_LSB +: noc_payload_pkg::AW_AWID_WIDTH]);
+            aw.axi.awaddr   = $bits(aw.axi.awaddr)'(s_aw_i.payload[noc_payload_pkg::AW_AWADDR_LSB +: noc_payload_pkg::AW_AWADDR_WIDTH]);
+            aw.axi.awlen    = $bits(aw.axi.awlen)'(s_aw_i.payload[noc_payload_pkg::AW_AWLEN_LSB +: noc_payload_pkg::AW_AWLEN_WIDTH]);
+            aw.axi.awsize   = $bits(aw.axi.awsize)'(s_aw_i.payload[noc_payload_pkg::AW_AWSIZE_LSB +: noc_payload_pkg::AW_AWSIZE_WIDTH]);
+            aw.axi.awburst  = $bits(aw.axi.awburst)'(s_aw_i.payload[noc_payload_pkg::AW_AWBURST_LSB +: noc_payload_pkg::AW_AWBURST_WIDTH]);
+            aw.axi.awcache  = $bits(aw.axi.awcache)'(s_aw_i.payload[noc_payload_pkg::AW_AWCACHE_LSB +: noc_payload_pkg::AW_AWCACHE_WIDTH]);
+            aw.axi.awlock   = $bits(aw.axi.awlock)'(s_aw_i.payload[noc_payload_pkg::AW_AWLOCK_LSB +: noc_payload_pkg::AW_AWLOCK_WIDTH]);
+            aw.axi.awprot   = $bits(aw.axi.awprot)'(s_aw_i.payload[noc_payload_pkg::AW_AWPROT_LSB +: noc_payload_pkg::AW_AWPROT_WIDTH]);
+            aw.axi.awregion = $bits(aw.axi.awregion)'(s_aw_i.payload[noc_payload_pkg::AW_AWREGION_LSB +: noc_payload_pkg::AW_AWREGION_WIDTH]);
+            aw.axi.awqos    = $bits(aw.axi.awqos)'(s_aw_i.payload[noc_payload_pkg::AW_AWQOS_LSB +: noc_payload_pkg::AW_AWQOS_WIDTH]);
+            aw.axi.awuser   = $bits(aw.axi.awuser)'(s_aw_i.payload[noc_payload_pkg::AW_AWUSER_LSB +: noc_payload_pkg::AW_AWUSER_WIDTH]);
             if (collective_op != '0) aw.axi.awaddr = replace_coords(aw_addr, aw_sam);
             aw.response                 = decode_context(s_aw_i.header);
             aw.response.noc_id          = aw.axi.awid;
@@ -121,20 +126,20 @@ module nsu_request_depacketize #(
             aw.response.size            = aw.axi.awsize;
             aw.response.burst           = aw.axi.awburst;
             aw.response.collective_op   = collective_op;
-            aw.response.collective_mask = s_aw_i.header[COLLECTIVE_MASK_LSB +: COLLECTIVE_MASK_WIDTH];
-            aw.vc_id                    = s_aw_i.header[VC_ID_LSB +: VC_ID_WIDTH];
+            aw.response.collective_mask = s_aw_i.header.coll_mask;
         end
         if (s_ar_valid_i) begin
-            ar.axi.arid            = $bits(ar.axi.arid)'(s_ar_i.payload[AR_ARID_LSB +: AR_ARID_WIDTH]);
-            ar.axi.araddr          = $bits(ar.axi.araddr)'(s_ar_i.payload[AR_ARADDR_LSB +: AR_ARADDR_WIDTH]);
-            ar.axi.arlen           = $bits(ar.axi.arlen)'(s_ar_i.payload[AR_ARLEN_LSB +: AR_ARLEN_WIDTH]);
-            ar.axi.arsize          = $bits(ar.axi.arsize)'(s_ar_i.payload[AR_ARSIZE_LSB +: AR_ARSIZE_WIDTH]);
-            ar.axi.arburst         = $bits(ar.axi.arburst)'(s_ar_i.payload[AR_ARBURST_LSB +: AR_ARBURST_WIDTH]);
-            ar.axi.arcache         = $bits(ar.axi.arcache)'(s_ar_i.payload[AR_ARCACHE_LSB +: AR_ARCACHE_WIDTH]);
-            ar.axi.arlock          = $bits(ar.axi.arlock)'(s_ar_i.payload[AR_ARLOCK_LSB +: AR_ARLOCK_WIDTH]);
-            ar.axi.arprot          = $bits(ar.axi.arprot)'(s_ar_i.payload[AR_ARPROT_LSB +: AR_ARPROT_WIDTH]);
-            ar.axi.arregion        = $bits(ar.axi.arregion)'(s_ar_i.payload[AR_ARREGION_LSB +: AR_ARREGION_WIDTH]);
-            ar.axi.arqos           = $bits(ar.axi.arqos)'(s_ar_i.payload[AR_ARQOS_LSB +: AR_ARQOS_WIDTH]);
+            ar.axi.arid            = $bits(ar.axi.arid)'(s_ar_i.payload[noc_payload_pkg::AR_ARID_LSB +: noc_payload_pkg::AR_ARID_WIDTH]);
+            ar.axi.araddr          = $bits(ar.axi.araddr)'(s_ar_i.payload[noc_payload_pkg::AR_ARADDR_LSB +: noc_payload_pkg::AR_ARADDR_WIDTH]);
+            ar.axi.arlen           = $bits(ar.axi.arlen)'(s_ar_i.payload[noc_payload_pkg::AR_ARLEN_LSB +: noc_payload_pkg::AR_ARLEN_WIDTH]);
+            ar.axi.arsize          = $bits(ar.axi.arsize)'(s_ar_i.payload[noc_payload_pkg::AR_ARSIZE_LSB +: noc_payload_pkg::AR_ARSIZE_WIDTH]);
+            ar.axi.arburst         = $bits(ar.axi.arburst)'(s_ar_i.payload[noc_payload_pkg::AR_ARBURST_LSB +: noc_payload_pkg::AR_ARBURST_WIDTH]);
+            ar.axi.arcache         = $bits(ar.axi.arcache)'(s_ar_i.payload[noc_payload_pkg::AR_ARCACHE_LSB +: noc_payload_pkg::AR_ARCACHE_WIDTH]);
+            ar.axi.arlock          = $bits(ar.axi.arlock)'(s_ar_i.payload[noc_payload_pkg::AR_ARLOCK_LSB +: noc_payload_pkg::AR_ARLOCK_WIDTH]);
+            ar.axi.arprot          = $bits(ar.axi.arprot)'(s_ar_i.payload[noc_payload_pkg::AR_ARPROT_LSB +: noc_payload_pkg::AR_ARPROT_WIDTH]);
+            ar.axi.arregion        = $bits(ar.axi.arregion)'(s_ar_i.payload[noc_payload_pkg::AR_ARREGION_LSB +: noc_payload_pkg::AR_ARREGION_WIDTH]);
+            ar.axi.arqos           = $bits(ar.axi.arqos)'(s_ar_i.payload[noc_payload_pkg::AR_ARQOS_LSB +: noc_payload_pkg::AR_ARQOS_WIDTH]);
+            ar.axi.aruser = s_ar_i.payload[noc_payload_pkg::AR_ARUSER_LSB +: noc_payload_pkg::AR_ARUSER_WIDTH];
             ar.response            = decode_context(s_ar_i.header);
             ar.response.noc_id     = ar.axi.arid;
             ar.response.local_addr = ar.axi.araddr;
@@ -143,14 +148,16 @@ module nsu_request_depacketize #(
             ar.response.burst      = ar.axi.arburst;
         end
         if (s_w_valid_i) begin
-            if (w_context_i.response.is_data) begin
-                w.wdata = s_w_i.payload[DATA_W_WDATA_LSB +: DATA_W_WDATA_WIDTH];
-                w.wstrb = s_w_i.payload[DATA_W_WSTRB_LSB +: DATA_W_WSTRB_WIDTH];
-                w.wlast = s_w_i.payload[DATA_W_WLAST_LSB];
+            if (w_context_i.response.packet_type == noc_header_pkg::PKT_DATA_B) begin
+                w.wdata = s_w_i.payload[noc_payload_pkg::DATA_W_WDATA_LSB +: noc_payload_pkg::DATA_W_WDATA_WIDTH];
+                w.wstrb = s_w_i.payload[noc_payload_pkg::DATA_W_WSTRB_LSB +: noc_payload_pkg::DATA_W_WSTRB_WIDTH];
+                w.wlast = s_w_i.payload[noc_payload_pkg::DATA_W_WLAST_LSB];
+                w.wuser = s_w_i.payload[noc_payload_pkg::DATA_W_WUSER_LSB +: noc_payload_pkg::DATA_W_WUSER_WIDTH];
             end else begin
-                w.wdata = DATA_W'(s_w_i.payload[NARROW_W_WDATA_LSB +: NARROW_W_WDATA_WIDTH]) << (int'(w_lane)*NOC_NARROW_DATA_WIDTH);
-                w.wstrb = STRB_W'(s_w_i.payload[NARROW_W_WSTRB_LSB +: NARROW_W_WSTRB_WIDTH]) << (int'(w_lane)*NARROW_WSTRB_WIDTH);
-                w.wlast = s_w_i.payload[NARROW_W_WLAST_LSB];
+                w.wdata = DATA_W'(s_w_i.payload[noc_payload_pkg::NARROW_W_WDATA_LSB +: noc_payload_pkg::NARROW_W_WDATA_WIDTH]) << (int'(w_lane)*noc_payload_pkg::NARROW_DATA_WIDTH);
+                w.wstrb = STRB_W'(s_w_i.payload[noc_payload_pkg::NARROW_W_WSTRB_LSB +: noc_payload_pkg::NARROW_W_WSTRB_WIDTH]) << (int'(w_lane)*noc_payload_pkg::NARROW_WSTRB_WIDTH);
+                w.wlast = s_w_i.payload[noc_payload_pkg::NARROW_W_WLAST_LSB];
+                w.wuser = s_w_i.payload[noc_payload_pkg::NARROW_W_WUSER_LSB +: noc_payload_pkg::NARROW_W_WUSER_WIDTH];
             end
         end
     end

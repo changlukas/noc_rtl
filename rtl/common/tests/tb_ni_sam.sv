@@ -4,18 +4,16 @@
 
 module tb_ni_sam;
 
-    import topology_pkg::*;
+    import noc_sam_pkg::*;
 
     localparam sam_result_t OVERLAP_BROAD_IDX = '{
-        dst_id: ni_flit_pkg::DST_ID_WIDTH'(1),
-        dst_port_id: ni_flit_pkg::DST_PORT_ID_WIDTH'(0),
+        dst_id: '{port_id: 2'd0, y: 4'd0, x: 4'd1},
         is_data: 1'b1,
         mask_x: '0,
         mask_y: '0
     };
     localparam sam_result_t OVERLAP_NARROW_IDX = '{
-        dst_id: ni_flit_pkg::DST_ID_WIDTH'(2),
-        dst_port_id: ni_flit_pkg::DST_PORT_ID_WIDTH'(0),
+        dst_id: '{port_id: 2'd0, y: 4'd0, x: 4'd2},
         is_data: 1'b0,
         mask_x: '0,
         mask_y: '0
@@ -77,11 +75,10 @@ module tb_ni_sam;
         assert (lookup_valid && !lookup_error && sam_idx == SAM[SAM_NUM_RULES-1].idx)
             else $fatal(1, "Memory lookup did not preserve sam_result_t");
 
-        addr = 48'h0000_0200_0000;
+        addr = 48'h0000_0010_0000;
         #1ps;
         assert (lookup_valid && !lookup_error && !sam_idx.is_data &&
-                sam_idx.dst_id == ni_flit_pkg::DST_ID_WIDTH'(0) &&
-                sam_idx.dst_port_id == ni_flit_pkg::DST_PORT_ID_WIDTH'(0))
+                sam_idx.dst_id == noc_header_pkg::endpoint_id_t'('0))
             else $fatal(1, "Configuration lookup returned incorrect typed metadata");
 
         addr = 48'h0000_0000_0080;

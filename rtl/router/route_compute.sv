@@ -6,23 +6,26 @@
 module route_compute #(
     parameter int unsigned ROUTER_X = 0,
     parameter int unsigned ROUTER_Y = 0,
-    parameter int unsigned MESH_X   = ni_params_pkg::NOC_MESH_X_DIM,
-    parameter int unsigned MESH_Y   = ni_params_pkg::NOC_MESH_Y_DIM
+    parameter int unsigned MESH_X   = noc_unit_params_pkg::MESH_X_DIM,
+    parameter int unsigned MESH_Y   = noc_unit_params_pkg::MESH_Y_DIM
 ) (
-    input  wire logic [ni_flit_pkg::HEADER_WIDTH-1:0] header_i,
+    input  wire noc_header_pkg::header_t               header_i,
     input  wire logic                                 multicast_i,
     output wire logic                           [4:0] route_mask_o,
     output wire logic                           [4:0] merge_mask_o
 );
-    import ni_flit_pkg::*;
-    localparam int LOCAL = 0, NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4;
-    wire [X_WIDTH-1:0] dst_x = header_i[DST_ID_LSB +: X_WIDTH];
-    wire [Y_WIDTH-1:0] dst_y = header_i[DST_ID_LSB+X_WIDTH +: Y_WIDTH];
-    wire [X_WIDTH-1:0] src_x = header_i[SRC_ID_LSB +: X_WIDTH];
-    wire [Y_WIDTH-1:0] src_y = header_i[SRC_ID_LSB+X_WIDTH +: Y_WIDTH];
-    wire [X_WIDTH-1:0] mask_x = header_i[COLLECTIVE_MASK_LSB +: X_WIDTH];
-    wire [Y_WIDTH-1:0] mask_y = header_i[COLLECTIVE_MASK_LSB+X_WIDTH +: Y_WIDTH];
-    wire [DST_PORT_ID_WIDTH-1:0] dst_port = header_i[DST_PORT_ID_LSB +: DST_PORT_ID_WIDTH];
+    localparam int LOCAL = noc_unit_params_pkg::router_port(noc_unit_params_pkg::LOCAL);
+    localparam int NORTH = noc_unit_params_pkg::router_port(noc_unit_params_pkg::NORTH);
+    localparam int EAST  = noc_unit_params_pkg::router_port(noc_unit_params_pkg::EAST);
+    localparam int SOUTH = noc_unit_params_pkg::router_port(noc_unit_params_pkg::SOUTH);
+    localparam int WEST  = noc_unit_params_pkg::router_port(noc_unit_params_pkg::WEST);
+    wire [noc_header_pkg::X_WIDTH-1:0] dst_x = header_i.dst_id.x;
+    wire [noc_header_pkg::Y_WIDTH-1:0] dst_y = header_i.dst_id.y;
+    wire [noc_header_pkg::X_WIDTH-1:0] src_x = header_i.src_id.x;
+    wire [noc_header_pkg::Y_WIDTH-1:0] src_y = header_i.src_id.y;
+    wire [noc_header_pkg::X_WIDTH-1:0] mask_x = header_i.coll_mask[0 +: noc_header_pkg::X_WIDTH];
+    wire [noc_header_pkg::Y_WIDTH-1:0] mask_y = header_i.coll_mask[noc_header_pkg::X_WIDTH +: noc_header_pkg::Y_WIDTH];
+    wire [noc_header_pkg::PORT_ID_WIDTH-1:0] dst_port = header_i.dst_id.port_id;
     logic [4:0] route_mask, merge_mask;
     assign route_mask_o = route_mask;
     assign merge_mask_o = merge_mask;
@@ -30,13 +33,13 @@ module route_compute #(
         route_mask = '0;
         merge_mask = '0;
         if (multicast_i) begin
-            route_mask[LOCAL] = (((X_WIDTH'(ROUTER_X) ^ dst_x) & ~mask_x) == 0) &&
-                                (((Y_WIDTH'(ROUTER_Y) ^ dst_y) & ~mask_y) == 0);
+            route_mask[LOCAL] = (((noc_header_pkg::X_WIDTH'(ROUTER_X) ^ dst_x) & ~mask_x) == 0) &&
+                                (((noc_header_pkg::Y_WIDTH'(ROUTER_Y) ^ dst_y) & ~mask_y) == 0);
             if (ROUTER_Y == int'(src_y)) begin
                 route_mask[EAST] = ROUTER_X >= int'(src_x) && ROUTER_X < int'(dst_x | mask_x);
                 route_mask[WEST] = ROUTER_X <= int'(src_x) && ROUTER_X > int'(dst_x & ~mask_x);
             end
-            if (((X_WIDTH'(ROUTER_X) ^ dst_x) & ~mask_x) == 0) begin
+            if (((noc_header_pkg::X_WIDTH'(ROUTER_X) ^ dst_x) & ~mask_x) == 0) begin
                 route_mask[NORTH] = ROUTER_Y >= int'(src_y) && ROUTER_Y < int'(dst_y | mask_y);
                 route_mask[SOUTH] = ROUTER_Y <= int'(src_y) && ROUTER_Y > int'(dst_y & ~mask_y);
             end
@@ -45,6 +48,7 @@ module route_compute #(
         end else if (int'(dst_y) != ROUTER_Y) begin
             route_mask[int'(dst_y) > ROUTER_Y ? NORTH : SOUTH] = 1'b1;
         end else begin
+            // Endpoint ports select local, X-boundary or Y-boundary ejection.
             case (dst_port)
                 0: route_mask[LOCAL] = 1'b1;
                 1: begin
@@ -58,13 +62,13 @@ module route_compute #(
                 default: route_mask = '0;
             endcase
         end
-        merge_mask[LOCAL] = (((X_WIDTH'(ROUTER_X) ^ src_x) & ~mask_x) == 0) &&
-                            (((Y_WIDTH'(ROUTER_Y) ^ src_y) & ~mask_y) == 0);
+        merge_mask[LOCAL] = (((noc_header_pkg::X_WIDTH'(ROUTER_X) ^ src_x) & ~mask_x) == 0) &&
+                            (((noc_header_pkg::Y_WIDTH'(ROUTER_Y) ^ src_y) & ~mask_y) == 0);
         if (ROUTER_X == int'(dst_x)) begin
             merge_mask[NORTH] = ROUTER_Y >= int'(dst_y) && ROUTER_Y < int'(src_y | mask_y);
             merge_mask[SOUTH] = ROUTER_Y <= int'(dst_y) && ROUTER_Y > int'(src_y & ~mask_y);
         end
-        if (((Y_WIDTH'(ROUTER_Y) ^ src_y) & ~mask_y) == 0) begin
+        if (((noc_header_pkg::Y_WIDTH'(ROUTER_Y) ^ src_y) & ~mask_y) == 0) begin
             merge_mask[EAST] = ROUTER_X >= int'(dst_x) && ROUTER_X < int'(src_x | mask_x);
             merge_mask[WEST] = ROUTER_X <= int'(dst_x) && ROUTER_X > int'(src_x & ~mask_x);
         end

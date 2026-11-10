@@ -6,34 +6,34 @@
 
 // Network Master Unit production top-level interface and parameter contract.
 module nmu #(
-    parameter bit          EXTERNAL_DAT_LINK      = 1'b0,
-    parameter int unsigned INPUT_ID_WIDTH         = ni_params_pkg::AXI_ID_WIDTH,
-    parameter int unsigned OUTPUT_ID_WIDTH        = ni_params_pkg::NOC_ID_WIDTH,
-    parameter int unsigned AXI_ADDR_WIDTH         = ni_params_pkg::AXI_ADDR_WIDTH,
-    parameter int unsigned AXI_DATA_WIDTH         = ni_params_pkg::AXI_DATA_WIDTH,
-    parameter int unsigned AXI_AWUSER_WIDTH       = ni_params_pkg::AXI_AWUSER_WIDTH,
+    // 0: synchronous FIFO (common clock), 1: asynchronous FIFO.
+    parameter int unsigned FIFO_TYPE              = noc_unit_params_pkg::FIFO_TYPE,
+    parameter int unsigned INPUT_ID_WIDTH         = noc_payload_pkg::AXI_ID_WIDTH,
+    parameter int unsigned OUTPUT_ID_WIDTH        = noc_payload_pkg::NOC_ID_WIDTH,
+    parameter int unsigned AXI_ADDR_WIDTH         = noc_payload_pkg::AXI_ADDR_WIDTH,
+    parameter int unsigned AXI_DATA_WIDTH         = noc_payload_pkg::DATA_WIDTH,
+    parameter int unsigned AXI_AWUSER_WIDTH       = noc_payload_pkg::AXI_AWUSER_WIDTH,
     parameter int unsigned AXI_FIFO_DEPTH         = 32,
-    parameter int unsigned NUM_DAT_VC             = ni_params_pkg::NUM_DAT_VC,
-    localparam int unsigned NOC_DAT_VC_MODE        = (NUM_DAT_VC > 1),
-    parameter int unsigned REQ_FIFO_DEPTH         = 32,
+    parameter int unsigned REQ_REG_TYPE           = 1,
+    parameter int unsigned DAT_REG_TYPE           = 1,
     parameter int unsigned AW_FIFO_DEPTH          = AXI_FIFO_DEPTH,
     parameter int unsigned W_FIFO_DEPTH           = AXI_FIFO_DEPTH,
     parameter int unsigned AR_FIFO_DEPTH          = AXI_FIFO_DEPTH,
-    parameter int unsigned CREDIT_DEPTH           = ni_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned RX_DAT_REG_TYPE        = 1,
     parameter int unsigned REQ_AW_REG_TYPE        = 0,
     parameter int unsigned REQ_W_REG_TYPE         = 0,
     parameter int unsigned REQ_AR_REG_TYPE        = 0,
     parameter int unsigned DAT_AW_REG_TYPE        = 0,
     parameter int unsigned DAT_W_REG_TYPE         = 0,
-    parameter int unsigned RSP_FIFO_DEPTH         = 32,
+    parameter int unsigned RSP_REG_TYPE           = 1,
     parameter int unsigned B_FIFO_DEPTH           = AXI_FIFO_DEPTH,
     parameter int unsigned R_FIFO_DEPTH           = AXI_FIFO_DEPTH,
     parameter int unsigned B_REG_TYPE             = 0,
     parameter int unsigned R_REG_TYPE             = 0,
-    parameter int unsigned B_ROB_DEPTH            = ni_params_pkg::NMU_ROB_B_DEPTH,
-    parameter int unsigned R_ROB_DEPTH            = ni_params_pkg::NMU_ROB_R_DEPTH,
-    parameter bit          R_ROB_EN               = bit'(ni_params_pkg::NMU_R_ROB_EN),
-    parameter int unsigned MAX_OUTSTANDING_PER_ID = ni_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
+    parameter int unsigned B_ROB_DEPTH            = noc_unit_params_pkg::NMU_ROB_B_DEPTH,
+    parameter int unsigned R_ROB_DEPTH            = noc_unit_params_pkg::NMU_ROB_R_DEPTH,
+    parameter bit          R_ROB_EN               = bit'(noc_unit_params_pkg::NMU_R_ROB_EN),
+    parameter int unsigned MAX_OUTSTANDING_PER_ID = noc_unit_params_pkg::NMU_MAX_OUTSTANDING_PER_ID,
     parameter int unsigned AW_SAM_REG_TYPE        = 0,
     parameter int unsigned AR_SAM_REG_TYPE        = 0,
     // Generated address map, shared with the simulation topology.
@@ -43,88 +43,63 @@ module nmu #(
     parameter type                                       sam_result_t   = topology_pkg::sam_result_t,
     parameter type                                       sam_rule_t     = topology_pkg::sam_rule_t,
     parameter sam_rule_t [SAM_NUM_RULES-1:0]             SAM            = topology_pkg::SAM,
-    parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0]      SRC_ID         = '0,
-    parameter logic [ni_flit_pkg::SRC_PORT_ID_WIDTH-1:0] SRC_PORT_ID    = '0
+    parameter logic [ni_types_pkg::NODE_ID_W-1:0]      SRC_ID         = '0,
+    parameter logic [noc_header_pkg::PORT_ID_WIDTH-1:0] SRC_PORT_ID    = '0
 ) (
-    output wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_vc_o,
-    output wire logic                   [NUM_DAT_VC-1:0] tx_dat_vc_valid_o,
-    input  wire logic                   [NUM_DAT_VC-1:0] tx_dat_vc_ready_i,
-    input  wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] rx_dat_vc_i,
-    input  wire logic                   [NUM_DAT_VC-1:0] rx_dat_vc_valid_i,
-    output wire logic                   [NUM_DAT_VC-1:0] rx_dat_vc_ready_o,
-    input  wire logic                                    ACLK,
-    input  wire logic                                    ARESETn,
-    input  wire logic                                    noc_clk,
-    input  wire logic                                    noc_rst_n,
+    input  wire logic  ACLK,
+    input  wire logic  ARESETn,
+    input  wire logic  noc_clk,
+    input  wire logic  noc_rst_n,
 
     axi_if.wr_slv                                             axi_wr_i,
     axi_if.rd_slv                                             axi_rd_i,
 
-    output wire logic                                         TXREQVLD,
-    output wire logic [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] TXREQ,
-    input  wire logic                                         TXREQRDY,
+    output wire logic                                       TXREQVLD,
+    output wire logic [noc_payload_pkg::REQ_FLIT_WIDTH-1:0] TXREQ,
+    input  wire logic                                       TXREQRDY,
 
-    input  wire logic                                         RXRSPVLD,
-    input  wire logic [ni_params_pkg::NOC_RSP_FLIT_WIDTH-1:0] RXRSP,
-    output wire logic                                         RXRSPRDY,
+    input  wire logic                                       RXRSPVLD,
+    input  wire logic [noc_payload_pkg::RSP_FLIT_WIDTH-1:0] RXRSP,
+    output wire logic                                       RXRSPRDY,
 
-    output wire logic                        [NUM_DAT_VC-1:0] TXDATVLD,
-    input  wire logic                        [NUM_DAT_VC-1:0] TXDATRDY,
-    output wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] TXDAT,
-    input  wire logic                        [NUM_DAT_VC-1:0] credit_i,
-    input  wire logic                        [NUM_DAT_VC-1:0] RXDATVLD,
-    output wire logic                        [NUM_DAT_VC-1:0] RXDATRDY,
-    input  wire logic [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] RXDAT,
-    output wire logic                        [NUM_DAT_VC-1:0] credit_o
+    output wire logic                                       TXDATVLD,
+    input  wire logic                                       TXDATRDY,
+    output wire logic [noc_payload_pkg::DAT_FLIT_WIDTH-1:0] TXDAT,
+    input  wire logic                                       RXDATVLD,
+    output wire logic                                       RXDATRDY,
+    input  wire logic [noc_payload_pkg::DAT_FLIT_WIDTH-1:0] RXDAT
 );
 
     localparam int unsigned NUM_IDS =
         1 << INPUT_ID_WIDTH;
 
-    localparam int unsigned REQ_FLIT_W = $bits(ni_flit_pkg::req_flit_t);
-    localparam int unsigned RSP_FLIT_W = $bits(ni_flit_pkg::rsp_flit_t);
-    localparam int unsigned DAT_FLIT_W = $bits(ni_flit_pkg::dat_flit_t);
+    localparam int unsigned REQ_FLIT_W = $bits(noc_payload_pkg::req_flit_t);
+    localparam int unsigned RSP_FLIT_W = $bits(noc_payload_pkg::rsp_flit_t);
+    localparam int unsigned DAT_FLIT_W = $bits(noc_payload_pkg::dat_flit_t);
 
     if (INPUT_ID_WIDTH < 1 || INPUT_ID_WIDTH > 8) begin : gen_invalid_axi_id_width
         initial $fatal(0, "Error: INPUT_ID_WIDTH must be in [1, 8] (instance %m)");
     end
 
-    if (OUTPUT_ID_WIDTH != ni_params_pkg::NOC_ID_WIDTH || OUTPUT_ID_WIDTH < INPUT_ID_WIDTH) begin : gen_invalid_noc_id_width
+    if (OUTPUT_ID_WIDTH != noc_payload_pkg::NOC_ID_WIDTH || OUTPUT_ID_WIDTH < INPUT_ID_WIDTH) begin : gen_invalid_noc_id_width
         initial $fatal(0, "Error: OUTPUT_ID_WIDTH must match the generated fixed width (instance %m)");
     end
 
-    if (AXI_ADDR_WIDTH != ni_params_pkg::AXI_ADDR_WIDTH ||
-            AXI_DATA_WIDTH != ni_params_pkg::AXI_DATA_WIDTH ||
-            AXI_AWUSER_WIDTH != ni_params_pkg::AXI_AWUSER_WIDTH) begin : gen_invalid_axi_widths
+    if (AXI_ADDR_WIDTH != noc_payload_pkg::AXI_ADDR_WIDTH ||
+            AXI_DATA_WIDTH != noc_payload_pkg::DATA_WIDTH ||
+            AXI_AWUSER_WIDTH != noc_payload_pkg::AXI_AWUSER_WIDTH) begin : gen_invalid_axi_widths
         initial $fatal(0, "Error: AXI address/data/user widths must match the generated package (instance %m)");
     end
 
-    if (NUM_DAT_VC < 1 || NUM_DAT_VC > 8) begin : gen_invalid_dat_num_vc
-        initial $fatal(0, "Error: NUM_DAT_VC must be in [1, 8] (instance %m)");
-    end
-
-    if (NOC_DAT_VC_MODE != ni_params_pkg::NOC_DAT_VC_MODE_SHARED &&
-            NOC_DAT_VC_MODE != ni_params_pkg::NOC_DAT_VC_MODE_READ_WRITE_SPLIT) begin : gen_invalid_dat_vc_mode
-        initial $fatal(0, "Error: NOC_DAT_VC_MODE is invalid (instance %m)");
-    end
-
-    if (NOC_DAT_VC_MODE == ni_params_pkg::NOC_DAT_VC_MODE_READ_WRITE_SPLIT &&
-            !(NUM_DAT_VC == 2 || NUM_DAT_VC == 4 ||
-                NUM_DAT_VC == 6 || NUM_DAT_VC == 8)) begin : gen_invalid_dat_vc_split
-        initial $fatal(0, "Error: READ_WRITE_SPLIT requires NUM_DAT_VC of 2, 4, 6, or 8 (instance %m)");
+    if ((axi_rd_i.ARUSER_EN && $bits(axi_rd_i.aruser) != noc_payload_pkg::ARUSER_WIDTH) ||
+            (axi_wr_i.WUSER_EN && $bits(axi_wr_i.wuser) != noc_payload_pkg::WUSER_WIDTH) ||
+            (axi_wr_i.BUSER_EN && $bits(axi_wr_i.buser) != noc_payload_pkg::BUSER_WIDTH) ||
+            (axi_rd_i.RUSER_EN && $bits(axi_rd_i.ruser) != noc_payload_pkg::RUSER_WIDTH)) begin : gen_invalid_user_width
+        initial $fatal(0, "Error: enabled opaque USER widths must match native configuration (instance %m)");
     end
 
     if (AXI_FIFO_DEPTH < 2 || (AXI_FIFO_DEPTH & (AXI_FIFO_DEPTH - 1)) != 0) begin : gen_invalid_axi_fifo_depth
         initial $fatal(0, "Error: AXI_FIFO_DEPTH must be a power of two and at least 2 (instance %m)");
-    end
-
-    if (REQ_FIFO_DEPTH == 0 || (REQ_FIFO_DEPTH & (REQ_FIFO_DEPTH - 1)) != 0) begin : gen_invalid_noc_fifo_depth
-        initial $fatal(0, "Error: REQ_FIFO_DEPTH must be a positive power of two (instance %m)");
-    end
-
-    if (CREDIT_DEPTH < 2 ||
-            (CREDIT_DEPTH & (CREDIT_DEPTH - 1)) != 0) begin : gen_invalid_router_vc_depth
-        initial $fatal(0, "Error: CREDIT_DEPTH must be a power of two and at least 2 (instance %m)");
     end
 
     if (B_ROB_DEPTH < 1 || B_ROB_DEPTH > 256) begin : gen_invalid_rob_b_depth
@@ -147,9 +122,9 @@ module nmu #(
         initial $fatal(0, "Error: AR_SAM_REG_TYPE must be 0, 1, or 2 (instance %m)");
     end
 
-    if (REQ_FLIT_W != ni_params_pkg::NOC_REQ_FLIT_WIDTH ||
-            RSP_FLIT_W != ni_params_pkg::NOC_RSP_FLIT_WIDTH ||
-            DAT_FLIT_W != ni_params_pkg::NOC_DAT_FLIT_WIDTH) begin : gen_invalid_flit_width
+    if (REQ_FLIT_W != noc_payload_pkg::REQ_FLIT_WIDTH ||
+            RSP_FLIT_W != noc_payload_pkg::RSP_FLIT_WIDTH ||
+            DAT_FLIT_W != noc_payload_pkg::DAT_FLIT_WIDTH) begin : gen_invalid_flit_width
         initial $fatal(0, "Error: generated flit widths do not match the parameter package (instance %m)");
     end
 
@@ -179,16 +154,15 @@ module nmu #(
     wire logic                             axi_r_ready;
 
     nmu_request_path #(
-        .EXTERNAL_DAT_LINK (EXTERNAL_DAT_LINK),
+        .FIFO_TYPE         (FIFO_TYPE),
         .INPUT_ID_WIDTH    (INPUT_ID_WIDTH   ),
         .OUTPUT_ID_WIDTH   (OUTPUT_ID_WIDTH  ),
         .AXI_ADDR_WIDTH    (AXI_ADDR_WIDTH   ),
         .AXI_DATA_WIDTH    (AXI_DATA_WIDTH   ),
         .AXI_AWUSER_WIDTH  (AXI_AWUSER_WIDTH ),
         .AXI_FIFO_DEPTH    (AXI_FIFO_DEPTH   ),
-        .NUM_DAT_VC        (NUM_DAT_VC       ),
-        .REQ_FIFO_DEPTH    (REQ_FIFO_DEPTH   ),
-        .CREDIT_DEPTH      (CREDIT_DEPTH     ),
+        .REQ_REG_TYPE      (REQ_REG_TYPE     ),
+        .DAT_REG_TYPE      (DAT_REG_TYPE     ),
         .AW_SAM_REG_TYPE   (AW_SAM_REG_TYPE  ),
         .AR_SAM_REG_TYPE   (AR_SAM_REG_TYPE  ),
         .SAM_NUM_RULES     (SAM_NUM_RULES    ),
@@ -208,9 +182,6 @@ module nmu #(
         .DAT_AW_REG_TYPE   (DAT_AW_REG_TYPE  ),
         .DAT_W_REG_TYPE    (DAT_W_REG_TYPE   )
     ) i_request_path (
-        .tx_dat_vc_o          (tx_dat_vc_o      ),
-        .tx_dat_vc_valid_o    (tx_dat_vc_valid_o),
-        .tx_dat_vc_ready_i    (tx_dat_vc_ready_i),
         .axi_clk_i            (ACLK             ),
         .axi_rst_n_i          (ARESETn          ),
         .noc_clk_i            (noc_clk          ),
@@ -246,28 +217,23 @@ module nmu #(
         .tx_req_ready_i       (TXREQRDY   ),
         .tx_dat_valid_o       (TXDATVLD   ),
         .tx_dat_ready_i       (TXDATRDY   ),
-        .tx_dat_flit_o        (TXDAT    ),
-        .credit_i             (credit_i         )
+        .tx_dat_flit_o        (TXDAT    )
     );
     nmu_response_path #(
-        .EXTERNAL_DAT_LINK      (EXTERNAL_DAT_LINK     ),
-        .NUM_DAT_VC             (NUM_DAT_VC            ),
-        .CREDIT_DEPTH           (CREDIT_DEPTH          ),
+        .FIFO_TYPE              (FIFO_TYPE),
+        .DAT_REG_TYPE           (RX_DAT_REG_TYPE       ),
         .AXI_FIFO_DEPTH         (AXI_FIFO_DEPTH        ),
         .B_ROB_DEPTH            (B_ROB_DEPTH           ),
         .R_ROB_DEPTH            (R_ROB_DEPTH           ),
         .R_ROB_EN               (R_ROB_EN              ),
         .NUM_IDS                (NUM_IDS               ),
         .MAX_OUTSTANDING_PER_ID (MAX_OUTSTANDING_PER_ID),
-        .RSP_FIFO_DEPTH         (RSP_FIFO_DEPTH        ),
+        .RSP_REG_TYPE           (RSP_REG_TYPE          ),
         .B_FIFO_DEPTH           (B_FIFO_DEPTH          ),
         .R_FIFO_DEPTH           (R_FIFO_DEPTH          ),
         .B_REG_TYPE             (B_REG_TYPE            ),
         .R_REG_TYPE             (R_REG_TYPE            )
     ) i_response_path (
-        .rx_dat_vc_i          (rx_dat_vc_i      ),
-        .rx_dat_vc_valid_i    (rx_dat_vc_valid_i),
-        .rx_dat_vc_ready_o    (rx_dat_vc_ready_o),
         .axi_clk_i            (ACLK             ),
         .axi_rst_n_i          (ARESETn          ),
         .noc_clk_i            (noc_clk          ),
@@ -301,8 +267,7 @@ module nmu #(
         .rx_rsp_ready_o       (RXRSPRDY   ),
         .rx_dat_valid_i       (RXDATVLD   ),
         .rx_dat_ready_o       (RXDATRDY   ),
-        .rx_dat_flit_i        (RXDAT    ),
-        .credit_o             (credit_o         )
+        .rx_dat_flit_i        (RXDAT    )
     );
 
 endmodule

@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 
 module tb_nmu_ordering_stall;
-    localparam int unsigned ID_W = ni_params_pkg::AXI_ID_WIDTH;
+    localparam int unsigned ID_W = noc_payload_pkg::AXI_ID_WIDTH;
     localparam int unsigned LEN_W = 8;
-    localparam int unsigned TAG_W = ni_flit_pkg::ORDERING_TAG_WIDTH;
-    localparam int unsigned COLLECTIVE_OP_W = ni_flit_pkg::COLLECTIVE_OP_WIDTH;
+    localparam int unsigned TAG_W = noc_header_pkg::ORD_TAG_WIDTH;
+    localparam int unsigned COLLECTIVE_OP_W = noc_header_pkg::COLL_OP_WIDTH;
 
     logic clk_i = 0, rst_n_i = 0;
     ni_types_pkg::nmu_sam_aw_result_t             s_aw_i;
@@ -86,11 +86,11 @@ module tb_nmu_ordering_stall;
         @(negedge clk_i);
         s_aw_i                           = '0;
         s_aw_i.axi.awid                  = ID_W'(id);
-        s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
+        s_aw_i.route.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(dst);
         s_aw_valid_i                     = 1;
         do @(posedge clk_i); while (!s_aw_ready_o);
-        last_aw_ordering_req = m_aw_o.meta.ordering_req;
-        last_aw_ordering_tag = m_aw_o.meta.ordering_tag;
+        last_aw_ordering_req = m_aw_o.packet_info.ordering_req;
+        last_aw_ordering_tag = m_aw_o.packet_info.ordering_tag;
         @(negedge clk_i);
         s_aw_valid_i = 0;
     endtask
@@ -100,8 +100,9 @@ module tb_nmu_ordering_stall;
         s_b_i                   = '0;
         s_b_i.axi.bid           = ID_W'(id);
         s_b_i.axi.bresp         = resp;
-        s_b_i.meta.ordering_req = ordered;
-        s_b_i.meta.ordering_tag = TAG_W'(tag);
+        s_b_i.packet_info.packet_type  = noc_header_pkg::PKT_NARROW_B;
+        s_b_i.packet_info.ordering_req = ordered;
+        s_b_i.packet_info.ordering_tag = TAG_W'(tag);
         s_b_valid_i             = 1;
         do @(posedge clk_i); while (!s_b_ready_o);
         @(negedge clk_i);
@@ -113,11 +114,12 @@ module tb_nmu_ordering_stall;
         s_ar_i                     = '0;
         s_ar_i.axi.arid            = ID_W'(id);
         s_ar_i.axi.arlen           = LEN_W'(len);
-        s_ar_i.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
+        s_ar_i.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(dst);
+        s_ar_i.route.domain.packet_type = noc_header_pkg::PKT_NARROW_AR;
         s_ar_valid_i               = 1;
         do @(posedge clk_i); while (!s_ar_ready_o);
-        last_ar_ordering_req = m_ar_o.meta.ordering_req;
-        last_ar_ordering_tag = m_ar_o.meta.ordering_tag;
+        last_ar_ordering_req = m_ar_o.packet_info.ordering_req;
+        last_ar_ordering_tag = m_ar_o.packet_info.ordering_tag;
         @(negedge clk_i);
         s_ar_valid_i = 0;
     endtask
@@ -129,10 +131,11 @@ module tb_nmu_ordering_stall;
         @(negedge clk_i);
         s_r_i                   = '0;
         s_r_i.axi.rid           = ID_W'(id);
-        s_r_i.axi.rdata         = ni_params_pkg::AXI_DATA_WIDTH'(data);
+        s_r_i.axi.rdata         = noc_payload_pkg::DATA_WIDTH'(data);
         s_r_i.axi.rlast         = last;
-        s_r_i.meta.ordering_req = ordered;
-        s_r_i.meta.ordering_tag = TAG_W'(tag);
+        s_r_i.packet_info.packet_type  = noc_header_pkg::PKT_NARROW_R;
+        s_r_i.packet_info.ordering_req = ordered;
+        s_r_i.packet_info.ordering_tag = TAG_W'(tag);
         s_r_valid_i             = 1;
         do @(posedge clk_i); while (!s_r_ready_o);
         @(negedge clk_i);
@@ -159,20 +162,21 @@ module tb_nmu_ordering_stall;
         @(negedge clk_i);
         m_aw_ready_i                     = 0; m_ar_ready_i = 0;
         s_aw_i                           = '0; s_aw_i.axi.awid = ID_W'(1);
-        s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(2);
+        s_aw_i.route.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(2);
         s_ar_i                           = '0; s_ar_i.axi.arid = ID_W'(1); s_ar_i.axi.arlen = 1;
-        s_ar_i.route.domain.dst_id       = ni_flit_pkg::DST_ID_WIDTH'(2);
+        s_ar_i.route.domain.dst_id       = ni_types_pkg::NODE_ID_W'(2);
+        s_ar_i.route.domain.packet_type = noc_header_pkg::PKT_NARROW_AR;
         s_aw_valid_i                     = 1; s_ar_valid_i = 1;
         #1;
-        if (!m_aw_valid_o || !m_ar_valid_o || !m_aw_o.meta.ordering_req ||
-                !m_ar_o.meta.ordering_req || m_aw_o.meta.ordering_tag != 1 ||
-                m_ar_o.meta.ordering_tag != 1) $fatal(1, "offered tag setup failed");
+        if (!m_aw_valid_o || !m_ar_valid_o || !m_aw_o.packet_info.ordering_req ||
+                !m_ar_o.packet_info.ordering_req || m_aw_o.packet_info.ordering_tag != 1 ||
+                m_ar_o.packet_info.ordering_tag != 1) $fatal(1, "offered tag setup failed");
         send_b(0, 0, 0, 0); send_b(0, 1, 0, 1); send_b(1, 0, 0, 0);
         send_r(0, 0, 0, 32'h10, 1); send_r(0, 1, 0, 32'h20, 1);
         send_r(1, 0, 0, 32'h30, 1);
         #1;
-        if (m_aw_o.meta.ordering_tag != 1 || m_ar_o.meta.ordering_tag != 1 ||
-                !m_aw_o.meta.ordering_req || !m_ar_o.meta.ordering_req)
+        if (m_aw_o.packet_info.ordering_tag != 1 || m_ar_o.packet_info.ordering_tag != 1 ||
+                !m_aw_o.packet_info.ordering_req || !m_ar_o.packet_info.ordering_req)
             $fatal(1, "offered metadata changed after earlier retirement");
         m_aw_ready_i = 1; m_ar_ready_i = 1;
         @(posedge clk_i); @(negedge clk_i);
@@ -180,8 +184,8 @@ module tb_nmu_ordering_stall;
         send_b(1, 1, 1, 2);
         send_r(1, 1, 1, 32'h41, 0); send_r(1, 1, 1, 32'h42, 1);
         if (b_retire_count != 4 || r_retire_count != 5 ||
-                retired_b[3].bresp != 2 || retired_r[3].rdata != ni_params_pkg::AXI_DATA_WIDTH'(32'h41) ||
-                retired_r[4].rdata != ni_params_pkg::AXI_DATA_WIDTH'(32'h42))
+                retired_b[3].bresp != 2 || retired_r[3].rdata != noc_payload_pkg::DATA_WIDTH'(32'h41) ||
+                retired_r[4].rdata != noc_payload_pkg::DATA_WIDTH'(32'h42))
             $fatal(1, "held tag did not reserve and retire its range");
         send_aw(1, 3);
         if (last_aw_ordering_req) $fatal(1, "idle write ID did not return to bypass");
@@ -229,7 +233,7 @@ module tb_nmu_ordering_stall;
         repeat (2) @(posedge clk_i);
         @(negedge clk_i);
         if (r_retire_count != 5 || retired_r[3].rid != ID_W'(1) ||
-                retired_r[4].rid != ID_W'(2) || retired_r[4].rdata != ni_params_pkg::AXI_DATA_WIDTH'(32'h202) ||
+                retired_r[4].rid != ID_W'(2) || retired_r[4].rdata != noc_payload_pkg::DATA_WIDTH'(32'h202) ||
                 !retired_r[4].rlast || retired_r_cycle[4] != retired_r_cycle[3] + 1)
             $fatal(1, "mixed direct/buffered R burst did not retire correctly");
 
@@ -237,7 +241,7 @@ module tb_nmu_ordering_stall;
         send_aw(3, 1);
         @(negedge clk_i);
         m_aw_ready_i                     = 0;
-        s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(2);
+        s_aw_i.route.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(2);
         s_aw_valid_i                     = 1;
         m_b_ready_i                      = 0;
         s_b_i                            = '0; s_b_i.axi.bid = ID_W'(3); s_b_valid_i = 1;

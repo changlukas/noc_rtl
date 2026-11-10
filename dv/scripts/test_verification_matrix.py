@@ -1,0 +1,179 @@
+import unittest
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from verification_matrix import coverage_bins, TARGETS, metadata, stimulus_settings, export
+
+class MatrixExportTest(unittest.TestCase):
+    def test_export_rejects_incomplete_results(self):
+        with TemporaryDirectory() as directory:
+            stage = Path(directory)
+            (stage / "verification-runs.json").write_text(json.dumps([{"tag": "P01"}]))
+            (stage / "results.json").write_text("[]")
+            with self.assertRaisesRegex(ValueError, "results do not match"):
+                export(stage, stage / "matrix.json")
+            self.assertFalse((stage / "matrix.json").exists())
+
+    def test_export_rejects_duplicate_run_tags(self):
+        with TemporaryDirectory() as directory:
+            stage = Path(directory)
+            (stage / "verification-runs.json").write_text(json.dumps([{"tag": "P01"}] * 2))
+            (stage / "results.json").write_text("[]")
+            with self.assertRaisesRegex(ValueError, "Duplicate run tag"):
+                export(stage, stage / "matrix.json")
+
+    def test_all_pattern_ids(self):
+        self.assertEqual(set(TARGETS), {f"P{i:02d}" for i in range(1,24)} | {"P25", "P26"})
+        self.assertIn("write_strobe_cg",metadata("P09")["coverage_targets"])
+
+    def test_instance_counts_not_type_counts(self):
+        text = """Group : top::cg
+Summary for Variable cp_lane
+NAME COUNT AT LEAST
+lane_0 99 1
+---
+Group Instance : sample_cov
+Summary for Variable cp_lane
+NAME COUNT AT LEAST
+lane_0 2 1
+NAME COUNT AT LEAST NUMBER
+lane_1 0 1 1
+---
+Summary for Cross size_lane
+SIZE LANE COUNT AT LEAST
+size_0 lane_0 2 1
+Excluded/Illegal bins
+invalid 0 Excluded
+"""
+        rows=coverage_bins(text,"fresh")
+        self.assertEqual(len(rows),3)
+        self.assertEqual(rows[0][5],2)
+        self.assertEqual(rows[1][-1],"Uncovered")
+        self.assertEqual(rows[2][4],"size_0 / lane_0")
+
+    def test_compact_uncovered_cross(self):
+        text = """Group : top::cg
+Group Instance : cov
+Summary for Variable direction
+NAME COUNT AT LEAST
+read 1 1
+write 1 1
+---
+Summary for Variable event
+NAME COUNT AT LEAST NUMBER
+observed 0 1 1
+---
+Summary for Cross combined
+direction event COUNT AT LEAST NUMBER
+* * -- -- 2
+"""
+        rows=coverage_bins(text,"fresh")
+        self.assertEqual(len(rows),5)
+        self.assertEqual(rows[-1][4],"write / observed")
+        self.assertIsNone(rows[-1][5])
+        self.assertEqual(rows[-1][-1],"Uncovered")
+
+    def test_compact_cross_domains_are_per_instance(self):
+        block = """Group Instance : {name}
+Summary for Variable direction
+NAME COUNT AT LEAST
+read 1 1
+write 1 1
+---
+Summary for Variable event
+NAME COUNT AT LEAST NUMBER
+observed 0 1 1
+---
+Summary for Cross combined
+direction event COUNT AT LEAST NUMBER
+* * -- -- 2
+---
+"""
+        text = "Group : top::cg\n" + block.format(name="source") + block.format(name="device")
+        rows = coverage_bins(text, "fresh")
+        self.assertEqual(len(rows), 10)
+        self.assertEqual([r[4] for r in rows if r[2] == "source"],
+                         [r[4] for r in rows if r[2] == "device"])
+
+    def test_element_holes_expand_native_bin_lists(self):
+        text = """Group : top::cg
+Group Instance : cov
+Summary for Variable direction
+NAME COUNT AT LEAST
+read 1 1
+write 1 1
+---
+Summary for Variable length
+NAME COUNT AT LEAST
+short 0 1
+medium 0 1
+long 0 1
+---
+Summary for Cross combined
+direction length COUNT AT LEAST NUMBER
+* [medium , long] -- -- 4
+[read] [short] 0 1 1
+---
+"""
+        rows = coverage_bins(text, "fresh")
+        self.assertEqual(len(rows), 10)
+        self.assertEqual({r[4] for r in rows if r[3] == "combined"},
+                         {"read / medium", "read / long", "write / medium", "write / long", "read / short"})
+        self.assertEqual(rows[-1][5:8], [0, 1, "Uncovered"])
+
+    def test_native_test_attribution(self):
+        text = """Group : top::cg
+Group Instance : cov
+Summary for Variable cp_full
+NAME COUNT AT LEAST TEST COUNT TEST COUNT
+observed 7 1 T3 4 T8 3
+"""
+        row = coverage_bins(text, "fresh", {"T3": "run-1", "T8": "run-2"})[0]
+        self.assertEqual(row[5:8], [7, 1, "Covered"])
+        self.assertEqual(row[8], "run-1 (4), run-2 (3)")
+        with self.assertRaises(KeyError):
+            coverage_bins(text, "fresh", {"T3": "run-1"})
+
+    def test_stimulus_settings_exclude_checks_and_runner_details(self):
+        schedule = dict(check_min_outstanding=32, min_unique="8", seed="17",
+                        init_phase="1", preload="1", data_case="1", reorder_test="2",
+                        stress_test="1", backpressure="0", capacity_target="rob",
+                        response_hold_cycles="256", response_random_delay="1",
+                        response_error="0", source_response_hold_cycles="1024")
+        self.assertEqual(stimulus_settings(schedule),
+                         "source_response_hold_cycles=1024 response_random_delay=1 response_hold_cycles=256")
+        self.assertEqual(schedule["check_min_outstanding"], 32)
+
+    def test_router_stress_settings_preserve_root_and_backpressure(self):
+        self.assertEqual(stimulus_settings(dict(source_mask="8000", router_dat_stall_cycles="32",
+                                                response_error="2", response_error_mask="1")),
+                         "response_error=2 response_error_mask=1 source_mask=8000 router_dat_stall_cycles=32")
+
+    def test_compact_cross_handles_native_auto_bin_names(self):
+        text = """Group : response_cg
+Group Instance : response
+Summary for Variable direction
+NAME COUNT AT LEAST
+auto[0] 1 1
+auto[1] 1 1
+---
+Summary for Variable response
+NAME COUNT AT LEAST
+okay 1 1
+slverr 0 1
+decerr 0 1
+---
+Summary for Cross response_type
+direction response COUNT AT LEAST NUMBER
+[auto[1] ] [decerr , slverr] -- -- 2
+---
+"""
+        rows = coverage_bins(text, "fresh")
+        self.assertEqual([r[4] for r in rows if r[3] == "response_type"],
+                         ["auto[1] / decerr", "auto[1] / slverr"])
+
+    def test_empty_report_rejected(self):
+        with self.assertRaises(ValueError):
+            coverage_bins("", "fresh")
+
+if __name__=="__main__": unittest.main()

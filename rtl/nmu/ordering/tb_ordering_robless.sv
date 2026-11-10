@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module tb_nmu_ordering_robless;
-    localparam int unsigned ID_W = ni_params_pkg::AXI_ID_WIDTH;
+    localparam int unsigned ID_W = noc_payload_pkg::AXI_ID_WIDTH;
 
     logic clk_i = 0, rst_n_i = 0;
     ni_types_pkg::nmu_sam_aw_result_t s_aw_i;
@@ -31,10 +31,11 @@ module tb_nmu_ordering_robless;
     task automatic send_ar(input int dst);
         @(negedge clk_i);
         s_ar_i                     = '0; s_ar_i.axi.arid = ID_W'(1);
-        s_ar_i.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
+        s_ar_i.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(dst);
+        s_ar_i.route.domain.packet_type = noc_header_pkg::PKT_NARROW_AR;
         s_ar_valid_i               = 1;
         do @(posedge clk_i); while (!s_ar_ready_o);
-        if (m_ar_o.meta.ordering_req) $fatal(1, "RoB-less AR requested storage");
+        if (m_ar_o.packet_info.ordering_req) $fatal(1, "RoB-less AR requested storage");
         @(negedge clk_i);
         s_ar_valid_i = 0;
     endtask
@@ -42,6 +43,7 @@ module tb_nmu_ordering_robless;
     task automatic send_r;
         @(negedge clk_i);
         s_r_i       = '0; s_r_i.axi.rid = ID_W'(1); s_r_i.axi.rlast = 1;
+        s_r_i.packet_info.packet_type = noc_header_pkg::PKT_NARROW_R;
         s_r_valid_i = 1;
         do @(posedge clk_i); while (!s_r_ready_o);
         @(negedge clk_i);
@@ -59,7 +61,8 @@ module tb_nmu_ordering_robless;
         send_ar(1);
         send_ar(1);
         @(negedge clk_i);
-        s_ar_i.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(2);
+        s_ar_i.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(2);
+        s_ar_i.route.domain.packet_type = noc_header_pkg::PKT_NARROW_AR;
         s_ar_valid_i               = 1;
         repeat (3) begin @(posedge clk_i); if (s_ar_ready_o) $fatal(1, "cross-domain RoB-less AR accepted"); end
         @(negedge clk_i);

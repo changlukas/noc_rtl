@@ -4,16 +4,15 @@
 `default_nettype none
 
 module nsu_request_path #(
-    parameter bit          EXTERNAL_DAT_LINK = 1'b0,
-    parameter int unsigned OUTPUT_ID_WIDTH   = ni_params_pkg::NSU_AXI_ID_WIDTH,
+    // 0: synchronous FIFO (common clock), 1: asynchronous FIFO.
+    parameter int unsigned FIFO_TYPE         = 1,
+    parameter int unsigned OUTPUT_ID_WIDTH   = noc_unit_params_pkg::NSU_AXI_ID_WIDTH,
     parameter int unsigned AXI_FIFO_DEPTH    = 32,
     parameter int unsigned AW_FIFO_DEPTH     = AXI_FIFO_DEPTH,
     parameter int unsigned W_FIFO_DEPTH      = AXI_FIFO_DEPTH,
     parameter int unsigned AR_FIFO_DEPTH     = AXI_FIFO_DEPTH,
-    parameter int unsigned REQ_FIFO_DEPTH    = 32,
-    parameter int unsigned NUM_DAT_VC        = ni_params_pkg::NUM_DAT_VC,
-    localparam int unsigned NOC_DAT_VC_MODE   = (NUM_DAT_VC > 1),
-    parameter int unsigned CREDIT_DEPTH      = ni_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned REQ_REG_TYPE      = 1,
+    parameter int unsigned DAT_REG_TYPE      = 1,
     parameter int unsigned AW_REG_TYPE       = 0,
     parameter int unsigned W_REG_TYPE        = 0,
     parameter int unsigned AR_REG_TYPE       = 0,
@@ -21,7 +20,7 @@ module nsu_request_path #(
     parameter type aw_t = ni_signals_pkg::noc_axi_aw_t,
     parameter type ar_t = ni_signals_pkg::noc_axi_ar_t,
 
-    parameter int unsigned SAM_NUM_RULES = topology_pkg::SAM_NUM_RULES,
+    parameter int unsigned SAM_NUM_RULES     = topology_pkg::SAM_NUM_RULES,
 
     parameter type addr_t         = topology_pkg::sam_addr_t,
     parameter type sam_mask_sel_t = topology_pkg::sam_mask_sel_t,
@@ -29,48 +28,46 @@ module nsu_request_path #(
     parameter type sam_rule_t     = topology_pkg::sam_rule_t,
 
     parameter sam_rule_t [SAM_NUM_RULES-1:0]        SAM    = topology_pkg::SAM,
-    parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0] SRC_ID = '0
+    parameter logic [ni_types_pkg::NODE_ID_W-1:0] SRC_ID = '0
 ) (
-    input  wire ni_flit_pkg::dat_flit_t                               [NUM_DAT_VC-1:0] rx_dat_vc_i,
-    input  wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_vc_valid_i,
-    output wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_vc_ready_o,
-    input  wire logic                                                                  axi_clk_i,
-    input  wire logic                                                                  axi_rst_n_i,
-    input  wire logic                                                                  noc_clk_i,
-    input  wire logic                                                                  noc_rst_n_i,
-    output wire ni_types_pkg::nsu_aw_request_t                                         m_aw_context_o,
-    output wire logic                                                                  m_aw_context_valid_o,
-    input  wire logic                                                                  m_aw_context_ready_i,
-    input  wire logic                                            [OUTPUT_ID_WIDTH-1:0] awid_i,
-    output wire ni_types_pkg::nsu_ar_request_t                                         m_ar_context_o,
-    output wire logic                                                                  m_ar_context_valid_o,
-    input  wire logic                                                                  m_ar_context_ready_i,
-    input  wire logic                                            [OUTPUT_ID_WIDTH-1:0] arid_i,
-    input  wire ni_types_pkg::nsu_w_context_t                                          w_context_i,
-    input  wire logic                                                                  w_context_valid_i,
-    input  wire logic                                 [ni_flit_pkg::AXI_LEN_WIDTH-1:0] w_beat_i,
-    output wire logic                                                                  w_accept_o,
-    output wire logic                                                                  w_last_o,
-    input  wire logic                                                                  rx_req_valid_i,
-    input  wire logic                          [ni_params_pkg::NOC_REQ_FLIT_WIDTH-1:0] rx_req_flit_i,
-    output wire logic                                                                  rx_req_ready_o,
-    input  wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_valid_i,
-    output wire logic                                                 [NUM_DAT_VC-1:0] rx_dat_ready_o,
-    input  wire logic                          [ni_params_pkg::NOC_DAT_FLIT_WIDTH-1:0] rx_dat_flit_i,
-    output wire logic                                                 [NUM_DAT_VC-1:0] credit_o,
+    input  wire logic                                                                axi_clk_i,
+    input  wire logic                                                                axi_rst_n_i,
+    input  wire logic                                                                noc_clk_i,
+    input  wire logic                                                                noc_rst_n_i,
+    output wire ni_types_pkg::nsu_aw_request_t                                       m_aw_context_o,
+    output wire logic                                                                m_aw_context_valid_o,
+    input  wire logic                                                                m_aw_context_ready_i,
+    input  wire logic                                          [OUTPUT_ID_WIDTH-1:0] awid_i,
+    output wire ni_types_pkg::nsu_ar_request_t                                       m_ar_context_o,
+    output wire logic                                                                m_ar_context_valid_o,
+    input  wire logic                                                                m_ar_context_ready_i,
+    input  wire logic                                          [OUTPUT_ID_WIDTH-1:0] arid_i,
+    input  wire ni_types_pkg::nsu_w_context_t                                        w_context_i,
+    input  wire logic                                                                w_context_valid_i,
+    input  wire logic                           [noc_payload_pkg::AXI_LEN_WIDTH-1:0] w_beat_i,
+    output wire logic                                                                w_accept_o,
+    output wire logic                                                                w_last_o,
+    input  wire logic                                                                rx_req_valid_i,
+    input  wire logic                          [noc_payload_pkg::REQ_FLIT_WIDTH-1:0] rx_req_flit_i,
+    output wire logic                                                                rx_req_ready_o,
+    input  wire logic                                                                rx_dat_valid_i,
+    output wire logic                                                                rx_dat_ready_o,
+    input  wire logic                          [noc_payload_pkg::DAT_FLIT_WIDTH-1:0] rx_dat_flit_i,
     axi_if.wr_mst axi_wr_o,
     axi_if.rd_mst axi_rd_o
 );
-    import ni_flit_pkg::*;
+
+    // DAT valid is ready-qualified; bypass would feed dispatch ready back to valid.
+    if (DAT_REG_TYPE < 1 || DAT_REG_TYPE > 2) begin : gen_invalid_dat_reg_type
+        initial $fatal(0, "DAT RX requires register type 1 or 2 (instance %m)");
+    end
     import ni_types_pkg::*;
-    localparam logic [NUM_DAT_VC-1:0] WR_VC_MASK =
-        NOC_DAT_VC_MODE == 1 ? ({NUM_DAT_VC{1'b1}} >> (NUM_DAT_VC/2)) : '1;
-    wire                                              req_flit_t rx_req_head;
-    wire                                              dat_flit_t [NUM_DAT_VC-1:0] rx_dat_head;
+    wire                                              noc_payload_pkg::req_flit_t rx_req_head;
+    wire                                              noc_payload_pkg::dat_flit_t rx_dat_head;
     wire                                              rx_req_valid, rx_req_ready;
-    wire                             [NUM_DAT_VC-1:0] rx_dat_valid, rx_dat_ready;
-    wire                                              dat_flit_t selected_aw, selected_w;
-    wire                                              req_flit_t selected_ar;
+    wire                                               rx_dat_valid, rx_dat_ready;
+    wire                                              noc_payload_pkg::dat_flit_t selected_aw, selected_w;
+    wire                                              noc_payload_pkg::req_flit_t selected_ar;
     wire                                              selected_aw_valid, selected_aw_ready, selected_w_valid, selected_w_ready;
     wire                                              selected_ar_valid, selected_ar_ready;
     wire                                              nsu_aw_request_t decoded_aw;
@@ -114,6 +111,7 @@ module nsu_request_path #(
         axi_ar.arprot   = $bits(axi_ar.arprot)'(decoded_ar.axi.arprot);
         axi_ar.arregion = $bits(axi_ar.arregion)'(decoded_ar.axi.arregion);
         axi_ar.arqos    = $bits(axi_ar.arqos)'(decoded_ar.axi.arqos);
+        axi_ar.aruser   = $bits(axi_ar.aruser)'(decoded_ar.axi.aruser);
     end
     assign axi_wr_o.awid     = fifo_aw_valid ? fifo_aw.awid : '0;
     assign axi_wr_o.awaddr   = fifo_aw_valid ? fifo_aw.awaddr : '0;
@@ -138,63 +136,60 @@ module nsu_request_path #(
     assign axi_rd_o.arregion = fifo_ar_valid ? fifo_ar.arregion : '0;
     assign axi_rd_o.arqos    = fifo_ar_valid ? fifo_ar.arqos : '0;
     assign axi_rd_o.arvalid  = fifo_ar_valid;
-    assign axi_rd_o.aruser   = '0;
+    assign axi_rd_o.aruser   = axi_rd_o.ARUSER_EN && fifo_ar_valid ? $bits(axi_rd_o.aruser)'(fifo_ar.aruser) : '0;
     assign axi_wr_o.wdata    = fifo_w_valid ? fifo_w.wdata : '0;
     assign axi_wr_o.wstrb    = fifo_w_valid ? fifo_w.wstrb : '0;
     assign axi_wr_o.wlast    = fifo_w_valid && fifo_w.wlast;
-    assign axi_wr_o.wuser    = '0;
+    assign axi_wr_o.wuser    = axi_wr_o.WUSER_EN && fifo_w_valid ? $bits(axi_wr_o.wuser)'(fifo_w.wuser) : '0;
     assign axi_wr_o.wvalid   = fifo_w_valid;
-    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] buffered_dat;
-    wire [NUM_DAT_VC-1:0] buffered_dat_valid;
-    assign rx_dat_head = EXTERNAL_DAT_LINK ? rx_dat_vc_i : buffered_dat;
-    assign rx_dat_valid = EXTERNAL_DAT_LINK ? rx_dat_vc_valid_i : buffered_dat_valid;
-    assign rx_dat_vc_ready_o = EXTERNAL_DAT_LINK ? rx_dat_ready : '0;
-    rx_credit_buffer #(
-        .DAT_EN          (!EXTERNAL_DAT_LINK),
-        .CTRL_FIFO_DEPTH (REQ_FIFO_DEPTH),
-        .ctrl_t          (req_flit_t),
-        .NUM_DAT_VC      (NUM_DAT_VC),
-        .CREDIT_DEPTH    (CREDIT_DEPTH),
-        .DAT_VC_MASK     (WR_VC_MASK),
-        .CTRL_CH_MASK    ((1 << AXI_CH_WIDTH)'((1 << AXI_CH_NarrowAw) | (1 << AXI_CH_NarrowW) | (1 << AXI_CH_NarrowAr) | (1 << AXI_CH_DataAr))),
-        .DAT_CH_MASK     ((1 << AXI_CH_WIDTH)'((1 << AXI_CH_DataAw) | (1 << AXI_CH_DataW)))
-    ) i_rx_credit_buffer (
-        .clk_i          (noc_clk_i                 ),
-        .rst_n_i        (noc_rst_n_i               ),
-        .s_ctrl_i       (req_flit_t'(rx_req_flit_i)),
-        .s_ctrl_valid_i (rx_req_valid_i            ),
-        .s_ctrl_ready_o (rx_req_ready_o            ),
-        .s_dat_i        (dat_flit_t'(rx_dat_flit_i)),
-        .s_dat_valid_i  (rx_dat_valid_i            ),
-        .s_dat_ready_o  (rx_dat_ready_o            ),
-        .credit_o       (credit_o                  ),
-        .m_ctrl_o       (rx_req_head               ),
-        .m_ctrl_valid_o (rx_req_valid              ),
-        .m_ctrl_ready_i (rx_req_ready              ),
-        .m_dat_o        (buffered_dat              ),
-        .m_dat_valid_o  (buffered_dat_valid        ),
-        .m_dat_ready_i  (rx_dat_ready              )
+    stream_register #(
+        .REG_TYPE (REQ_REG_TYPE),
+        .data_t   (noc_payload_pkg::req_flit_t)
+    ) i_req_register (
+        .clk_i     (noc_clk_i),
+        .rst_n_i   (noc_rst_n_i),
+        .s_valid_i (rx_req_valid_i),
+        .s_ready_o (rx_req_ready_o),
+        .s_data_i  (rx_req_flit_i),
+        .m_valid_o (rx_req_valid),
+        .m_ready_i (rx_req_ready),
+        .m_data_o  (rx_req_head)
     );
-    nsu_rx_channel_assign #(
-        .NUM_DAT_VC (NUM_DAT_VC)
-    ) i_rx_channel_assign (
-        .clk_i             (noc_clk_i        ),
-        .rst_n_i           (noc_rst_n_i      ),
-        .s_req_i           (rx_req_head      ),
-        .s_req_valid_i     (rx_req_valid     ),
-        .s_req_ready_o     (rx_req_ready     ),
-        .s_dat_i           (rx_dat_head      ),
-        .s_dat_valid_i     (rx_dat_valid     ),
-        .s_dat_ready_o     (rx_dat_ready     ),
-        .w_context_i       (w_context_i      ),
+    stream_register #(
+        .REG_TYPE (DAT_REG_TYPE),
+        .data_t   (noc_payload_pkg::dat_flit_t)
+    ) i_dat_register (
+        .clk_i     (noc_clk_i),
+        .rst_n_i   (noc_rst_n_i),
+        .s_valid_i (rx_dat_valid_i),
+        .s_ready_o (rx_dat_ready_o),
+        .s_data_i  (rx_dat_flit_i),
+        .m_valid_o (rx_dat_valid),
+        .m_ready_i (rx_dat_ready),
+        .m_data_o  (rx_dat_head)
+    );
+    // synthesis translate_off
+    rx_dat_stall: cover property (@(posedge noc_clk_i) disable iff (!noc_rst_n_i)
+        rx_dat_valid && !rx_dat_ready);
+    // synthesis translate_on
+    nsu_request_dispatch i_request_dispatch (
+        .clk_i             (noc_clk_i),
+        .rst_n_i           (noc_rst_n_i),
+        .s_req_i           (rx_req_head),
+        .s_req_valid_i     (rx_req_valid),
+        .s_req_ready_o     (rx_req_ready),
+        .s_dat_i           (rx_dat_head),
+        .s_dat_valid_i     (rx_dat_valid),
+        .s_dat_ready_o     (rx_dat_ready),
+        .w_context_i       (w_context_i),
         .w_context_valid_i (w_context_valid_i),
-        .m_aw_o            (selected_aw      ),
+        .m_aw_o            (selected_aw),
         .m_aw_valid_o      (selected_aw_valid),
         .m_aw_ready_i      (selected_aw_ready),
-        .m_w_o             (selected_w       ),
-        .m_w_valid_o       (selected_w_valid ),
-        .m_w_ready_i       (selected_w_ready ),
-        .m_ar_o            (selected_ar      ),
+        .m_w_o             (selected_w),
+        .m_w_valid_o       (selected_w_valid),
+        .m_w_ready_i       (selected_w_ready),
+        .m_ar_o            (selected_ar),
         .m_ar_valid_o      (selected_ar_valid),
         .m_ar_ready_i      (selected_ar_ready)
     );
@@ -236,6 +231,7 @@ module nsu_request_path #(
         .m_ar_ready_i (decoded_ar_ready )
     );
     nsu_request_fifo #(
+        .FIFO_TYPE      (FIFO_TYPE),
         .AXI_FIFO_DEPTH (AXI_FIFO_DEPTH             ),
         .AXI_ID_WIDTH   (OUTPUT_ID_WIDTH            ),
         .AW_FIFO_DEPTH  (AW_FIFO_DEPTH              ),

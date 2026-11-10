@@ -7,7 +7,7 @@
 /* Contiguous response storage with independent fill and retire access. */
 module nmu_reorder_storage #(
     parameter int unsigned DEPTH  = 8,
-    parameter int unsigned TAG_W  = ni_flit_pkg::ORDERING_TAG_WIDTH,
+    parameter int unsigned TAG_W  = noc_header_pkg::ORD_TAG_WIDTH,
     parameter type         data_t = logic
 ) (
     input  wire logic              clk_i,

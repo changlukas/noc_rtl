@@ -14,9 +14,9 @@ module tb_nmu_request_packetize_stall;
     logic                                           s_w_valid, s_w_ready;
     ni_types_pkg::nmu_ar_request_t                  s_ar;
     logic                                           s_ar_valid, s_ar_ready;
-    ni_flit_pkg::req_flit_t                         m_req;
+    noc_payload_pkg::req_flit_t                         m_req;
     logic                                           m_req_valid, m_req_ready;
-    ni_flit_pkg::dat_flit_t                         m_dat;
+    noc_payload_pkg::dat_flit_t                         m_dat;
     logic                                           m_dat_valid;
     logic                          [NUM_DAT_VC-1:0] dat_credit_return;
 
@@ -55,8 +55,8 @@ module tb_nmu_request_packetize_stall;
         s_aw.axi.awaddr        = addr;
         s_aw.axi.awsize        = is_data ? 3'd6 : 3'd3;
         s_aw.axi.awburst       = 2'b01;
-        s_aw.axi.awuser        = ni_params_pkg::AXI_AWUSER_WIDTH'(8'h5a);
-        s_aw.meta.route.domain = '{dst_id: dst, dst_port_id: 2'h1, is_data: is_data};
+        s_aw.axi.awuser        = noc_payload_pkg::AXI_AWUSER_WIDTH'(8'h5a);
+        s_aw.packet_info.route.domain = '{dst_id: dst, dst_port_id: 2'h1, packet_type: is_data ? noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_NARROW_AW};
         s_aw.user              = 8'h5a;
         s_aw_valid             = 1'b1;
         do @(posedge clk); while (!s_aw_ready);
@@ -80,26 +80,24 @@ module tb_nmu_request_packetize_stall;
     always @(posedge clk) begin
         if (!rst_n_i) dat_count = 0;
         else if (m_dat_valid) begin
-            if (int'(m_dat.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB]) !=
-                    (dat_count == 0 ? ni_flit_pkg::AXI_CH_DataAw : ni_flit_pkg::AXI_CH_DataW))
+            if (int'(m_dat.header.packet_type) !=
+                    (dat_count == 0 ? noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_DATA_W))
                 $fatal(1, "post-reset DAT order mismatch");
             dat_count++;
         end
     end
-    ni_flit_pkg::req_flit_t held_req;
+    noc_payload_pkg::req_flit_t held_req;
     always @(negedge rst_n_i) begin
         #1ps;
-        if ({dut.i_tx_channel_assign.req_write_lock_reg,
-             dut.i_tx_channel_assign.dat_write_lock_reg} !== '0 ||
+        if ({dut.i_request_dispatch.req_write_lock_reg,
+             dut.i_request_dispatch.dat_write_lock_reg} !== '0 ||
             dut.i_write_context.active_reg !== 1'b0)
             $fatal(1, "Request state did not reset asynchronously");
     end
-    for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_reset_check
-        always @(negedge rst_n_i) begin
-            #1ps;
-            if (int'(dut.i_tx_credit_buffer.gen_dat_vc[vc].gen_active.i_credit.credit_o) !== CREDIT_DEPTH)
-                $fatal(1, "DAT credits did not reset asynchronously");
-        end
+    always @(negedge rst_n_i) begin : check_credit_reset
+        #1ps;
+        if (int'(dut.i_tx_credit_buffer.gen_dat_vc[noc_unit_params_pkg::DAT_WRITE_VC].gen_active.i_credit.credit_o) !== CREDIT_DEPTH)
+            $fatal(1, "DAT credits did not reset asynchronously");
     end
 
     initial begin
@@ -109,7 +107,8 @@ module tb_nmu_request_packetize_stall;
         repeat (3) @(negedge clk);
         rst_n_i = 1;
         s_ar.axi.arid=3;
-        s_ar.meta.route.domain.dst_id=8'h43;
+        s_ar.packet_info.route.domain.dst_id=8'h43;
+        s_ar.packet_info.route.domain.packet_type = noc_header_pkg::PKT_NARROW_AR;
         s_ar_valid=1;
         @(posedge clk); @(negedge clk); s_ar_valid=0;
         #1;
@@ -120,16 +119,16 @@ module tb_nmu_request_packetize_stall;
         push_w(512'h1234);
         #1;
         if (!m_req_valid || m_req !== held_req) begin
-            $display("REPRO_FAIL REQ changed while valid=1 ready=0: channel %0d -> %0d",held_req.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB],m_req.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB]);
+            $display("REPRO_FAIL REQ changed while valid=1 ready=0: channel %0d -> %0d",held_req.header.packet_type,m_req.header.packet_type);
             $fatal(1,"stalled REQ payload changed");
         end
         // Release the held AR and require exactly the queued AW/W afterward.
         m_req_ready = 1;
         @(posedge clk); #1;
-        if (!m_req_valid || int'(m_req.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB]) != ni_flit_pkg::AXI_CH_NarrowAw)
+        if (!m_req_valid || int'(m_req.header.packet_type) != noc_header_pkg::PKT_NARROW_AW)
             $fatal(1, "held AR did not retire before queued AW");
         @(posedge clk); #1;
-        if (!m_req_valid || int'(m_req.header[ni_flit_pkg::AXI_CH_MSB:ni_flit_pkg::AXI_CH_LSB]) != ni_flit_pkg::AXI_CH_NarrowW)
+        if (!m_req_valid || int'(m_req.header.packet_type) != noc_header_pkg::PKT_NARROW_W)
             $fatal(1, "queued W did not follow its AW");
         @(posedge clk); #1;
         if (m_req_valid) $fatal(1, "REQ duplicated a queued transaction");

@@ -6,10 +6,10 @@
 module tx_credit_buffer #(
     parameter bit                    CREDIT_EN       = 1'b1,
     parameter int unsigned           CTRL_FIFO_DEPTH = 32,
-    parameter int unsigned           NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
+    parameter int unsigned           NUM_DAT_VC      = noc_unit_params_pkg::DAT_NUM_VC,
     localparam int unsigned           DAT_VC_MODE     = (NUM_DAT_VC > 1),
-    parameter int unsigned           CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
-    parameter type                   ctrl_t          = ni_flit_pkg::req_flit_t,
+    parameter int unsigned           CREDIT_DEPTH    = noc_unit_params_pkg::CREDIT_DEPTH,
+    parameter type                   ctrl_t          = noc_payload_pkg::req_flit_t,
     parameter logic [NUM_DAT_VC-1:0] DAT_VC_MASK     = (DAT_VC_MODE == 1 ? ({NUM_DAT_VC{1'b1}} >> (NUM_DAT_VC/2)) : '1)
 ) (
     input  wire logic                                    clk_i,
@@ -20,20 +20,19 @@ module tx_credit_buffer #(
     output wire ctrl_t                                   m_ctrl_o,
     output wire logic                                    m_ctrl_valid_o,
     input  wire logic                                    m_ctrl_ready_i,
-    input  wire ni_flit_pkg::dat_flit_t                  s_dat_i,
+    input  wire noc_payload_pkg::dat_flit_t                  s_dat_i,
     input  wire logic                                    s_dat_valid_i,
     output wire logic                   [NUM_DAT_VC-1:0] dat_ready_o,
-    output wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
+    output wire noc_payload_pkg::dat_flit_t [NUM_DAT_VC-1:0] m_dat_o,
     output wire logic                   [NUM_DAT_VC-1:0] m_dat_valid_o,
     input  wire logic                   [NUM_DAT_VC-1:0] m_dat_ready_i,
     input  wire logic                   [NUM_DAT_VC-1:0] credit_i
 );
-    import ni_flit_pkg::*;
     localparam int unsigned VC_IDX_W = NUM_DAT_VC > 1 ? $clog2(NUM_DAT_VC) : 1;
     if (CTRL_FIFO_DEPTH < 1) begin : gen_invalid_depth
         initial $fatal(0, "Error: TX FIFO depths must be positive (instance %m)");
     end
-    if (NUM_DAT_VC < 1 || NUM_DAT_VC > (1 << VC_ID_WIDTH) || DAT_VC_MODE > 1 ||
+    if (NUM_DAT_VC != noc_unit_params_pkg::DAT_NUM_VC || DAT_VC_MODE > 1 ||
             (DAT_VC_MODE == 1 && (NUM_DAT_VC < 2 || NUM_DAT_VC % 2 != 0))) begin : gen_invalid_vc
         initial $fatal(0, "Error: invalid DAT VC configuration (instance %m)");
     end
@@ -62,9 +61,10 @@ module tx_credit_buffer #(
         .data_o  (ctrl_head                       ),
         .pop_i   (m_ctrl_valid_o && m_ctrl_ready_i)
     );
-    wire [VC_ID_WIDTH-1:0] dat_vc = s_dat_i.header[VC_ID_LSB +: VC_ID_WIDTH];
+    wire [ni_types_pkg::DAT_VC_IDX_W-1:0] dat_vc =
+        ni_types_pkg::DAT_VC_IDX_W'(noc_unit_params_pkg::dat_class(s_dat_i.header.packet_type));
     wire [NUM_DAT_VC-1:0] dat_full, dat_empty, dat_pop, dat_req, credit_left;
-    wire dat_flit_t [NUM_DAT_VC-1:0] dat_head;
+    wire noc_payload_pkg::dat_flit_t [NUM_DAT_VC-1:0] dat_head;
     assign dat_pop = m_dat_ready_i[NUM_DAT_VC-1:0] & dat_req;
     for (genvar vc = 0; vc < NUM_DAT_VC; vc++) begin : gen_dat_vc
         if (DAT_VC_MASK[vc]) begin : gen_active
@@ -76,7 +76,7 @@ module tx_credit_buffer #(
             cc_fifo #(
                 .Depth       (CREDIT_DEPTH),
                 .FallThrough (1'b0        ),
-                .data_t      (dat_flit_t  )
+                .data_t      (noc_payload_pkg::dat_flit_t  )
             ) i_fifo (
                 .clk_i   (clk_i),
                 .rst_ni  (rst_n_i),
@@ -86,7 +86,7 @@ module tx_credit_buffer #(
                 .empty_o (dat_empty[vc]),
                 .usage_o (),
                 .data_i  (s_dat_i),
-                .push_i  (s_dat_valid_i && dat_ready_o[vc] && dat_vc == VC_ID_WIDTH'(vc)),
+                .push_i  (s_dat_valid_i && dat_ready_o[vc] && dat_vc == ni_types_pkg::DAT_VC_IDX_W'(vc)),
                 .data_o  (dat_head[vc]),
                 .pop_i   (dat_pop[vc])
             );

@@ -11,12 +11,12 @@ module nmu_request_inject_tb_dut #(
     parameter int unsigned REQ_AR_REG_TYPE                               = 0,
     parameter int unsigned DAT_AW_REG_TYPE                               = 0,
     parameter int unsigned DAT_W_REG_TYPE                                = 0,
-    parameter int unsigned                               FIFO_DEPTH      = ni_params_pkg::NOC_FIFO_DEPTH,
-    parameter int unsigned                               NUM_DAT_VC      = ni_params_pkg::NUM_DAT_VC,
+    parameter int unsigned                               FIFO_DEPTH      = noc_unit_params_pkg::NOC_FIFO_DEPTH,
+    parameter int unsigned                               NUM_DAT_VC      = noc_unit_params_pkg::DAT_NUM_VC,
     localparam int unsigned                               DAT_VC_MODE     = (NUM_DAT_VC > 1),
-    parameter int unsigned                               CREDIT_DEPTH    = ni_params_pkg::CREDIT_DEPTH,
-    parameter logic [ni_flit_pkg::SRC_ID_WIDTH-1:0]      SRC_ID          = '0,
-    parameter logic [ni_flit_pkg::SRC_PORT_ID_WIDTH-1:0] SRC_PORT_ID     = '0
+    parameter int unsigned                               CREDIT_DEPTH    = noc_unit_params_pkg::CREDIT_DEPTH,
+    parameter logic [ni_types_pkg::NODE_ID_W-1:0]      SRC_ID          = '0,
+    parameter logic [noc_header_pkg::PORT_ID_WIDTH-1:0] SRC_PORT_ID     = '0
 ) (
     input  wire logic                                           clk_i,
     input  wire logic                                           rst_n_i,
@@ -29,23 +29,23 @@ module nmu_request_inject_tb_dut #(
     input  wire ni_types_pkg::nmu_ar_request_t                  s_ar_i,
     input  wire logic                                           s_ar_valid_i,
     output wire logic                                           s_ar_ready_o,
-    output wire ni_flit_pkg::req_flit_t                         m_req_o,
+    output wire noc_payload_pkg::req_flit_t                         m_req_o,
     output wire logic                                           m_req_valid_o,
     input  wire logic                                           m_req_ready_i,
-    output wire ni_flit_pkg::dat_flit_t                         m_dat_o,
+    output wire noc_payload_pkg::dat_flit_t                         m_dat_o,
     output wire logic                                           m_dat_valid_o,
     input  wire logic                          [NUM_DAT_VC-1:0] credit_i
 );
     import ni_types_pkg::*;
 
-    wire ni_flit_pkg::req_flit_t [NUM_NMU_REQ_CH-1:0] req_flit;
-    wire ni_flit_pkg::dat_flit_t [NUM_NMU_DAT_CH-1:0] dat_flit;
+    wire noc_payload_pkg::req_flit_t [NUM_NMU_REQ_CH-1:0] req_flit;
+    wire noc_payload_pkg::dat_flit_t [NUM_NMU_DAT_CH-1:0] dat_flit;
     wire                         [NUM_NMU_REQ_CH-1:0] req_valid, req_ready;
     wire                         [NUM_NMU_DAT_CH-1:0] dat_valid, dat_ready;
     wire ni_types_pkg::nmu_aw_request_t packet_aw, packet_w_aw;
     wire ni_signals_pkg::noc_axi_w_t packet_w;
     wire logic packet_aw_valid, packet_aw_ready, packet_w_valid, packet_w_ready;
-    wire logic [ni_flit_pkg::AXI_LEN_WIDTH-1:0] packet_w_beat;
+    wire logic [noc_payload_pkg::AXI_LEN_WIDTH-1:0] packet_w_beat;
     nmu_write_context i_write_context (
         .clk_i        (clk_i          ),
         .rst_n_i      (rst_n_i        ),
@@ -93,13 +93,11 @@ module nmu_request_inject_tb_dut #(
         .m_dat_valid_o (dat_valid      ),
         .m_dat_ready_i (dat_ready      )
     );
-    wire ni_flit_pkg::req_flit_t assigned_req;
-    wire ni_flit_pkg::dat_flit_t assigned_dat;
+    wire noc_payload_pkg::req_flit_t assigned_req;
+    wire noc_payload_pkg::dat_flit_t assigned_dat;
     wire assigned_req_valid, assigned_req_ready, assigned_dat_valid;
     wire [NUM_DAT_VC-1:0] dat_fifo_ready;
-    tx_channel_assign #(
-        .NUM_DAT_VC  (NUM_DAT_VC )
-    ) i_tx_channel_assign (
+    nmu_request_dispatch i_request_dispatch (
         .clk_i         (clk_i             ),
         .rst_n_i       (rst_n_i           ),
         .s_req_i       (req_flit          ),
@@ -113,9 +111,9 @@ module nmu_request_inject_tb_dut #(
         .m_req_ready_i (assigned_req_ready),
         .m_dat_o       (assigned_dat      ),
         .m_dat_valid_o (assigned_dat_valid),
-        .dat_ready_i   (dat_fifo_ready    )
+        .m_dat_ready_i (dat_fifo_ready[noc_unit_params_pkg::DAT_WRITE_VC])
     );
-    wire ni_flit_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
+    wire noc_payload_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
     wire [NUM_DAT_VC-1:0] tx_dat_valid, tx_dat_ready;
     tx_credit_buffer #(
         .CTRL_FIFO_DEPTH (FIFO_DEPTH  ),
@@ -131,7 +129,7 @@ module nmu_request_inject_tb_dut #(
         .m_ctrl_valid_o       (m_req_valid_o      ),
         .m_ctrl_ready_i       (m_req_ready_i      ),
         .s_dat_i             (assigned_dat       ),
-        .s_dat_valid_i       (assigned_dat_valid ),
+        .s_dat_valid_i       (assigned_dat_valid && dat_fifo_ready[noc_unit_params_pkg::DAT_WRITE_VC]),
         .dat_ready_o         (dat_fifo_ready     ),
         .m_dat_o             (tx_dat_head        ),
         .m_dat_valid_o       (tx_dat_valid       ),
@@ -140,9 +138,9 @@ module nmu_request_inject_tb_dut #(
     );
     wire [NUM_DAT_VC-1:0] link_dat_valid;
     assign m_dat_valid_o = |link_dat_valid;
-    tx_vc_arbiter #(
+    flit_rr_arbiter #(
         .NUM_DAT_VC  (NUM_DAT_VC )
-    ) i_tx_vc_arbiter (
+    ) i_flit_rr_arbiter (
         .clk_i         (clk_i        ),
         .rst_n_i       (rst_n_i      ),
         .s_dat_i       (tx_dat_head  ),

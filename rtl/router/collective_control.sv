@@ -10,9 +10,9 @@ module collective_control #(
 ) (
     input  wire logic                                                               clk_i,
     input  wire logic                                                               rst_n_i,
-    input  wire logic [NUM_INPUTS-1:0][ni_flit_pkg::HEADER_WIDTH-1:0]               header_i,
-    input  wire logic [NUM_INPUTS-1:0][ni_flit_pkg::B_BID_WIDTH-1:0]                bid_i,
-    input  wire logic [NUM_INPUTS-1:0][ni_flit_pkg::B_BRESP_WIDTH-1:0]              bresp_i,
+    input  wire noc_header_pkg::header_t [NUM_INPUTS-1:0]                            header_i,
+    input  wire logic [NUM_INPUTS-1:0][noc_payload_pkg::B_BID_WIDTH-1:0]                bid_i,
+    input  wire logic [NUM_INPUTS-1:0][noc_payload_pkg::B_BRESP_WIDTH-1:0]              bresp_i,
     input  wire logic [NUM_INPUTS-1:0]                                              s_valid_i,
     output wire logic [NUM_INPUTS-1:0]                                              s_ready_o,
     input  wire logic [NUM_OUTPUTS-1:0]                                             route_mask_i,
@@ -21,7 +21,6 @@ module collective_control #(
     output wire logic [NUM_OUTPUTS-1:0]                                             m_valid_o,
     input  wire logic [NUM_OUTPUTS-1:0]                                             m_ready_i
 );
-    import ni_flit_pkg::*;
     if (MODE == "MULTICAST") begin : gen_multicast
         logic [NUM_OUTPUTS-1:0] sent_reg = '0, sent_next;
         wire [NUM_OUTPUTS-1:0] transfer = m_valid_o & m_ready_i;
@@ -56,14 +55,13 @@ module collective_control #(
                 for (int j = 0; j < NUM_INPUTS; j++) begin
                     if (merge_mask_i[i][j]) begin
                         complete = complete && s_valid_i[j] &&
-                            header_i[j][DST_ID_LSB +: DST_ID_WIDTH] == header_i[i][DST_ID_LSB +: DST_ID_WIDTH] &&
-                            header_i[j][COLLECTIVE_MASK_LSB +: COLLECTIVE_MASK_WIDTH] == header_i[i][COLLECTIVE_MASK_LSB +: COLLECTIVE_MASK_WIDTH] &&
-                            (header_i[j][SRC_ID_LSB +: SRC_ID_WIDTH] & ~header_i[j][COLLECTIVE_MASK_LSB +: COLLECTIVE_MASK_WIDTH]) ==
-                            (header_i[i][SRC_ID_LSB +: SRC_ID_WIDTH] & ~header_i[i][COLLECTIVE_MASK_LSB +: COLLECTIVE_MASK_WIDTH]) &&
-                            header_i[j][DST_PORT_ID_LSB +: DST_PORT_ID_WIDTH] == header_i[i][DST_PORT_ID_LSB +: DST_PORT_ID_WIDTH] &&
-                            header_i[j][ORDERING_REQ_LSB] == header_i[i][ORDERING_REQ_LSB] &&
-                            header_i[j][ORDERING_TAG_LSB +: ORDERING_TAG_WIDTH] == header_i[i][ORDERING_TAG_LSB +: ORDERING_TAG_WIDTH] &&
-                            header_i[j][AXI_CH_LSB +: AXI_CH_WIDTH] == header_i[i][AXI_CH_LSB +: AXI_CH_WIDTH] &&
+                            header_i[j].dst_id == header_i[i].dst_id &&
+                            header_i[j].coll_mask == header_i[i].coll_mask &&
+                            ({header_i[j].src_id.y, header_i[j].src_id.x} & ~header_i[j].coll_mask) ==
+                            ({header_i[i].src_id.y, header_i[i].src_id.x} & ~header_i[i].coll_mask) &&
+                            header_i[j].ord_req == header_i[i].ord_req &&
+                            header_i[j].ord_tag == header_i[i].ord_tag &&
+                            header_i[j].packet_type == header_i[i].packet_type &&
                             bid_i[j] == bid_i[i];
                     end
                 end

@@ -21,17 +21,17 @@ module ni_sam #(
 );
 
     localparam int unsigned SAM_MASK_SEL_FIELD_W =
-        $clog2(ni_params_pkg::AXI_ADDR_WIDTH + 1);
+        $clog2(noc_payload_pkg::AXI_ADDR_WIDTH + 1);
     localparam int unsigned SAM_RESULT_W =
-        ni_flit_pkg::DST_ID_WIDTH + ni_flit_pkg::DST_PORT_ID_WIDTH + 1 +
+        noc_header_pkg::ENDPOINT_ID_WIDTH + 1 +
         2 * $bits(sam_mask_sel_t);
 
     if (SAM_NUM_RULES == 0) begin : gen_invalid_rule_count
         initial $fatal(0, "Error: SAM_NUM_RULES must be greater than zero (instance %m)");
     end
 
-    if ($bits(addr_t) != ni_params_pkg::AXI_ADDR_WIDTH) begin : gen_invalid_addr_type
-        initial $fatal(0, "Error: addr_t must match AXI_ADDR_WIDTH (instance %m)");
+    if ($bits(addr_t) != noc_payload_pkg::AXI_ADDR_WIDTH) begin : gen_invalid_addr_type
+        initial $fatal(0, "Error: addr_t must match noc_payload_pkg::AXI_ADDR_WIDTH (instance %m)");
     end
 
     if ($bits(sam_mask_sel_t) != 2 * SAM_MASK_SEL_FIELD_W) begin : gen_invalid_mask_selector_type

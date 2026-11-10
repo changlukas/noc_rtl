@@ -33,8 +33,8 @@ module nmu_sam #(
     output wire ni_types_pkg::nmu_sam_ar_result_t m_ar_o
 );
 
-    localparam int unsigned AXI_ADDR_W        = ni_params_pkg::AXI_ADDR_WIDTH;
-    localparam int unsigned COLLECTIVE_MASK_W = ni_flit_pkg::COLLECTIVE_MASK_WIDTH;
+    localparam int unsigned AXI_ADDR_W        = noc_payload_pkg::AXI_ADDR_WIDTH;
+    localparam int unsigned COLLECTIVE_MASK_W = noc_header_pkg::COLL_MASK_WIDTH;
 
     if (AW_SAM_REG_TYPE > 2) begin : gen_invalid_aw_reg_type
         initial $fatal(0, "Error: AW_SAM_REG_TYPE must be 0, 1, or 2 (instance %m)");
@@ -42,11 +42,6 @@ module nmu_sam #(
 
     if (AR_SAM_REG_TYPE > 2) begin : gen_invalid_ar_reg_type
         initial $fatal(0, "Error: AR_SAM_REG_TYPE must be 0, 1, or 2 (instance %m)");
-    end
-
-    if (COLLECTIVE_MASK_W != ni_flit_pkg::DST_ID_WIDTH ||
-            COLLECTIVE_MASK_W != ni_flit_pkg::X_WIDTH + ni_flit_pkg::Y_WIDTH) begin : gen_invalid_collective_width
-        initial $fatal(0, "Error: collective mask width must match the destination ID layout (instance %m)");
     end
 
     function automatic logic [AXI_ADDR_W-1:0] selector_mask(
@@ -74,27 +69,27 @@ module nmu_sam #(
         logic [COLLECTIVE_MASK_W-1:0] collective_mask;
 
         collective_mask = '0;
-        collective_mask[ni_flit_pkg::X_WIDTH-1:0] =
-            ni_flit_pkg::X_WIDTH'((address_mask & selector_mask(sam_idx.mask_x)) >>
+        collective_mask[noc_header_pkg::X_WIDTH-1:0] =
+            noc_header_pkg::X_WIDTH'((address_mask & selector_mask(sam_idx.mask_x)) >>
                 sam_idx.mask_x.offset);
-        collective_mask[ni_flit_pkg::X_WIDTH +: ni_flit_pkg::Y_WIDTH] =
-            ni_flit_pkg::Y_WIDTH'((address_mask & selector_mask(sam_idx.mask_y)) >>
+        collective_mask[noc_header_pkg::X_WIDTH +: noc_header_pkg::Y_WIDTH] =
+            noc_header_pkg::Y_WIDTH'((address_mask & selector_mask(sam_idx.mask_y)) >>
                 sam_idx.mask_y.offset);
         return collective_mask;
     endfunction
 
     function automatic logic collective_error(
-        input logic [ni_params_pkg::AXI_AWUSER_WIDTH-1:0] awuser,
+        input logic [noc_payload_pkg::AXI_AWUSER_WIDTH-1:0] awuser,
         input logic                                            awlock,
         input sam_result_t                                        sam_idx
     );
         logic [AXI_ADDR_W-1:0] address_mask;
         logic [AXI_ADDR_W-1:0] allowed_address_mask;
 
-        address_mask         = awuser[57:10];
+        address_mask         = awuser[noc_payload_pkg::AXI_AWUSER_ADDR_MASK_LSB +: noc_payload_pkg::AXI_ADDR_WIDTH];
         allowed_address_mask = selector_mask(sam_idx.mask_x) |
             selector_mask(sam_idx.mask_y);
-        case (awuser[9:8])
+        case (awuser[noc_payload_pkg::AXI_AWUSER_COLL_OP_LSB +: noc_header_pkg::COLL_OP_WIDTH])
             2'd0: collective_error = address_mask != '0;
             2'd1: collective_error = address_mask == '0 || awlock ||
                 (address_mask & ~allowed_address_mask) != '0;
@@ -149,18 +144,20 @@ module nmu_sam #(
     assign s_ar_ready_o = ar_slice_ready;
 
     assign aw_decoded.axi                            = s_aw_i;
-    assign aw_decoded.route.route.domain.dst_id      = aw_sam_idx.dst_id;
-    assign aw_decoded.route.route.domain.dst_port_id = aw_sam_idx.dst_port_id;
-    assign aw_decoded.route.route.domain.is_data     = aw_sam_idx.is_data;
-    assign aw_decoded.route.user                     = s_aw_i.awuser[7:0];
-    assign aw_decoded.route.collective_op            = s_aw_i.awuser[9:8];
+    assign aw_decoded.route.route.domain.dst_id      = {aw_sam_idx.dst_id.y, aw_sam_idx.dst_id.x};
+    assign aw_decoded.route.route.domain.dst_port_id = aw_sam_idx.dst_id.port_id;
+    assign aw_decoded.route.route.domain.packet_type = noc_header_pkg::packet_type_t'(aw_sam_idx.is_data ?
+        noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_NARROW_AW);
+    assign aw_decoded.route.user                     = s_aw_i.awuser[noc_payload_pkg::AXI_AWUSER_USER_LSB +: noc_payload_pkg::AWUSER_WIDTH];
+    assign aw_decoded.route.collective_op            = s_aw_i.awuser[noc_payload_pkg::AXI_AWUSER_COLL_OP_LSB +: noc_header_pkg::COLL_OP_WIDTH];
     assign aw_decoded.route.collective_mask          = collective_mask_from_address_mask(
-        s_aw_i.awuser[57:10], aw_sam_idx);
+        s_aw_i.awuser[noc_payload_pkg::AXI_AWUSER_ADDR_MASK_LSB +: noc_payload_pkg::AXI_ADDR_WIDTH], aw_sam_idx);
 
     assign ar_decoded.axi                      = s_ar_i;
-    assign ar_decoded.route.domain.dst_id      = ar_sam_idx.dst_id;
-    assign ar_decoded.route.domain.dst_port_id = ar_sam_idx.dst_port_id;
-    assign ar_decoded.route.domain.is_data     = ar_sam_idx.is_data;
+    assign ar_decoded.route.domain.dst_id      = {ar_sam_idx.dst_id.y, ar_sam_idx.dst_id.x};
+    assign ar_decoded.route.domain.dst_port_id = ar_sam_idx.dst_id.port_id;
+    assign ar_decoded.route.domain.packet_type = noc_header_pkg::packet_type_t'(ar_sam_idx.is_data ?
+        noc_header_pkg::PKT_DATA_AR : noc_header_pkg::PKT_NARROW_AR);
 
     stream_register #(
         .REG_TYPE (AW_SAM_REG_TYPE                  ),

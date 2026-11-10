@@ -1,12 +1,12 @@
 `timescale 1ns / 1ps
 
 module tb_nmu_ordering #(
-    parameter int unsigned NUM_IDS = 1 << ni_params_pkg::NOC_ID_WIDTH
+    parameter int unsigned NUM_IDS = 1 << noc_payload_pkg::NOC_ID_WIDTH
 );
-    localparam int unsigned ID_W = ni_params_pkg::NOC_ID_WIDTH;
+    localparam int unsigned ID_W = noc_payload_pkg::NOC_ID_WIDTH;
     localparam int unsigned LEN_W = 8;
-    localparam int unsigned TAG_W = ni_flit_pkg::ORDERING_TAG_WIDTH;
-    localparam int unsigned COLLECTIVE_OP_W = ni_flit_pkg::COLLECTIVE_OP_WIDTH;
+    localparam int unsigned TAG_W = noc_header_pkg::ORD_TAG_WIDTH;
+    localparam int unsigned COLLECTIVE_OP_W = noc_header_pkg::COLL_OP_WIDTH;
 
     logic clk_i = 0, rst_n_i = 0;
     ni_types_pkg::nmu_sam_aw_result_t             s_aw_i;
@@ -58,12 +58,13 @@ module tb_nmu_ordering #(
         @(negedge clk_i);
         s_aw_i                           = '0;
         s_aw_i.axi.awid                  = ID_W'(id % NUM_IDS);
-        s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
-        s_aw_i.route.route.domain.is_data = is_data;
+        s_aw_i.route.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(dst);
+        s_aw_i.route.route.domain.packet_type = noc_header_pkg::packet_type_t'(is_data ?
+            noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_NARROW_AW);
         s_aw_valid_i                     = 1;
         do @(posedge clk_i); while (!s_aw_ready_o);
-        last_aw_ordering_req = m_aw_o.meta.ordering_req;
-        last_aw_ordering_tag = m_aw_o.meta.ordering_tag;
+        last_aw_ordering_req = m_aw_o.packet_info.ordering_req;
+        last_aw_ordering_tag = m_aw_o.packet_info.ordering_tag;
         @(negedge clk_i);
         s_aw_valid_i = 0;
     endtask
@@ -73,8 +74,9 @@ module tb_nmu_ordering #(
         s_b_i                   = '0;
         s_b_i.axi.bid           = ID_W'(id % NUM_IDS);
         s_b_i.axi.bresp         = resp;
-        s_b_i.meta.ordering_req = ordered;
-        s_b_i.meta.ordering_tag = TAG_W'(tag);
+        s_b_i.packet_info.packet_type  = noc_header_pkg::PKT_NARROW_B;
+        s_b_i.packet_info.ordering_req = ordered;
+        s_b_i.packet_info.ordering_tag = TAG_W'(tag);
         s_b_valid_i             = 1;
         do @(posedge clk_i); while (!s_b_ready_o);
         @(negedge clk_i);
@@ -86,11 +88,12 @@ module tb_nmu_ordering #(
         s_ar_i                     = '0;
         s_ar_i.axi.arid            = ID_W'(id % NUM_IDS);
         s_ar_i.axi.arlen           = LEN_W'(len);
-        s_ar_i.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(dst);
+        s_ar_i.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(dst);
+        s_ar_i.route.domain.packet_type = noc_header_pkg::PKT_NARROW_AR;
         s_ar_valid_i               = 1;
         do @(posedge clk_i); while (!s_ar_ready_o);
-        last_ar_ordering_req = m_ar_o.meta.ordering_req;
-        last_ar_ordering_tag = m_ar_o.meta.ordering_tag;
+        last_ar_ordering_req = m_ar_o.packet_info.ordering_req;
+        last_ar_ordering_tag = m_ar_o.packet_info.ordering_tag;
         @(negedge clk_i);
         s_ar_valid_i = 0;
     endtask
@@ -102,10 +105,11 @@ module tb_nmu_ordering #(
         @(negedge clk_i);
         s_r_i                   = '0;
         s_r_i.axi.rid           = ID_W'(id % NUM_IDS);
-        s_r_i.axi.rdata         = ni_params_pkg::AXI_DATA_WIDTH'(data);
+        s_r_i.axi.rdata         = noc_payload_pkg::DATA_WIDTH'(data);
         s_r_i.axi.rlast         = last;
-        s_r_i.meta.ordering_req = ordered;
-        s_r_i.meta.ordering_tag = TAG_W'(tag);
+        s_r_i.packet_info.packet_type  = noc_header_pkg::PKT_NARROW_R;
+        s_r_i.packet_info.ordering_req = ordered;
+        s_r_i.packet_info.ordering_tag = TAG_W'(tag);
         s_r_valid_i             = 1;
         do @(posedge clk_i); while (!s_r_ready_o);
         @(negedge clk_i);
@@ -200,8 +204,8 @@ module tb_nmu_ordering #(
         @(negedge clk_i);
         s_aw_i                           = '0;
         s_aw_i.axi.awid                  = ID_W'(4 % NUM_IDS);
-        s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(1);
-        s_aw_i.route.collective_op       = COLLECTIVE_OP_W'(ni_flit_pkg::COLLECTIVE_OP_MULTICAST);
+        s_aw_i.route.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(1);
+        s_aw_i.route.collective_op       = COLLECTIVE_OP_W'(noc_header_pkg::COLL_MULTICAST);
         s_aw_valid_i                     = 1;
         do @(posedge clk_i); while (!s_aw_ready_o);
         @(negedge clk_i);
@@ -210,7 +214,7 @@ module tb_nmu_ordering #(
         @(negedge clk_i);
         s_aw_i                           = '0;
         s_aw_i.axi.awid                  = ID_W'(4 % NUM_IDS);
-        s_aw_i.route.route.domain.dst_id = ni_flit_pkg::DST_ID_WIDTH'(1);
+        s_aw_i.route.route.domain.dst_id = ni_types_pkg::NODE_ID_W'(1);
         s_aw_valid_i                     = 1;
         repeat (3) begin
             @(posedge clk_i);

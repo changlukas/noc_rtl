@@ -6,7 +6,7 @@
 module crossbar #(
     parameter int unsigned NUM_INPUTS  = 5,
     parameter int unsigned NUM_OUTPUTS = 5,
-    parameter type         flit_t      = ni_flit_pkg::req_flit_t
+    parameter type         flit_t      = noc_payload_pkg::req_flit_t
 ) (
     input  wire flit_t                  [NUM_INPUTS-1:0] data_i,
     input  wire logic  [NUM_OUTPUTS-1:0][NUM_INPUTS-1:0] select_i,
