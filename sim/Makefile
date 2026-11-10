@@ -14,6 +14,8 @@ TARGET ?= per_id
 SEED ?= 1
 JOBS ?= 1
 WAVE ?= 1
+PERF ?= 0
+SCENARIO ?= unicast
 override COVERAGE := 1
 ifneq ($(filter run_wave view,$(MAKECMDGOALS)),)
 override WAVE := 1
@@ -51,9 +53,12 @@ ifneq ($(filter _compile _sim _print,$(MAKECMDGOALS)),)
 SIM := $(shell python3 -B "$(SCRIPTS)/build_key.py" --recipe "$(RECIPE)" --flags="$(VCS) $(VCS_FLAGS) $(WAVE_FLAGS)" --coverage)
 endif
 CAMPAIGN = $(shell python3 -c 'import json; print("$(ROOT)/"+json.load(open("$(ROOT)/build/regression/latest.json"))["campaign"])')
-.PHONY: help prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report
+.PHONY: help perf prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report
 help:
-	@printf '%s\n' 'make prepare                  Generate inputs and a new coverage campaign' 'make run CASE=<case>           Compile and simulate' 'make run_wave view CASE=<case> Run with FSDB and open nWave' 'make verification JOBS=3       Run the prepared coverage matrix' 'make report                   Generate native URG coverage' 'make list                     List existing cases' 'make clean                    Remove new compile/regression outputs'
+	@printf '%s\n' 'make perf CASE=<case>         Measure an existing case; always save FSDB and a new permanent result' 'make prepare                  Generate inputs and a new coverage campaign' 'make run CASE=<case>           Compile and simulate' 'make run_wave view CASE=<case> Run with FSDB and open nWave' 'make verification JOBS=3       Run the prepared coverage matrix' 'make report                   Generate native URG coverage' 'make list                     List existing cases' 'make clean                    Remove new compile/regression outputs'
+perf:
+	@case "$(SCENARIO)" in unicast|interference|boundary|multicast) ;; *) echo "Invalid SCENARIO" >&2; exit 1;; esac
+	@result="$(ROOT)/performance/$(SCENARIO)/results/$$(date -u +%Y%m%dT%H%M%S_%N)_$(CASE)_s$(SEED)"; $(MAKE) --no-print-directory -f "$(ROOT)/sim/Makefile" run PERF=1 WAVE=1 REPORT="$$result/runs/$(CASE)"
 prepare:
 	python3 -B "$(SCRIPTS)/prepare.py" --out "$(SINGLE)" --profile "$(PROFILE)" $(if $(filter 1,$(DIRECT_LINK)),--direct,)
 	$(if $(filter 1,$(DIRECT_LINK)),@true,python3 -B "$(SCRIPTS)/prepare_ni_verification.py" --out "$(ROOT)/build/regression/$$(date -u +%Y%m%dT%H%M%S_%N)" --profile "$(PROFILE)")
@@ -67,7 +72,7 @@ _compile:
 	@if ! python3 -B "$(SCRIPTS)/build_key.py" --valid "$(SIM)"; then cd "$(SIM)" && { printf '%s\n' '$(VCS) $(VCS_FLAGS) $(WAVE_FLAGS) -Mdir=$(SIM)/csrc -o $(SIM)/simv' > compile-command.txt; $(VCS) $(VCS_FLAGS) $(WAVE_FLAGS) -Mdir="$(SIM)/csrc" -o "$(SIM)/simv" -l compile.log && python3 -B "$(SCRIPTS)/build_key.py" --complete "$(SIM)"; }; fi
 	@python3 -B "$(SCRIPTS)/build_key.py" --complete "$(SIM)"
 _sim:
-	python3 -B "$(SCRIPTS)/run.py" --binary "$(SIM)/simv" --inputs "$(SINGLE)/inputs" --campaign "$(SINGLE)" --case "$(CASE)" --mode "$(MODE)" --target "$(TARGET)" --seed "$(SEED)" $(if $(filter 1,$(BACKPRESSURE)),--backpressure,) --report "$(REPORT)" $(if $(filter 1,$(AW_WAIT_W)),--aw-wait-w,) $(if $(filter 1,$(READ_INTERLEAVE)),--read-interleave,) $(if $(filter 1,$(WAVE)),--wave,) $(if $(filter 1,$(COVERAGE)),--coverage,)
+	python3 -B "$(SCRIPTS)/run.py" --binary "$(SIM)/simv" --inputs "$(SINGLE)/inputs" --campaign "$(SINGLE)" --case "$(CASE)" --mode "$(MODE)" --target "$(TARGET)" --seed "$(SEED)" $(if $(filter 1,$(BACKPRESSURE)),--backpressure,) --report "$(REPORT)" $(if $(filter 1,$(AW_WAIT_W)),--aw-wait-w,) $(if $(filter 1,$(READ_INTERLEAVE)),--read-interleave,) $(if $(filter 1,$(WAVE)),--wave,) $(if $(filter 1,$(PERF)),--perf,) $(if $(filter 1,$(COVERAGE)),--coverage,)
 ifeq ($(WAVE),1)
 	@sed 's|@FSDB@|$(REPORT)/$(CASE).fsdb|g' "$(WAVE_RC)" > "$(REPORT)/$(CASE).rc"
 endif

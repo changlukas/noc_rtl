@@ -88,8 +88,11 @@ class ni_test extends uvm_test;
             automatic int source = i;
             if (requests[i] != null) fork
                 begin
+                    ni_perf::source_phase[source] = 0;
                     if (initialization[source] != null) initialization[source].start(env.source[source].sequencer);
+                    ni_perf::source_phase[source] = 1;
                     requests[source].start(env.source[source].sequencer);
+                    ni_perf::source_phase[source] = 2;
                     if (readback[source] != null) readback[source].start(env.source[source].sequencer);
                 end
             join_none

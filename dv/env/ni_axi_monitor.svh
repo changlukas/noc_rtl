@@ -67,3 +67,76 @@ class ni_axi_monitor #(type BASE = tvip_axi_master_write_monitor) extends BASE;
     endtask
     `uvm_component_param_utils(ni_axi_monitor #(BASE))
 endclass
+
+// Accepted AXI events only. Observation shares the existing sampled monitor.
+class ni_perf extends uvm_subscriber #(uvm_sequence_item);
+    static int trace_file;
+    static int source_phase[NI_NUM_SOURCES];
+    int endpoint;
+    string role;
+    bit in_reset;
+
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
+    endfunction
+
+    function void build_phase(uvm_phase phase);
+        string path;
+        super.build_phase(phase);
+        if (trace_file == 0) begin
+            if (!$value$plusargs("perf_file=%s", path))
+                `uvm_fatal("PERF", "Missing performance output path")
+            trace_file = $fopen(path, "w");
+            if (trace_file == 0) `uvm_fatal("PERF", {"Cannot open ", path})
+            $fdisplay(trace_file, "time_ps,role,endpoint,x,y,port,phase,channel,id,addr,len,size,burst,strb,last,resp,user");
+        end
+    endfunction
+
+    function void emit(string channel, time sampled_at, ni_mon_id_t id = '0,
+            ni_mon_addr_t addr = '0, int len = 0, int size = 0, int burst = 0,
+            ni_mon_strb_t strb = '0, logic last = 0, int resp = 0,
+            ni_mon_user_t user = '0);
+        int x = -1, y = -1, port = -1;
+        int stage = role == "source" ? source_phase[endpoint] : -1;
+        if (!NI_DIRECT_LINK) begin
+            x = int'(topology_pkg::ENDPOINT_ID[endpoint].x);
+            y = int'(topology_pkg::ENDPOINT_ID[endpoint].y);
+            port = int'(topology_pkg::ENDPOINT_ID[endpoint].port_id);
+        end
+        $fdisplay(trace_file, "%0d,%s,%0d,%0d,%0d,%0d,%0d,%s,%0d,%h,%0d,%0d,%0d,%h,%0d,%0d,%h",
+            sampled_at, role, endpoint, x, y, port, stage, channel, id,
+            addr, len, size, burst, strb, last, resp, user);
+    endfunction
+
+    function void write(uvm_sequence_item item);
+        ni_axi_sample s;
+        if (!$cast(s, item)) return;
+        if (s.reset) begin
+            if (!in_reset) emit("RESET", s.sampled_at);
+            in_reset = 1;
+            return;
+        end
+        in_reset = 0;
+        if (s.req.aw_valid && s.rsp.aw_ready)
+            emit("AW", s.sampled_at, s.req.aw.id, s.req.aw.addr, s.req.aw.len,
+                s.req.aw.size, s.req.aw.burst, '0, 0, 0, s.req.aw.user);
+        if (s.req.w_valid && s.rsp.w_ready)
+            emit("W", s.sampled_at, '0, '0, 0, 0, 0, s.req.w.strb, s.req.w.last);
+        if (s.req.ar_valid && s.rsp.ar_ready)
+            emit("AR", s.sampled_at, s.req.ar.id, s.req.ar.addr, s.req.ar.len,
+                s.req.ar.size, s.req.ar.burst);
+        if (s.rsp.b_valid && s.req.b_ready)
+            emit("B", s.sampled_at, s.rsp.b.id, '0, 0, 0, 0, '0, 0, s.rsp.b.resp);
+        if (s.rsp.r_valid && s.req.r_ready)
+            emit("R", s.sampled_at, s.rsp.r.id, '0, 0, 0, 0, '0, s.rsp.r.last, s.rsp.r.resp);
+    endfunction
+
+    function void final_phase(uvm_phase phase);
+        super.final_phase(phase);
+        if (trace_file != 0) begin
+            $fclose(trace_file);
+            trace_file = 0;
+        end
+    endfunction
+    `uvm_component_utils(ni_perf)
+endclass

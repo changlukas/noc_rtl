@@ -2,6 +2,7 @@ class ni_env extends uvm_env;
     ni_noc_monitor noc_monitor[2*NI_NUM_LINKS];
     ni_noc_coverage noc_coverage[2*NI_NUM_LINKS];
     ni_scoreboard scoreboard;
+    ni_perf source_perf[NI_NUM_SOURCES], device_perf[NI_NUM_NSUS];
     ni_axi_coverage coverage[NI_NUM_SOURCES];
     ni_axi_coverage device_coverage[NI_NUM_NSUS];
     tvip_axi_master_agent source[NI_NUM_SOURCES];
@@ -13,7 +14,10 @@ class ni_env extends uvm_env;
 
     function void build_phase(uvm_phase phase);
         tvip_axi_configuration cfg;
+        string perf_path;
+        bit perf_enabled;
         super.build_phase(phase);
+        perf_enabled = $value$plusargs("perf_file=%s", perf_path);
         tvip_axi_master_write_monitor::type_id::set_type_override(ni_axi_monitor #(tvip_axi_master_write_monitor)::get_type());
         tvip_axi_slave_write_monitor::type_id::set_type_override(ni_axi_monitor #(tvip_axi_slave_write_monitor)::get_type());
         foreach (noc_monitor[i]) begin
@@ -27,12 +31,22 @@ class ni_env extends uvm_env;
                 `uvm_fatal("CONFIG", "Missing Source AXI configuration")
             source[i] = tvip_axi_master_agent::type_id::create($sformatf("source%0d", i), this);
             source[i].set_configuration(cfg);
+            if (perf_enabled) begin
+                source_perf[i] = ni_perf::type_id::create($sformatf("source_perf%0d", i), this);
+                source_perf[i].endpoint = i;
+                source_perf[i].role = "source";
+            end
         end
         foreach (device[i]) begin
             if (!uvm_config_db #(tvip_axi_configuration)::get(this, "", $sformatf("device_cfg%0d", i), cfg))
                 `uvm_fatal("CONFIG", "Missing Device AXI configuration")
             device[i] = tvip_axi_slave_agent::type_id::create($sformatf("device%0d", i), this);
             device[i].set_configuration(cfg);
+            if (perf_enabled) begin
+                device_perf[i] = ni_perf::type_id::create($sformatf("device_perf%0d", i), this);
+                device_perf[i].endpoint = i;
+                device_perf[i].role = "device";
+            end
             uvm_config_db #(int)::set(this, $sformatf("device_coverage%0d", i), "endpoint", i);
             uvm_config_db #(int)::set(this, $sformatf("device_coverage%0d", i), "id_width", cfg.id_width);
             device_coverage[i] = ni_axi_coverage::type_id::create($sformatf("device_coverage%0d", i), this);
@@ -45,10 +59,12 @@ class ni_env extends uvm_env;
         foreach (source[i]) begin
             source[i].transfer_port.connect(scoreboard.input_fifo[i].analysis_export);
             source[i].transfer_port.connect(coverage[i].analysis_export);
+            if (source_perf[i] != null) source[i].transfer_port.connect(source_perf[i].analysis_export);
         end
         foreach (device[i]) begin
             device[i].transfer_port.connect(scoreboard.input_fifo[i+NI_NUM_SOURCES].analysis_export);
             device[i].transfer_port.connect(device_coverage[i].analysis_export);
+            if (device_perf[i] != null) device[i].transfer_port.connect(device_perf[i].analysis_export);
         end
     endfunction
 

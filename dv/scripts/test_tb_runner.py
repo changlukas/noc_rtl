@@ -7,6 +7,12 @@ import sys
 _run = subprocess.run
 
 def run(command, *args, **kwargs):
+    # The workstation uses Python 3.6; preserve subprocess semantics there.
+    if kwargs.pop("capture_output", False):
+        kwargs["stdout"] = subprocess.PIPE
+        kwargs["stderr"] = subprocess.PIPE
+    if "text" in kwargs:
+        kwargs["universal_newlines"] = kwargs.pop("text")
     if isinstance(command, list) and '--binary' in command:
         from build_key import finish_compile
         finish_compile(Path(command[command.index('--binary')+1]).parent)
@@ -145,3 +151,151 @@ def test_corruption_does_not_hide_native_assertion_failure(tmp_path):
                 '"axi_intf.sv", 247: tb_top.vip.unnamed$$_35: started at 22500ps failed at 23500ps'):
             stream.write(f"print({message!r})\n")
     assert run(command + ["--corrupt"], cwd=tmp_path, capture_output=True).returncode != 0
+
+def prepare_perf(tmp_path, rows, wave=True):
+    """Exercise the real runner with an accepted-event stream from a test stub."""
+    import csv
+    import io
+    pattern, command = prepare(tmp_path)
+    (tmp_path / "SHA256SUMS").write_text("")
+    report = tmp_path / "perf_result/runs/example"
+    command[command.index("--report") + 1] = str(report)
+    # Existing file format is the runner's independent expected-count reference.
+    requests = [r for r in rows if r["role"] == "source" and r["endpoint"] == 0 and r["phase"] == 1]
+    for channel, filename in (("AW", "write.txt"), ("AR", "read.txt")):
+        content = []
+        for r in requests:
+            if r["channel"] != channel:
+                continue
+            fields = [str(r["id"]), "0x" + r["addr"], str(r["len"]), str(r["size"]), "1"]
+            fields += ["0"] * (7 if channel == "AW" else 6)
+            content += fields
+            if channel == "AW":
+                content += ["0x0 0x0 0"] * (r["len"] + 1)
+        (pattern / filename).write_text("\n".join(content) + ("\n" if content else ""))
+    fields = "time_ps role endpoint x y port phase channel id addr len size burst strb last resp user".split()
+    stream = io.StringIO()
+    writer = csv.DictWriter(stream, fieldnames=fields)
+    writer.writeheader()
+    writer.writerows(rows)
+    with (tmp_path / "simv").open("a") as script:
+        script.write("print('CLOCK_CONFIG axi_period_ps=10 noc_period_ps=10')\n")
+        script.write("trace=next(v.split('=',1)[1] for v in sys.argv if v.startswith('+perf_file='))\n")
+        script.write("Path(trace).write_text(" + repr(stream.getvalue()) + ")\n")
+        if wave:
+            script.write("wave=next(v.split('=',1)[1] for v in sys.argv if v.startswith('+wave_file='))\n")
+            script.write("Path(wave).write_bytes(b'waveform test stub')\n")
+            script.write("print('*Verdi* : Create FSDB file')\n")
+    return command + ["--perf"], report
+
+
+def perf_event(time, channel, **values):
+    row = dict(time_ps=time, role="source", endpoint=0, x=0, y=0, port=0,
+               phase=1, channel=channel, id=0, addr="0", len=0, size=3,
+               burst=1, strb="0", last=0, resp=0, user="0")
+    row.update(values)
+    return row
+
+
+def test_perf_write_data_before_aw_and_mandatory_wave(tmp_path):
+    rows = [perf_event(10, "W", strb="ffffffffffffffff", last=1),
+            perf_event(20, "AW", size=6), perf_event(50, "B", phase=2)]
+    command, report = prepare_perf(tmp_path, rows)
+    run(command, cwd=tmp_path, check=True, capture_output=True)
+    result = json.loads((report / "example.run.json").read_text())
+    summary = result["performance"]
+    assert summary["window"]["start_ps"] == 10
+    assert summary["directions"]["write"]["useful_bytes"] == 64
+    assert summary["directions"]["write"]["mean_latency_cycles"] == 3
+    assert result["waveform"]["bytes"] > 0
+    assert (report / "inputs/manifest.json").is_file()
+
+
+def test_perf_interleaved_read_ids_and_bursts(tmp_path):
+    rows = [perf_event(10, "AR", len=1),
+            perf_event(11, "AR", id=1, size=2, addr="100"),
+            perf_event(20, "R"), perf_event(21, "R", id=1, last=1),
+            perf_event(30, "R", last=1)]
+    command, report = prepare_perf(tmp_path, rows)
+    run(command, cwd=tmp_path, check=True, capture_output=True)
+    summary = json.loads((report / "example.run.json").read_text())["performance"]
+    assert summary["directions"]["read"]["count"] == 2
+    assert summary["directions"]["read"]["useful_bytes"] == 20
+    assert summary["directions"]["read"]["mean_latency_cycles"] == 1.5
+
+
+def test_perf_initialization_and_readback_excluded(tmp_path):
+    rows = [perf_event(1, "AW", phase=0), perf_event(1, "W", phase=0, strb="ff", last=1),
+            perf_event(5, "B", phase=0), perf_event(10, "AR"),
+            perf_event(20, "R", last=1), perf_event(21, "AR", phase=2),
+            perf_event(30, "R", phase=2, last=1)]
+    command, report = prepare_perf(tmp_path, rows)
+    run(command, cwd=tmp_path, check=True, capture_output=True)
+    summary = json.loads((report / "example.run.json").read_text())["performance"]
+    assert summary["window"]["start_ps"] == 10 and summary["window"]["end_ps"] == 20
+    assert "write" not in summary["directions"]
+    assert summary["directions"]["read"]["count"] == 1
+
+
+def test_perf_missing_waveform_cannot_pass(tmp_path):
+    command, report = prepare_perf(tmp_path, [perf_event(10, "AR"), perf_event(20, "R", last=1)], wave=False)
+    assert run(command, cwd=tmp_path, capture_output=True).returncode != 0
+    assert json.loads((report / "example.run.json").read_text())["passed"] is False
+
+
+def test_perf_premature_rlast_cannot_pass(tmp_path):
+    command, report = prepare_perf(tmp_path, [perf_event(10, "AR", len=1), perf_event(20, "R", last=1)])
+    assert run(command, cwd=tmp_path, capture_output=True).returncode != 0
+    result = json.loads((report / "example.run.json").read_text())
+    assert result["passed"] is False and "RLAST" in result["performance_error"]
+
+
+def test_perf_result_reuse_rejected_without_overwrite(tmp_path):
+    command, report = prepare_perf(tmp_path, [perf_event(10, "AR"), perf_event(20, "R", last=1)])
+    run(command, cwd=tmp_path, check=True, capture_output=True)
+    before = (report / "example.run.json").read_bytes()
+    assert run(command, cwd=tmp_path, capture_output=True).returncode != 0
+    assert (report / "example.run.json").read_bytes() == before
+
+
+def test_perf_unaligned_read_counts_only_valid_bytes(tmp_path):
+    rows = [perf_event(10, "AR", addr="3", size=2, len=1),
+            perf_event(20, "R"), perf_event(30, "R", last=1)]
+    command, report = prepare_perf(tmp_path, rows)
+    run(command, cwd=tmp_path, check=True, capture_output=True)
+    summary = json.loads((report / "example.run.json").read_text())["performance"]
+    assert summary["directions"]["read"]["useful_bytes"] == 5
+
+
+def test_perf_overlapping_setup_leaves_device_aggregate_unavailable(tmp_path):
+    rows = [perf_event(1, "AW", endpoint=1, phase=0),
+            perf_event(1, "W", endpoint=1, phase=0, strb="ff", last=1),
+            perf_event(10, "AR"), perf_event(20, "R", last=1),
+            perf_event(25, "B", endpoint=1, phase=0)]
+    command, report = prepare_perf(tmp_path, rows)
+    run(command, cwd=tmp_path, check=True, capture_output=True)
+    summary = json.loads((report / "example.run.json").read_text())["performance"]
+    assert summary["device_window_bytes"] is None
+
+
+def test_perf_illegal_4k_burst_cannot_pass(tmp_path):
+    rows = [perf_event(10, "AR", addr="fff", size=3, len=1),
+            perf_event(20, "R"), perf_event(30, "R", last=1)]
+    command, report = prepare_perf(tmp_path, rows)
+    assert run(command, cwd=tmp_path, capture_output=True).returncode != 0
+    assert "4KiB" in json.loads((report / "example.run.json").read_text())["performance_error"]
+
+
+def test_perf_corruption_mode_rejected_before_execution(tmp_path):
+    command, report = prepare_perf(tmp_path, [perf_event(10, "AR"), perf_event(20, "R", last=1)])
+    assert run(command + ["--corrupt"], cwd=tmp_path, capture_output=True).returncode != 0
+    assert not report.exists()
+
+
+def test_perf_missing_transaction_in_trace_cannot_pass(tmp_path):
+    command, report = prepare_perf(tmp_path, [perf_event(10, "AR"), perf_event(20, "R", last=1)])
+    pattern = tmp_path / "patterns/example/read.txt"
+    pattern.write_text(pattern.read_text() * 2)
+    assert run(command, cwd=tmp_path, capture_output=True).returncode != 0
+    result = json.loads((report / "example.run.json").read_text())
+    assert result["passed"] is False and "counts" in result["performance_error"]

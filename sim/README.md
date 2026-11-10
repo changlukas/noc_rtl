@@ -129,3 +129,40 @@ The standalone `ooo_*_write_same_id` cases exercise B ROB use. Cross-ID write ca
 The system build always includes coverage and FSDB support. `WAVE=0` disables
 FSDB output at runtime without recompiling. `build/compile/current` selects the
 last successful compile; the underlying source fingerprint remains in metadata.
+
+## Performance collector smoke
+
+Use existing prepared inputs and the same compile/runner path:
+
+```sh
+make perf CASE=ctrl_read_single
+make perf CASE=data_write_single
+```
+
+Each invocation creates a new `performance/<scenario>/results/<timestamp>_<case>_s<seed>/`
+with the selected case under `runs/`. `SCENARIO` defaults to `unicast`; it may also
+be `interference`, `boundary`, or `multicast`. Selecting a directory does not
+create the corresponding paper workload: stimulus still comes from the existing
+catalog/generator and prepared manifest/schedule/write/read files.
+
+FSDB is mandatory for every performance run, including when the caller sets
+`WAVE=0`. The run must pass the existing checkers/drain and produce a nonempty
+FSDB and valid accepted-event trace. Existing results cannot be overwritten.
+The run directory contains the waveform, RC, copied inputs, log and run JSON;
+`tables/` contains paired transactions and the common-window summary. Source,
+compile and actual setting snapshots are retained beside them. No scenario YAML
+or independent configuration parser is used.
+
+Phase 0 is initialization, phase 1 is the existing request sequence, and phase 2
+is verification readback. Per-request phase is assigned at AW/AR; write data may
+precede AW and is paired in AXI order. Latencies use source AR-to-RLAST/AW-to-B.
+The shared job window begins at the first required source transfer (including W
+before AW) and ends at the final required source completion. Read bytes follow
+ARSIZE/address; write bytes count accepted WSTRB. Only legal, <=512-bit INCR
+bursts within 4KiB are currently accepted for performance analysis.
+
+Device bytes are reported in the same common window only when initialization or
+readback from another source does not overlap it. Otherwise retain raw device
+events and mark device aggregation unavailable. Device peak and utilization are
+unset until the model capacity is established. These are collector smoke results,
+not validated paper comparisons, injection sweeps, or publication heatmaps.
