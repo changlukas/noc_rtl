@@ -175,11 +175,37 @@ Hop counts are inter-router edges on the native XY mesh; the measured latency
 is source AR acceptance to final R acceptance, not the paper's core-to-SPM boundary.
 `perf_cal_data_read_1kib` and `perf_cal_data_read_4kib` read exactly 1024 and
 4096 bytes in one 512-bit INCR burst to NI1. These are byte/window calibration
-points, pending verification of the paper benchmark's exact byte counts.
+points. The paper-source config/plot now confirm those exact byte counts;
+full traffic and monitor-window matching remain pending.
 
 Generate this optional group with the existing generator/prepare extra-catalog
 path, keeping existing inputs intact. A separately prepared directory can be
 selected with `make -C sim perf CASE=perf_ctrl_read_neighbor SINGLE=<directory>`.
 Each result remains a collector/calibration point until its paper conditions
-and independent FSDB comparison are recorded; these cases do not implement the
+and independent FSDB comparison are recorded; these initial five cases do not implement the
 traffic/injection sweep or the 8/16/32 KiB logical-message split.
+
+For larger logical transfers, `sequence: "contiguous"` in the same cases catalog
+uses explicit `burst_lengths` at successive byte addresses. It accepts plain
+cosim data reads/writes only, rejects conflicting pattern options, and checks
+every burst against its SAM window and 4 KiB boundary. Existing burst cases
+retain their start/boundary/SAM-end address coverage. The 8/32 KiB calibration
+cases use 2/8 consecutive 64-beat bursts, one source and one target. Treat the
+whole case's first-request-to-last-completion window as the logical transfer
+runtime; `mean_latency_cycles` remains a mean over individual AXI bursts.
+These additional cases remain isolated calibration inputs. The arXiv v2
+config/plot confirm byte units, while monitor-window matching remains pending;
+they do not establish a formal Fig.8 traffic sweep.
+
+`source_destination_map` is an optional list in the existing cases catalog,
+indexed by native source endpoint. With explicit `sources`, the generator
+selects each source's target using the existing destination-order mechanism.
+It accepts plain control/data reads or writes with static targets, rejecting
+out-of-range targets, random/mixed traffic, a simultaneous destination_order,
+and other pattern modifiers.
+`perf_neighbor_read_1kib` enables all 16 native sources, each reading one
+1024-byte job from its positive-x neighbor with wrap, as recorded in the
+archived public generator mapping. Its byte sizes and per-source job count
+match the paper-source Fig.8 wide configuration. Complete publication matching
+still requires the monitor window/averaging definition; the isolated calibration
+results do not become formal mesh results merely because the units are verified.

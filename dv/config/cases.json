@@ -886,6 +886,121 @@
           14,
           15
         ]
+      },
+      {
+        "name": "perf_cal_data_read_8kib",
+        "mode": "data",
+        "operation": "read",
+        "count": 2,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64
+        ],
+        "sources": [
+          0
+        ],
+        "destination_order": [
+          1,
+          0,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      {
+        "name": "perf_cal_data_read_32kib",
+        "mode": "data",
+        "operation": "read",
+        "count": 8,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64
+        ],
+        "sources": [
+          0
+        ],
+        "destination_order": [
+          1,
+          0,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
+      },
+      {
+        "name": "perf_neighbor_read_1kib",
+        "mode": "data",
+        "operation": "read",
+        "count": 1,
+        "burst_lengths": [
+          16
+        ],
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          1,
+          2,
+          3,
+          0,
+          5,
+          6,
+          7,
+          4,
+          9,
+          10,
+          11,
+          8,
+          13,
+          14,
+          15,
+          12
+        ]
       }
     ]
   }

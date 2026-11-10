@@ -73,12 +73,28 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 raise ValueError("source outside topology")
             if case.get("multicast_masks") and len(sources) > 1 and multicast_source is None:
                 raise ValueError("multi-source multicast requires one multicast_source")
+            destination_map = case.get("source_destination_map")
+            if destination_map is not None:
+                size = len(base_routes["data"])
+                allowed = {"name", "mode", "operation", "count", "sources",
+                           "source_destination_map", "sequence", "burst_lengths",
+                           "burst_beats", "ids", "num_ids", "id_values"}
+                if (type(destination_map) is not list or len(destination_map) != size or
+                        set(case) - allowed or case.get("mode") not in ("control", "data") or
+                        case.get("operation") not in ("read", "write") or
+                        case.get("sequence") not in (None, "contiguous") or
+                        any(type(dest) is not int or not 0 <= dest < size for dest in destination_map)):
+                    raise ValueError("source_destination_map requires plain reads/writes with one legal fixed target per source")
             name = case["name"]
             preloads = []
             for source in sources:
                 variant = dict(case)
                 del variant["sources"]
                 variant.pop("multicast_source", None)
+                if destination_map is not None:
+                    del variant["source_destination_map"]
+                    dest = destination_map[source]
+                    variant["destination_order"] = [dest] + [n for n in range(size) if n != dest]
                 if multicast_source is not None and source != multicast_source:
                     del variant["multicast_masks"]
                 # Address stripes distinguish concurrent sources; a single root owns the full window.
@@ -94,6 +110,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             schedule.write_text(schedule.read_text() + "\n+source_mask=" + format(sum(1 << n for n in sources), "x") + "\n")
             names.append(name)
             continue
+        if "source_destination_map" in case:
+            raise ValueError("source_destination_map requires explicit sources")
         routes = base_routes
         if "destination_order" in case:
             order = case["destination_order"]
@@ -149,6 +167,18 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         route_slots = {}
         capacity = case.get("legacy_mixed", False)
         count = 64 if capacity else case["count"]
+        contiguous = case.get("sequence") == "contiguous"
+        if contiguous:
+            lengths = case.get("burst_lengths")
+            allowed = {"name", "mode", "operation", "count", "sources", "source",
+                       "destination_order", "sequence", "burst_lengths", "ids",
+                       "num_ids", "id_values"}
+            if (profile != "cosim" or selected != "data" or
+                    case.get("operation") not in ("read", "write") or
+                    set(case) - allowed or type(lengths) is not list or
+                    len(lengths) != count or not lengths or
+                    any(type(beats) is not int or not 1 <= beats <= 64 for beats in lengths)):
+                raise ValueError("contiguous requires plain cosim data reads/writes and 1..64 beat bursts")
         classes = [selected] * count
         if selected == "rand":
             # Stratify classes, then shuffle: every mixed run actually covers both.
@@ -246,6 +276,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 offset += lane
             if id_values is not None:
                 axi_id = id_values[axi_id % num_ids]
+            if contiguous:
+                offset = sum(lengths[:txn]) * step
             if "source" in case:
                 if case.get("destinations") == "all":
                     offset = (txn // len(routes[classes[txn]])) * (512 if is_data else 64)
@@ -253,6 +285,10 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 if offset + (length+1)*step > route["size"]:
                     raise ValueError("multi-source transaction exceeds SAM range")
             address = route["base"] + offset
+            if contiguous:
+                end = address + (length + 1) * step - 1
+                if end >= route["base"] + route["size"] or address >> 12 != end >> 12:
+                    raise ValueError("contiguous burst crosses SAM or 4 KB boundary")
             operation = case.get("operation", "both")
             if case.get("random") and not case.get("multicast_masks"):
                 # Paired directions keep every class/single/burst category non-vacuous.

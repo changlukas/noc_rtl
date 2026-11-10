@@ -807,3 +807,92 @@ def test_narrow_reset_preloads_complete_bus_words_for_write_history(tmp_path):
     for txn in writes:
         for address in range(txn["addr"] & ~63, (txn["addr"] & ~63) + 64):
             assert memory[address] == address & 255
+
+
+def test_contiguous_transfer_bytes_and_addresses(tmp_path):
+    topology = tmp_path / "entries.json"
+    topology.write_text(json.dumps([dict(space=space, base=base, size=65536)
+                                   for space, base in (("memory", 0), ("config", 0x100000))]))
+    for direction in ("read", "write"):
+        for kib in (1, 2, 4, 8, 16, 32):
+            lengths = [64] * (kib // 4) if kib >= 4 else [kib * 16]
+            case = dict(name="transfer", mode="data", operation=direction,
+                        count=len(lengths), burst_lengths=lengths, sequence="contiguous")
+            out = tmp_path / (direction + str(kib))
+            generate(out, topology, catalog=[case], profile="cosim")
+            parser = _parse_read if direction == "read" else _parse_write
+            txns = parser(out / "transfer" / (direction + ".txt"))
+            assert sum((t["len"] + 1) << t["size"] for t in txns) == kib * 1024
+            assert [t["addr"] for t in txns] == list(range(0, kib * 1024, 4096))
+            assert all(t["size"] == 6 and t["burst"] == 1 for t in txns)
+            assert all(t["addr"] >> 12 == (t["addr"] + ((t["len"] + 1) << t["size"]) - 1) >> 12
+                       for t in txns)
+
+
+def test_contiguous_rejects_crossing_and_conflicting_options(tmp_path):
+    topology = tmp_path / "entries.json"
+    topology.write_text(json.dumps([dict(space=space, base=base, size=65536)
+                                   for space, base in (("memory", 0), ("config", 0x100000))]))
+    base = dict(name="transfer", mode="data", operation="read", count=2,
+                burst_lengths=[64, 64], sequence="contiguous")
+    for changes in (dict(burst_lengths=[63, 2]), dict(burst_lengths=[65, 1]),
+                    dict(burst_lengths=[True, 64]), dict(burst_lengths=[64]),
+                    dict(destinations="alternate"), dict(random=True), dict(mode="control")):
+        try:
+            generate(tmp_path / "invalid", topology, catalog=[dict(base, **changes)], profile="cosim")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid contiguous transfer accepted: " + str(changes))
+    entries = json.loads(topology.read_text()); entries[0]["size"] = 4096
+    topology.write_text(json.dumps(entries))
+    try:
+        generate(tmp_path / "outside", topology, catalog=[base], profile="cosim")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("contiguous transfer exceeded the SAM window")
+
+
+def test_source_destination_map_uses_native_targets(tmp_path):
+    topology = tmp_path / "entries.json"
+    topology.write_text(json.dumps([dict(space=space, base=node*0x100000000+offset, size=size)
+                                   for space, offset, size in (("memory", 0, 0x2000000), ("config", 0x2000000, 4096))
+                                   for node in range(4)]))
+    case = dict(name="mapped", mode="data", operation="read", count=1,
+                burst_lengths=[16], sources=[0, 1, 2, 3], source_destination_map=[1, 2, 3, 0])
+    out = tmp_path / "valid"
+    generate(out, topology, catalog=[case], profile="cosim", id_width=3)
+    assert "+source_mask=f" in (out / "mapped/schedule.txt").read_text()
+    for source, destination in enumerate(case["source_destination_map"]):
+        directory = out / "mapped" if source == 0 else out / "mapped" / ("source"+str(source))
+        txn, = _parse_read(directory / "read.txt")
+        assert txn["addr"] == destination*0x100000000 + source*0x10000
+        assert (txn["len"] + 1) << txn["size"] == 1024
+    for mapping in ([1], [1, 2, 3, 4], [True, 2, 3, 0]):
+        try:
+            generate(tmp_path / "invalid", topology, catalog=[dict(case, source_destination_map=mapping)], profile="cosim")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid source_destination_map accepted")
+
+
+def test_source_destination_map_rejects_destination_modifiers(tmp_path):
+    topology = tmp_path / "entries.json"
+    topology.write_text(json.dumps([dict(space=space, base=node*0x100000000+offset, size=size)
+                                   for space, offset, size in (("memory", 0, 0x2000000), ("config", 0x2000000, 4096))
+                                   for node in range(4)]))
+    base = dict(name="mapped", mode="data", operation="read", count=2,
+                burst_lengths=[16, 16], sources=[0, 1], source_destination_map=[1, 2, 3, 0])
+    for changes in (dict(destinations="random"), dict(destinations="all"),
+                    dict(require_ooo=True), dict(require_buffered=True),
+                    dict(fifo_capacity=True), dict(capacity_target="context"),
+                    dict(sequence="sam_boundary"), dict(multicast_masks=[1]),
+                    dict(mode="control", count=64, random=True), dict(mode="rand")):
+        try:
+            generate(tmp_path / "invalid", topology, catalog=[dict(base, **changes)], profile="cosim")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("destination modifier overrode a fixed mapping")
