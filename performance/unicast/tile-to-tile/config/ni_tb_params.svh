@@ -1,0 +1,15 @@
+localparam int NI_INPUT_ID_WIDTH             = 3;
+localparam int NI_OUTPUT_ID_WIDTH            = 3;
+localparam int NI_DEVICE_ID_WIDTH            = 3;
+localparam int NI_CONTEXT_DEPTH              = 32;
+localparam int NI_IO_FIFO_DEPTH              = 32;
+localparam int NI_OUTPUT_REG_TYPE            = 0;
+localparam int NI_MAX_OUTSTANDING_PER_ID     = 32;
+localparam int NI_B_ROB_DEPTH                = 128;
+localparam int NI_R_ROB_DEPTH                = 128;
+localparam int NI_R_ROB_EN                   = 1;
+localparam int NI_NUM_DAT_VC                 = 2;
+localparam int NI_DAT_VC_MODE                = 1;
+localparam int NI_CREDIT_DEPTH               = 8;
+localparam int NI_DIRECT_LINK                = 0;
+localparam int NI_MON_ID_WIDTH               = 3;

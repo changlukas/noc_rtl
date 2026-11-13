@@ -132,6 +132,11 @@ last successful compile; the underlying source fingerprint remains in metadata.
 
 ## Performance collector smoke
 
+Keep performance figures to plot labels, units, data annotations and legends.
+Record workloads, measurement boundaries and limitations outside the figure,
+in the accompanying result metadata or caption. Report physical times in ns.
+Keep cycle counts where the reference figure uses cycles and preserve raw trace units.
+
 Use existing prepared inputs and the same compile/runner path:
 
 ```sh
@@ -139,8 +144,17 @@ make perf CASE=ctrl_read_single
 make perf CASE=data_write_single
 ```
 
-Each invocation creates a new `performance/<scenario>/results/<timestamp>_<case>_s<seed>/`
-with the selected case under `runs/`. `SCENARIO` defaults to `unicast`; it may also
+Unicast results live in `performance/unicast/tile-to-tile/` and
+`performance/unicast/mesh-traffic/`. The tile-to-tile figure and tables are
+in the first directory. The combined neighbor curve is in the second, with
+its inputs and FSDBs grouped by transfer size under `runs/1kib/` through
+`runs/32kib/`. Other unicast collector cases use short case names under
+`mesh-traffic/runs/`. Set `RESULT` to a new directory to repeat a measurement.
+The seed and build hashes are recorded in the run JSON. Archived commands
+and JSON paths record the original run location. For moved runs, use the
+FSDB at its new location or the adjacent `view.rc` for nWave.
+
+`SCENARIO` defaults to `unicast`; it may also
 be `interference`, `boundary`, or `multicast`. Selecting a directory does not
 create the corresponding paper workload: stimulus still comes from the existing
 catalog/generator and prepared manifest/schedule/write/read files.
@@ -209,3 +223,104 @@ archived public generator mapping. Its byte sizes and per-source job count
 match the paper-source Fig.8 wide configuration. Complete publication matching
 still requires the monitor window/averaging definition; the isolated calibration
 results do not become formal mesh results merely because the units are verified.
+
+The collector records ENABLE at the first post-reset sampled AXI edge and
+SOURCE_DONE when that source's existing request sequence returns. No waits or
+handshakes are added. `control.perf_source_done` exposes the completion in FSDB.
+Per-source monitor cycles count enabled rising-edge samples through completion,
+inclusive; this differs from the elapsed first-transfer-to-last-completion job
+interval. Both definitions remain explicit in `summary.json`.
+
+Read transactions now retain first accepted R and final R timestamps separately.
+`mean_latency_cycles` keeps its existing completion meaning. `source_tiles` and
+`source_tile_average` add unweighted per-active-source means. Legacy traces lack
+sequence completion markers and therefore report monitor-window metrics as null,
+not guessed from RLAST. Setup/readback contamination also leaves them unavailable.
+Source-port payload utilization is emitted only for full 512-bit transfers at
+64 B/cycle; this is not a memory/device service peak, which remains unset.
+No paper cluster +7-cycle adjustment is added. The exact experiment RTL revision
+and its scheduling details remain an explicit comparison limitation.
+
+For wide-size comparisons, `make -C sim perf_plot` reads the complete saved
+neighbor, bit-complement, transpose, uniform and shuffle curves under `mesh-traffic/runs/`.
+It rejects incomplete grids, duplicates, unsupported sizes, incompatible
+platform sources/config, uncalibrated points and output collisions. PNG, SVG,
+curve CSV and plot provenance are stored under `mesh-traffic/`. Use `RESULTS`
+to select other inputs and `RESULT` to select the output directory. Plotting
+uses workstation Matplotlib from the isolated build/perf_plot_deps environment;
+its pinned wheel/version/hash manifest is retained with the curve artifacts.
+The curve remains preliminary: native platform/VIP timing and the unidentified
+paper experiment RTL revision are stated explicitly.
+
+For the isolated tile-to-tile delivery, use `make -C sim perf_tile_plot`.
+Use `RESULT` to select an alternate result. The figure follows the six-lane
+presentation of FlooNoC Fig.7 using the actual native source/device AXI boundaries.
+The one 64-bit NI0-to-NI1 read is sampled directly from its own FSDB: AXI,
+NI/router local interfaces, and physical East/West router ports. The converter
+command and FSDB/VCD hashes are retained; no router observer or DUT change is used.
+Outputs are tile-to-tile.png/.svg plus accepted-boundary and stage CSV/JSON tables.
+The figure begins at source ARVALID assertion and includes the cycles until
+NI0 accepts AR. The return path separates NI0 response conversion from
+RVALID assertion through R acceptance. The table also records accepted AR to
+accepted R separately.
+The native testbench uses VIP AXI endpoints. FlooNoC Fig. 7 includes the
+cluster LSU and SPM interconnect. The initial end-to-end review is complete;
+continue with the mesh traffic measurements below.
+
+
+The mesh curves cover neighbor, bit-complement, transpose, uniform and shuffle. Each
+wide curve requires 1/2/4/8/16/32 KiB, one logical read job per source, split
+into legal AXI bursts. Each latency curve requires the isolated zero-load point
+plus configured ratios 0.001/0.01/0.05/0.1/0.15/0.2/0.25/0.3/0.4/0.5,
+with 32 single-beat 8-byte reads per source. These positive parameters come from
+the commented narrow configuration in the saved paper source, not an active
+experiment record. The complete default grid is 30 BW points and 55 latency points.
+
+Cases use the existing source_destination_map and all 16 native sources.
+Neighbor wraps positive x; bit-complement uses (x,y)->(3-x,3-y); transpose uses
+(x,y)->(y,x), including local endpoints 0/5/10/15 in both traffic and averages.
+Uniform follows candidate seed 42 with x-outer/y-inner traversal and one fixed
+nonself destination per source, reused for every job. It is not per-packet
+resampling; mapping seed 42 and simulation seed 1 are recorded separately.
+Shuffle rotates the upstream index s=x*4+y, then converts the target to native
+coordinates (d%4,d//4), retaining local endpoints 0/15.
+Mappings are checked against the saved FlooNoC candidate gen_jobs.py.
+
+The existing injection_ratio field reaches the VIP address start_delay through
+schedule.txt and the existing sequence. Its integer [0,100] draw quantizes small
+parameters: 0.001 and 0.01 both accept only draw zero. Preserve both configured
+points and their actual AR interarrival rates. Do not label either zero-load.
+
+Cases ending _zero instead use zero_load=true and no positive injection parameter.
+The existing sequence shares one semaphore across all sources and retains it
+until the read response completes. Thus x=0 denotes the no-contention latency
+limit, not a literal zero sending rate. Every source still supplies 32 samples;
+raw transactions must prove no network-wide overlap. Preserve actual nonzero
+interarrival rates in the CSV. This optional scheduling does not alter the DUT.
+
+make -C sim perf_plot and perf_latency_plot read the corresponding full grids.
+RESULTS can select other saved complete curves; RESULT selects a new output
+directory. Incomplete grids, duplicate points and output collisions are rejected.
+Zero-load points additionally require the runtime flag and independent isolation
+validation. Both figures use filled markers: neighbor circles, bit-complement
+squares, transpose upward triangles, uniform diamonds and shuffle downward triangles. Output is bandwidth.png/.svg and latency.png/.svg,
+with curve/source CSV and renderer provenance. Previous data and figures are kept.
+
+Cross-build reuse checks pinned reviewed optional-injection/zero-load TB revisions,
+all other compiled sources, collector, recipe, flags, coverage, clocks and seed.
+Keep native platform costs; the paper's cluster +7-cycle adjustment is not added.
+
+
+## Narrow/wide interference
+
+The existing `performance_interference` catalog uses per-source
+`source_overrides` for mode, count and contiguous burst length. It covers
+2023 FlooNoC Fig.5: 100 single-beat narrow probe reads against 0/2/4/8/16/32
+wide bursts, and 16 wide probe bursts against 0/2/4/8/16/32/64 narrow reads,
+separately for one and two directions. Wide bursts contain 16 64-byte beats.
+
+Use `make -C sim perf CASE=perf_narrow_uni_2 SINGLE=<prepared directory> SCENARIO=interference`.
+Each point saves its own FSDB under `performance/interference/results/`.
+After waveform and input calibration, `make -C sim perf_interference_plot`
+requires the complete 26-point grid and generates the two figures and CSV tables.
+The result README records native route, target and monitor-window differences.

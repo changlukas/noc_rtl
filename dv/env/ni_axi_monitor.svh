@@ -116,6 +116,7 @@ class ni_perf extends uvm_subscriber #(uvm_sequence_item);
             in_reset = 1;
             return;
         end
+        if (in_reset) emit("ENABLE", s.sampled_at);
         in_reset = 0;
         if (s.req.aw_valid && s.rsp.aw_ready)
             emit("AW", s.sampled_at, s.req.aw.id, s.req.aw.addr, s.req.aw.len,

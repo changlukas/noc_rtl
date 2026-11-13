@@ -1,0 +1,48 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/mingwei/noc_rtl/dv/scripts/performance.py",
+    "--cross-results",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-128",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-64",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-1024",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-512",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-256",
+    "--output",
+    "/home/mingwei/noc_rtl/performance/interference"
+  ],
+  "script_sha256": "be6b1e940a60a18ce112b3c22dc3c1e9c1482aea57b681c9009fd6bcc97b0c3c",
+  "cases": 5,
+  "manifest_sha256": "24cf272536ba7d81b6b5585c90d6f9efdfe4e9618921f0544b12c9ae01b3e9bc",
+  "binary_sha256": "f92c48f609ef649861703e5721c5536d2419d531c964ee736e28639daeeb1ca8",
+  "roi_cycles": [
+    64,
+    576
+  ],
+  "window": "half-open from first ENABLE; AW cohort followed to every B",
+  "formula": "mean(accepted B - accepted AW)/1000 [ns]; no completed-within-window truncation",
+  "diagnostic_bw": "sum accepted source WSTRB bytes inside ROI only",
+  "cases_and_transactions": {
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-128": "d64c4334560d02218910df3c3050025e28d24cea03e667dc7712244f9d41ec25",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-64": "ca37d18d776540ef7289060c2456ac69953a33f6789b6371601b488a1c028a21",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-1024": "3fcbee9e8dbc913dd4fdaed18b3596e649b895e62a4e0f543cb38d791420ce8d",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-512": "cac984d33e7c3dd5bea0f11b48e8f3903848c23f47c8da39a0f8c7b490450d70",
+    "/home/mingwei/noc_rtl/performance/interference/results/cross/split-uni-256": "19c815ee961fcdc6fd192cc308293f272c703c1b112c2278396430d6cf522245"
+  },
+  "geometry": "4 row bulk writes, 2 straight middle-column small writes; corner nodes bulk only; all-node version pending",
+  "mapping": "Small writes AW/W on REQ, bulk writes AW/W on DAT; B responses on RSP",
+  "reference_scope": "Native cross traffic and actual burst-size sweep; not exact FlooNoC Fig.5 runtime or full wide-only hardware",
+  "plotted_cases": [
+    "cross_split_uni_64",
+    "cross_split_uni_128",
+    "cross_split_uni_256",
+    "cross_split_uni_512",
+    "cross_split_uni_1024"
+  ],
+  "plotted_series": {
+    "Narrow req": "small_latency_ns",
+    "DAT req": "bulk_latency_ns"
+  },
+  "plotted_workload": "Single-direction split mapping: small on REQ/RSP, bulk on DAT; one axes, two series",
+  "traffic": "Four left-to-right rows and two straight top-to-bottom columns"
+}

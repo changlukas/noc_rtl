@@ -1,0 +1,1 @@
+make -C sim perf_tile_plot RESULT=/home/mingwei/noc_rtl/performance/unicast/results/20261110T104909_429508015_perf_ctrl_read_neighbor_s1

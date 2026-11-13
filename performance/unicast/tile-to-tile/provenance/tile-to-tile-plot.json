@@ -1,0 +1,23 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/mingwei/noc_rtl/dv/scripts/performance.py",
+    "--tile-to-tile",
+    "/home/mingwei/noc_rtl/build/perf_alignment/tile"
+  ],
+  "script_sha256": "eb05e238b910e6ab3b41d53ced4273c5d91343dad1f35ba802e5375a71811ec0",
+  "fsdb_sha256": "eef7ea2c6133b075cca5217a1eec49f63d8cfc9a5b225f95669c36c6cb07dabd",
+  "vcd_sha256": "0fe3217b5e7ff6320df221963113d2e7da254a3c74769cd65bb7114bc58cad14",
+  "collector_table_sha256": "64ae6b673df2fa9818d06c61afc9757e628b9ecdab0973706bdc811794439133",
+  "sampled": "Source ARVALID and RVALID rising transitions and stable pre-edge valid & ready handshakes",
+  "total_cycles": 14.0,
+  "axi_round_trip_cycles": 13.0,
+  "display_unit": "ns",
+  "publication_result": false,
+  "source_tables": {
+    "tables/tile-to-tile-events.csv": "b6be8e37d17acfb836f0e202f21ea510803b2dbb58ac14d443c22daeb9c93832",
+    "tables/tile-to-tile-breakdown.csv": "63195bd259a3def18038581d38f490642236302ff6f2b4ed1a2356dd4dec59b9",
+    "tables/transactions.csv": "90f267c4439ff7699a6fad7a8af60c3e8f76f26ffd611ae5f124c20675528b04"
+  },
+  "script_snapshot": "provenance/performance.py"
+}

@@ -1,0 +1,17 @@
+{
+  "generator": "dv/scripts/gen_standalone_patterns.py:generate",
+  "catalog": "performance_unicast",
+  "id_width": 3,
+  "seed": 1,
+  "profile": "cosim",
+  "topology_source": "build/compile/recipes/profile.yml.json generated.topology_pkg.sv SAM authored order",
+  "recipe_sha256": "aa8c81225afe6a5083723c5999ad8867474063f475a1ebca5e2977574c9ae810",
+  "cases": [
+    "perf_ctrl_read_neighbor",
+    "perf_ctrl_read_h3",
+    "perf_ctrl_read_h6",
+    "perf_cal_data_read_1kib",
+    "perf_cal_data_read_4kib"
+  ],
+  "publication_result": false
+}

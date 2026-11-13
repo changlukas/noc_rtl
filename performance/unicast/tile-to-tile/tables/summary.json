@@ -1,0 +1,129 @@
+{
+  "window": {
+    "start_ps": 8500,
+    "end_ps": 21500,
+    "clock_period_ps": 1000,
+    "definition": "first source transfer to last required source completion; phase 1 only"
+  },
+  "directions": {
+    "read": {
+      "count": 1,
+      "useful_bytes": 8,
+      "mean_latency_cycles": 13.0,
+      "mean_first_response_latency_cycles": 13.0,
+      "bytes_per_cycle": 0.6153846153846154
+    }
+  },
+  "device_peak": null,
+  "utilization_percent": null,
+  "device_window_bytes": {
+    "0": {
+      "write": 0,
+      "read": 0
+    },
+    "1": {
+      "write": 0,
+      "read": 8
+    },
+    "2": {
+      "write": 0,
+      "read": 0
+    },
+    "3": {
+      "write": 0,
+      "read": 0
+    },
+    "4": {
+      "write": 0,
+      "read": 0
+    },
+    "5": {
+      "write": 0,
+      "read": 0
+    },
+    "6": {
+      "write": 0,
+      "read": 0
+    },
+    "7": {
+      "write": 0,
+      "read": 0
+    },
+    "8": {
+      "write": 0,
+      "read": 0
+    },
+    "9": {
+      "write": 0,
+      "read": 0
+    },
+    "10": {
+      "write": 0,
+      "read": 0
+    },
+    "11": {
+      "write": 0,
+      "read": 0
+    },
+    "12": {
+      "write": 0,
+      "read": 0
+    },
+    "13": {
+      "write": 0,
+      "read": 0
+    },
+    "14": {
+      "write": 0,
+      "read": 0
+    },
+    "15": {
+      "write": 0,
+      "read": 0
+    }
+  },
+  "device_window_status": "common job window",
+  "source_tiles": [
+    {
+      "endpoint": 0,
+      "x": 0,
+      "y": 0,
+      "port": 0,
+      "job_window": {
+        "start_ps": 8500,
+        "end_ps": 21500
+      },
+      "monitor_window": {
+        "first_enabled_sample_ps": 7500,
+        "source_done_ps": 21500,
+        "cycles": 15,
+        "definition": "enabled rising-edge samples through source sequence completion, inclusive"
+      },
+      "monitor_status": "available: native VIP sequence completion; paper experiment RTL revision unverified",
+      "directions": {
+        "read": {
+          "count": 1,
+          "useful_bytes": 8,
+          "axi_beats": 1,
+          "mean_first_response_latency_cycles": 13.0,
+          "mean_completion_latency_cycles": 13.0,
+          "job_bytes_per_cycle": 0.6153846153846154,
+          "monitor_bytes_per_cycle": 0.5333333333333333,
+          "source_port_payload_peak_bytes_per_cycle": null,
+          "monitor_payload_utilization_percent": null
+        }
+      }
+    }
+  ],
+  "source_tile_average": {
+    "read": {
+      "active_source_tiles": 1,
+      "definition": "unweighted arithmetic mean of active source tiles",
+      "mean_first_response_latency_cycles": 13.0,
+      "mean_completion_latency_cycles": 13.0,
+      "job_bytes_per_cycle": 0.6153846153846154,
+      "monitor_bytes_per_cycle": 0.5333333333333333,
+      "monitor_payload_utilization_percent": null
+    }
+  }
+}

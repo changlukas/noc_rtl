@@ -16,6 +16,20 @@ JOBS ?= 1
 WAVE ?= 1
 PERF ?= 0
 SCENARIO ?= unicast
+TILE_RESULT := $(ROOT)/performance/unicast/tile-to-tile
+MESH_RESULT := $(ROOT)/performance/unicast/mesh-traffic
+CASE_DIR = $(subst _,-,$(patsubst perf_%,%,$(CASE)))
+NEIGHBOR_SIZE = $(patsubst perf_neighbor_read_%,%,$(filter perf_neighbor_read_%,$(CASE)))
+ifeq ($(SCENARIO),unicast)
+ifeq ($(CASE),perf_ctrl_read_neighbor)
+PERF_RESULT = $(TILE_RESULT)
+else
+PERF_RESULT = $(MESH_RESULT)/runs/$(or $(NEIGHBOR_SIZE),$(CASE_DIR))
+endif
+else
+PERF_RESULT = $(ROOT)/performance/$(SCENARIO)/results/$(CASE_DIR)
+endif
+RESULTS ?= $(addprefix $(MESH_RESULT)/runs/,1kib 2kib 4kib 8kib 16kib 32kib bit-complement-1kib bit-complement-2kib bit-complement-4kib bit-complement-8kib bit-complement-16kib bit-complement-32kib transpose-1kib transpose-2kib transpose-4kib transpose-8kib transpose-16kib transpose-32kib uniform-1kib uniform-2kib uniform-4kib uniform-8kib uniform-16kib uniform-32kib shuffle-1kib shuffle-2kib shuffle-4kib shuffle-8kib shuffle-16kib shuffle-32kib)
 override COVERAGE := 1
 ifneq ($(filter run_wave view,$(MAKECMDGOALS)),)
 override WAVE := 1
@@ -27,6 +41,7 @@ AXI_CLK_PERIOD_PS ?= 1000
 NOC_CLK_PERIOD_PS ?= 1000
 NOC_CLK_PHASE_PS ?= 0
 RSP_DELAY ?= 2
+SIM_TIMEOUT ?= 180
 DIRECT_LINK ?= 0
 RTL_ROUTER ?= 1
 VCS ?= vcs
@@ -53,12 +68,33 @@ ifneq ($(filter _compile _sim _print,$(MAKECMDGOALS)),)
 SIM := $(shell python3 -B "$(SCRIPTS)/build_key.py" --recipe "$(RECIPE)" --flags="$(VCS) $(VCS_FLAGS) $(WAVE_FLAGS)" --coverage)
 endif
 CAMPAIGN = $(shell python3 -c 'import json; print("$(ROOT)/"+json.load(open("$(ROOT)/build/regression/latest.json"))["campaign"])')
-.PHONY: help perf prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report
+.PHONY: perf_multicast_report perf_boundary_plot perf_cross_plot perf_interference_plot help perf perf_plot perf_latency_plot perf_tile_plot prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report
 help:
 	@printf '%s\n' 'make perf CASE=<case>         Measure an existing case; always save FSDB and a new permanent result' 'make prepare                  Generate inputs and a new coverage campaign' 'make run CASE=<case>           Compile and simulate' 'make run_wave view CASE=<case> Run with FSDB and open nWave' 'make verification JOBS=3       Run the prepared coverage matrix' 'make report                   Generate native URG coverage' 'make list                     List existing cases' 'make clean                    Remove new compile/regression outputs'
 perf:
 	@case "$(SCENARIO)" in unicast|interference|boundary|multicast) ;; *) echo "Invalid SCENARIO" >&2; exit 1;; esac
-	@result="$(ROOT)/performance/$(SCENARIO)/results/$$(date -u +%Y%m%dT%H%M%S_%N)_$(CASE)_s$(SEED)"; $(MAKE) --no-print-directory -f "$(ROOT)/sim/Makefile" run PERF=1 WAVE=1 REPORT="$$result/runs/$(CASE)"
+	@result="$(abspath $(or $(RESULT),$(PERF_RESULT)))"; \
+	test ! -e "$$result" || { echo "Result already exists: $$result. Set RESULT to a new directory." >&2; exit 1; }; \
+	$(MAKE) --no-print-directory -f "$(ROOT)/sim/Makefile" run PERF=1 WAVE=1 REPORT="$$result/runs/$(CASE)"
+perf_multicast_report: RESULTS = $(addprefix $(ROOT)/performance/multicast/results/,row-seq-2kib-b1k row-seq-2kib-b2k row-tree-2kib row-hw-2kib-retry)
+perf_multicast_report:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" python3 -B "$(SCRIPTS)/performance.py" --multicast-results $(foreach directory,$(RESULTS),"$(directory)") --output "$(ROOT)/performance/multicast"
+perf_tile_plot:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --tile-to-tile "$(or $(RESULT),$(TILE_RESULT))"
+perf_plot:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --results $(foreach directory,$(RESULTS),"$(directory)") --output "$(or $(RESULT),$(MESH_RESULT))"
+CROSS_RESULT ?= $(ROOT)/performance/interference/results/cross
+perf_cross_plot:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --cross-results $(foreach directory,$(patsubst %/validation.json,%,$(wildcard $(CROSS_RESULT)/*/validation.json)),"$(directory)") --output "$(ROOT)/performance/interference"
+BOUNDARY_RESULT ?= $(ROOT)/performance/boundary
+perf_boundary_plot:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --boundary-results $(foreach directory,$(patsubst %/validation.json,%,$(wildcard $(BOUNDARY_RESULT)/results/read-*/validation.json $(BOUNDARY_RESULT)/results/narrow-*/validation.json)),"$(directory)") --output "$(BOUNDARY_RESULT)"
+INTERFERENCE_RESULT ?= $(ROOT)/performance/interference/results/separate
+perf_interference_plot:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --interference-results $(foreach directory,$(patsubst %/validation.json,%,$(wildcard $(INTERFERENCE_RESULT)/*/validation.json)),"$(directory)") --output "$(INTERFERENCE_RESULT)"
+perf_latency_plot: RESULTS = $(foreach pattern,neighbor bit-complement transpose uniform shuffle,$(addprefix $(MESH_RESULT)/runs/$(pattern)-,zero 0p001 0p01 0p05 0p1 0p15 0p2 0p25 0p3 0p4 0p5))
+perf_latency_plot:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --latency-results $(foreach directory,$(RESULTS),"$(directory)") --output "$(or $(RESULT),$(MESH_RESULT))"
 prepare:
 	python3 -B "$(SCRIPTS)/prepare.py" --out "$(SINGLE)" --profile "$(PROFILE)" $(if $(filter 1,$(DIRECT_LINK)),--direct,)
 	$(if $(filter 1,$(DIRECT_LINK)),@true,python3 -B "$(SCRIPTS)/prepare_ni_verification.py" --out "$(ROOT)/build/regression/$$(date -u +%Y%m%dT%H%M%S_%N)" --profile "$(PROFILE)")
@@ -72,7 +108,7 @@ _compile:
 	@if ! python3 -B "$(SCRIPTS)/build_key.py" --valid "$(SIM)"; then cd "$(SIM)" && { printf '%s\n' '$(VCS) $(VCS_FLAGS) $(WAVE_FLAGS) -Mdir=$(SIM)/csrc -o $(SIM)/simv' > compile-command.txt; $(VCS) $(VCS_FLAGS) $(WAVE_FLAGS) -Mdir="$(SIM)/csrc" -o "$(SIM)/simv" -l compile.log && python3 -B "$(SCRIPTS)/build_key.py" --complete "$(SIM)"; }; fi
 	@python3 -B "$(SCRIPTS)/build_key.py" --complete "$(SIM)"
 _sim:
-	python3 -B "$(SCRIPTS)/run.py" --binary "$(SIM)/simv" --inputs "$(SINGLE)/inputs" --campaign "$(SINGLE)" --case "$(CASE)" --mode "$(MODE)" --target "$(TARGET)" --seed "$(SEED)" $(if $(filter 1,$(BACKPRESSURE)),--backpressure,) --report "$(REPORT)" $(if $(filter 1,$(AW_WAIT_W)),--aw-wait-w,) $(if $(filter 1,$(READ_INTERLEAVE)),--read-interleave,) $(if $(filter 1,$(WAVE)),--wave,) $(if $(filter 1,$(PERF)),--perf,) $(if $(filter 1,$(COVERAGE)),--coverage,)
+	python3 -B "$(SCRIPTS)/run.py" --binary "$(SIM)/simv" --inputs "$(SINGLE)/inputs" --campaign "$(SINGLE)" --case "$(CASE)" --mode "$(MODE)" --target "$(TARGET)" --seed "$(SEED)" --timeout-seconds "$(SIM_TIMEOUT)" $(if $(filter 1,$(BACKPRESSURE)),--backpressure,) --report "$(REPORT)" $(if $(filter 1,$(AW_WAIT_W)),--aw-wait-w,) $(if $(filter 1,$(READ_INTERLEAVE)),--read-interleave,) $(if $(filter 1,$(WAVE)),--wave,) $(if $(filter 1,$(PERF)),--perf --scenario "$(SCENARIO)",) $(if $(filter 1,$(COVERAGE)),--coverage,)
 ifeq ($(WAVE),1)
 	@sed 's|@FSDB@|$(REPORT)/$(CASE).fsdb|g' "$(WAVE_RC)" > "$(REPORT)/$(CASE).rc"
 endif

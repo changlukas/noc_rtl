@@ -2,6 +2,7 @@
 """Shared directed/constrained-random AXI files and standalone checker schedule."""
 import argparse
 import json
+import math
 import random
 from pathlib import Path
 from axi_file_format import _ax_fields, encode_write_beats
@@ -33,6 +34,115 @@ def load_cases(catalog=CATALOG):
     return json.loads(Path(catalog).read_text())["cases"]
 
 
+def generate_multicast(out, entries, topology, case, id_width, mode, seed, profile):
+    """One-row protocol-level seq/tree/hw workload using existing AXI files."""
+    import yaml
+    from address_map import router_array
+    from gen_tb_top import _collective_selectors
+    method = case["multicast_method"]
+    size = case.get("message_bytes")
+    batch = case.get("batch_bytes", size)
+    if (profile != "cosim" or mode not in ("auto", "data") or
+            router_array(yaml.safe_load(topology.read_text())) != (4, 4) or
+            method not in ("seq", "tree", "hw") or
+            type(size) is not int or size not in (1024, 2048, 4096, 8192, 16384, 32768) or
+            type(batch) is not int or batch < 1024 or batch > size or
+            batch & (batch-1) or size % batch or
+            (method != "seq" and batch != size)):
+        raise ValueError("Multicast requires native 4x4 cosim, seq/tree/hw and legal message/batch sizes")
+    routes = [e for e in entries if e["space"] == "memory"]
+    if len(routes) != 16 or any(not r.get("en_collective") for r in routes):
+        raise ValueError("Multicast requires 16 collective-enabled tile memories")
+    root, members, offset = 12, list(range(4)), 0x4000
+    selectors = _collective_selectors(entries, 4, 4)["memory"]
+    x_offset, _ = selectors[0]
+    hw_user = (1 << 8) | (3 << (10+x_offset))
+    waves = []
+    if method == "hw":
+        waves = [[(root, 0, 0, size)]]
+    elif method == "tree":
+        waves = [[(root, 0, 0, size)], [(0, 2, 0, size)],
+                 [(0, 1, 0, size), (2, 3, 0, size)]]
+    else:
+        for step in range(size//batch + 3):
+            wave = []
+            for hop, source in enumerate((root, 0, 1, 2)):
+                index = step-hop
+                if 0 <= index < size//batch:
+                    wave.append((source, hop, index*batch, batch))
+            waves.append(wave)
+    requests, dependencies, forwarding, jobs = {}, [], [], []
+    previous = []
+    for stage, wave in enumerate(waves):
+        completed = []
+        for source, destination, begin, length in wave:
+            queue = requests.setdefault(source, [])
+            first = len(queue)
+            for parent, transaction in previous:
+                dependencies.append((source, first, parent, transaction))
+            for pos in range(begin, begin+length, 4096):
+                count = min(4096, begin+length-pos)
+                address = routes[destination]["base"] + offset + pos
+                if address+count > routes[destination]["base"]+routes[destination]["size"]:
+                    raise ValueError("Multicast payload exceeds device aperture")
+                user = hw_user if method == "hw" else 0
+                fields = _ax_fields(0, address, count//64-1, 6, True, user=user)
+                for beat in range(count//64):
+                    word = 0
+                    for lane in range(64):
+                        byte = pos + beat*64 + lane
+                        word |= (((byte//4+1) >> (8*(byte%4))) & 255) << (8*lane)
+                    fields.append("0x{:0128x} 0xffffffffffffffff 0".format(word))
+                if source != root:
+                    forwarding.append((source, len(queue), routes[source]["base"]+offset+pos))
+                queue.append(fields)
+            completed.append((source, len(queue)-1))
+            jobs.append(dict(stage=stage, source=source, destination=destination,
+                             offset=begin, bytes=length, first=first, last=len(queue)-1))
+        previous = completed
+    target = out/case["name"]
+    target.mkdir(parents=True, exist_ok=True)
+    # Expected readback image: only the checker consumes this in forwarding mode.
+    # Keep it out of manifest.files so run.py never initializes the actual VIP memories.
+    expected = []
+    for destination in members:
+        expected.append("@{:x}".format(routes[destination]["base"]+offset))
+        expected.append(" ".join("{:02x}".format(((b//4+1) >> (8*(b%4))) & 255) for b in range(size)))
+    (target/"preload.mem").write_text("\n".join(expected)+"\n")
+    primary = min(requests)
+    active = sorted(requests)
+    for source in active:
+        directory = target if source == primary else target/("source"+str(source))
+        directory.mkdir(exist_ok=True)
+        (directory/"write.txt").write_text("\n".join(line for req in requests[source] for line in req)+"\n")
+        (directory/"read.txt").write_text("")
+        readback = []
+        if source == root:
+            for destination in members:
+                for pos in range(0, size, 4096):
+                    count = min(4096, size-pos)
+                    readback.extend(_ax_fields(0, routes[destination]["base"]+offset+pos, count//64-1, 6, False))
+        (directory/"verify_read.txt").write_text("\n".join(readback)+("\n" if readback else ""))
+        (directory/"manifest.json").write_text(json.dumps(dict(case=case["name"], mode="data", seed=seed,
+            id_width=id_width, profile="cosim", coverage=dict(data_write=len(requests[source]), data_read=0),
+            acceptance=dict(min_outstanding=1, min_unique=1), files=["verify_read.txt"]),indent=2)+"\n")
+    lines = ["+case_name="+case["name"], "+forwarding", "+source_mask={:x}".format(sum(1 << s for s in active)),
+             "+write_outstanding_limit=16"]
+    lines += ["#after {} {} {} {}".format(*row) for row in dependencies]
+    lines += ["#forward {} {} 0x{:x}".format(*row) for row in forwarding]
+    (target/"schedule.txt").write_text("\n".join(lines)+"\n")
+    manifest = json.loads((target/"manifest.json").read_text())
+    manifest["multicast"] = dict(method=method, message_bytes=size, batch_bytes=batch,
+        root=root, members=members, output_offset=offset, jobs=jobs,
+        initial_data="Payload at root AXI source; no memory fetch",
+        expected_output="preload.mem seeds byte checkers only; actual device memories start empty",
+        synchronization="Each wave waits for all previous-wave source B completions",
+        differences=["Native VIP push writes and zero-time local memory access",
+                     "No CPU/DMA instructions or hardware-barrier traffic",
+                     "Root NI12 replaces paper memory tile; row0 recipients NI0..NI3"])
+    (target/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n")
+
+
 def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, case_name=None, profile="standalone", hardware=None):
     response_prefill = (hardware or {}).get("response_fifo_depth", 32) - 1
     out = Path(out)
@@ -61,6 +171,49 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         if not cases:
             raise ValueError("unknown CASE: " + case_name)
     for case in cases:
+        if "multicast_method" in case:
+            generate_multicast(out, entries, topology, case, id_width, mode, seed, profile)
+            names.append(case["name"])
+            continue
+        injection_ratio = case.get("injection_ratio")
+        zero_load = case.get("zero_load", False)
+        if type(zero_load) is not bool or (zero_load and injection_ratio is not None):
+            raise ValueError("zero_load must be boolean and exclude positive injection")
+        if (injection_ratio is not None or zero_load) and (
+                (injection_ratio is not None and (
+                    type(injection_ratio) not in (int, float) or not math.isfinite(injection_ratio) or
+                    not 0 < injection_ratio <= 0.5)) or profile != "cosim" or
+                mode not in ("auto", "control") or
+                case.get("mode") != "control" or case.get("operation") != "read" or
+                case.get("burst_beats", 1) != 1 or set(case.get("burst_lengths", [1])) != {1} or
+                any(case.get(key) for key in ("random", "burst_sweep", "lane_sweep",
+                                              "concurrent_rw", "multicast_masks", "sequence"))):
+            raise ValueError("Latency injection modes require plain cosim single-beat control reads; positive ratio in (0, 0.5]")
+        read_limit = case.get("read_outstanding_limit")
+        if read_limit is not None and (type(read_limit) is not int or read_limit < 1 or
+                profile != "cosim" or case.get("operation") != "read" or
+                case.get("mode") not in ("control", "data") or case.get("concurrent_rw")):
+            raise ValueError("read_outstanding_limit requires positive integer and plain cosim reads")
+        write_limit = case.get("write_outstanding_limit")
+        if write_limit is not None and (type(write_limit) is not int or write_limit < 1 or
+                profile != "cosim" or case.get("operation") != "write" or
+                case.get("mode") not in ("control", "data") or case.get("concurrent_rw") or
+                case.get("random") or read_limit is not None):
+            raise ValueError("write_outstanding_limit requires positive integer and plain cosim writes")
+        beat_bytes = case.get("beat_bytes")
+        span_bytes = case.get("address_span_bytes")
+        if beat_bytes is not None and (type(beat_bytes) is not int or beat_bytes not in (1,2,4,8,16,32,64) or
+                profile != "cosim" or case.get("sequence") != "contiguous" or
+                case.get("mode") not in ("control", "data") or
+                beat_bytes > (8 if case.get("mode") == "control" else 64)):
+            raise ValueError("beat_bytes requires contiguous cosim transfers and a legal power-of-two size")
+        if span_bytes is not None and (type(span_bytes) is not int or span_bytes < 1 or
+                span_bytes & (span_bytes-1) or profile != "cosim" or case.get("sequence") != "contiguous"):
+            raise ValueError("address_span_bytes requires contiguous cosim and a power-of-two address window")
+        address_offset = case.get("address_offset")
+        if address_offset is not None and (type(address_offset) is not int or address_offset < 0 or
+                profile != "cosim" or "source" not in case):
+            raise ValueError("address_offset requires a nonnegative byte offset for a cosim source")
         multicast_source = case.get("multicast_source")
         if "multicast_source" in case and (type(multicast_source) is not int or
                 multicast_source not in case.get("sources", []) or not case.get("multicast_masks")):
@@ -73,12 +226,22 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 raise ValueError("source outside topology")
             if case.get("multicast_masks") and len(sources) > 1 and multicast_source is None:
                 raise ValueError("multi-source multicast requires one multicast_source")
+            overrides = case.get("source_overrides", {})
+            if (type(overrides) is not dict or
+                    any(key not in [str(source) for source in sources] or
+                        type(value) is not dict or
+                        set(value) - {"mode", "count", "sequence", "burst_lengths", "burst_beats", "beat_bytes", "address_span_bytes", "address_offset"} or
+                        value.get("mode", case.get("mode")) not in ("control", "data") or
+                        type(value.get("count", case.get("count"))) is not int or
+                        value.get("count", case.get("count")) < 1
+                        for key, value in overrides.items())):
+                raise ValueError("source_overrides requires active sources and plain workload fields")
             destination_map = case.get("source_destination_map")
             if destination_map is not None:
-                size = len(base_routes["data"])
+                size = len(base_routes.get(case.get("mode"), base_routes["data"]))
                 allowed = {"name", "mode", "operation", "count", "sources",
-                           "source_destination_map", "sequence", "burst_lengths",
-                           "burst_beats", "ids", "num_ids", "id_values"}
+                           "source_destination_map", "source_overrides", "sequence", "burst_lengths",
+                           "burst_beats", "ids", "num_ids", "id_values", "injection_ratio", "zero_load", "read_outstanding_limit", "write_outstanding_limit"}
                 if (type(destination_map) is not list or len(destination_map) != size or
                         set(case) - allowed or case.get("mode") not in ("control", "data") or
                         case.get("operation") not in ("read", "write") or
@@ -90,6 +253,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             for source in sources:
                 variant = dict(case)
                 del variant["sources"]
+                variant.pop("source_overrides", None)
+                variant.update(overrides.get(str(source), {}))
                 variant.pop("multicast_source", None)
                 if destination_map is not None:
                     del variant["source_destination_map"]
@@ -97,8 +262,9 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                     variant["destination_order"] = [dest] + [n for n in range(size) if n != dest]
                 if multicast_source is not None and source != multicast_source:
                     del variant["multicast_masks"]
-                # Address stripes distinguish concurrent sources; a single root owns the full window.
-                if len(sources) > 1: variant["source"] = source
+                # Keep a mapped source's addresses fixed when other sources are enabled.
+                if len(sources) > 1 or destination_map is not None:
+                    variant["source"] = source
                 variant["name"] = name if source == sources[0] else "source" + str(source)
                 parent = out if source == sources[0] else out / name
                 generate(parent, topology, id_width, [variant], mode, seed + source,
@@ -110,14 +276,18 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             schedule.write_text(schedule.read_text() + "\n+source_mask=" + format(sum(1 << n for n in sources), "x") + "\n")
             names.append(name)
             continue
-        if "source_destination_map" in case:
-            raise ValueError("source_destination_map requires explicit sources")
+        if "source_destination_map" in case or "source_overrides" in case:
+            raise ValueError("source mapping and overrides require explicit sources")
         routes = base_routes
         if "destination_order" in case:
             order = case["destination_order"]
-            if any(sorted(order) != list(range(len(v))) for v in base_routes.values()):
+            selected_mode = case.get("mode", mode)
+            route_modes = [selected_mode] if selected_mode in ("control", "data") else list(base_routes)
+            if any(sorted(order) != list(range(len(base_routes[m]))) for m in route_modes):
                 raise ValueError("destination_order must be a permutation of destination indices")
-            routes = {mode: [entries[i] for i in order] for mode, entries in base_routes.items()}
+            routes = dict(base_routes)
+            for route_mode in route_modes:
+                routes[route_mode] = [base_routes[route_mode][i] for i in order]
         name = case["name"]
         if profile == "cosim" and (case.get("reset_warmup") or case.get("legacy_mixed") or
                                     case.get("require_stall")):
@@ -169,16 +339,18 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         count = 64 if capacity else case["count"]
         contiguous = case.get("sequence") == "contiguous"
         if contiguous:
-            lengths = case.get("burst_lengths")
+            if "burst_lengths" in case and "burst_beats" in case:
+                raise ValueError("contiguous requires either burst_lengths or burst_beats")
+            lengths = case.get("burst_lengths", [case.get("burst_beats", 1)] * count)
             allowed = {"name", "mode", "operation", "count", "sources", "source",
-                       "destination_order", "sequence", "burst_lengths", "ids",
-                       "num_ids", "id_values"}
-            if (profile != "cosim" or selected != "data" or
+                       "destination_order", "sequence", "burst_lengths", "burst_beats", "ids",
+                       "num_ids", "id_values", "read_outstanding_limit", "write_outstanding_limit", "beat_bytes", "address_span_bytes", "address_offset"}
+            if (profile != "cosim" or selected not in ("control", "data") or
                     case.get("operation") not in ("read", "write") or
                     set(case) - allowed or type(lengths) is not list or
                     len(lengths) != count or not lengths or
-                    any(type(beats) is not int or not 1 <= beats <= 64 for beats in lengths)):
-                raise ValueError("contiguous requires plain cosim data reads/writes and 1..64 beat bursts")
+                    any(type(beats) is not int or not 1 <= beats <= (1 if selected == "control" else 64) for beats in lengths)):
+                raise ValueError("contiguous requires plain cosim reads/writes: control single beats or data 1..64 beats")
         classes = [selected] * count
         if selected == "rand":
             # Stratify classes, then shuffle: every mixed run actually covers both.
@@ -194,6 +366,8 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             else:
                 axi_id = 200 % (1 << id_width)
             size = (txn % (7 if is_data else 4)) if case.get("burst_sweep") or capacity else (6 if is_data else 3)
+            if beat_bytes is not None:
+                size = beat_bytes.bit_length() - 1
             length = ((0, 1, 3, 7)[txn % 4] if capacity else
                       (1, 3, 7)[txn % 3] if case.get("burst_sweep") else 0)
             burst = ((1, 0, 2)[txn % 3] if capacity else
@@ -278,10 +452,18 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
                 axi_id = id_values[axi_id % num_ids]
             if contiguous:
                 offset = sum(lengths[:txn]) * step
+                if span_bytes is not None:
+                    if (length + 1) * step > span_bytes:
+                        raise ValueError("burst exceeds address_span_bytes")
+                    offset %= span_bytes
+                    if offset + (length + 1) * step > span_bytes:
+                        raise ValueError("burst crosses address_span_bytes")
+            if injection_ratio is not None or zero_load:
+                offset = txn * step
             if "source" in case:
                 if case.get("destinations") == "all":
                     offset = (txn // len(routes[classes[txn]])) * (512 if is_data else 64)
-                offset += case["source"] * (0x10000 if is_data else 0x100)
+                offset += case.get("address_offset", case["source"] * (0x10000 if is_data else 0x100))
                 if offset + (length+1)*step > route["size"]:
                     raise ValueError("multi-source transaction exceeds SAM range")
             address = route["base"] + offset
@@ -396,6 +578,10 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         acceptance = {}
         if profile == "cosim":
             args = [f"+case_name={name}"]
+            if injection_ratio is not None:
+                args.append(f"+injection_ratio={injection_ratio}")
+            if zero_load:
+                args.append("+zero_load")
             if concurrent_rw:
                 args.append("+concurrent_rw")
             acceptance = dict(min_outstanding=case.get("min_outstanding", 1),
@@ -466,6 +652,10 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             args.append(f"+response_hold_cycles={delay}")
         if preload and profile == "standalone":
             args.append("+preload")
+        if read_limit is not None:
+            args.append("+read_outstanding_limit=" + str(read_limit))
+        if write_limit is not None:
+            args.append("+write_outstanding_limit=" + str(write_limit))
         (target / "schedule.txt").write_text("\n".join(args) + "\n")
         (target / "manifest.json").write_text(json.dumps(dict(case=name, mode=selected, seed=seed,
                                                               id_width=id_width, coverage=coverage,

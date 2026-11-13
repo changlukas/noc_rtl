@@ -1,0 +1,4 @@
+run,injection_ratio,mean_latency_cycles,actual_injection_ratio,source_tiles,reads_per_source,waveform_sha256
+runs/neighbor-0p01,0.01,14.0,0.010374124216756951,16,32,6c9d24e06b2f152958fea0e5d0bf5cbbaa88e1d4aabe9731fe48f9c2679634a7
+runs/neighbor-0p1,0.1,14.0,0.10908157585886175,16,32,33ef4ccaf1abf98a91ce7333218d4e17e57709a63049d2bdc0046a7255bb1e97
+runs/neighbor-0p5,0.5,14.0,0.4979516320934927,16,32,1d0775ab98cde3067b64c03a96cd10dafed7ba6e6805449ad8f2a595e9d01acd

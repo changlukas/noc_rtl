@@ -1,0 +1,9 @@
+{
+  "source": "https://arxiv.org/src/2409.17606v2",
+  "archive_sha256": "a8a13074f7a2687525139dc67aa08ba5e41d2371538bf5613529afa2d31cb6b7",
+  "wide": "plots.py selects bench_bw_from_hbm and suffix t32_s4096:32*4096 bytes read",
+  "narrow": "flooccamy_test_cfg:num_iters100; original full plot aggregates9cores/cluster and subtracts3cycles",
+  "native": "100 blocking AXI reads/tile with256B address ring; no core instruction overhead or3cycle subtraction; one source port/tile",
+  "outstanding": "No verified original benchmark limit; native fixed16read/1narrow",
+  "reproduction": "Paper-config-aligned native comparison; original benchmark C/ELF/log revision unavailable"
+}

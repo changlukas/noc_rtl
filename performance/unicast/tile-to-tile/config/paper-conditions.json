@@ -1,0 +1,30 @@
+{
+  "reference": "FlooNoC arXiv:2409.17606v2 Fig.7",
+  "scope": "isolated tile-to-tile; subsequent traffic deferred for user review",
+  "source": {
+    "endpoint": 0,
+    "x": 0,
+    "y": 0
+  },
+  "destination": {
+    "endpoint": 1,
+    "x": 1,
+    "y": 0
+  },
+  "source_mask": "0x1",
+  "operation": "read",
+  "axi_beats": 1,
+  "axi_size": 3,
+  "useful_bytes": 8,
+  "address": "0x102000000",
+  "axi_period_ps": 1000,
+  "noc_period_ps": 1000,
+  "noc_phase_ps": 0,
+  "stimulus_seed": 1,
+  "simulation_seed": 1,
+  "platform": "unchanged native 4x4/profile/VIP",
+  "runtime": "source accepted AR through source accepted R",
+  "boundary_difference": "Reference core/cluster/LSU and SPM interconnect are outside native AXI/VIP boundaries; no 13/22 speedup claim",
+  "publication_result": false,
+  "status": "review_ready"
+}

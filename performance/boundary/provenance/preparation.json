@@ -1,0 +1,50 @@
+{
+  "scope": "Two boundary measurement checks only; not formal zero/full-load matrix",
+  "cases": [
+    "boundary_memory_check",
+    "boundary_narrow_check"
+  ],
+  "compute_sources": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "memory_endpoints": [
+    16,
+    17,
+    18,
+    19
+  ],
+  "memory_router_indices": [
+    0,
+    4,
+    8,
+    12
+  ],
+  "memory_ports": "WEST; endpoint PORT_ID=1",
+  "memory_service": "Native VIP, no random stalls/holds, no shared R/W bandwidth budget",
+  "read_peak_bytes_per_cycle": 64,
+  "clock_ps": 1000,
+  "formal_bw_reference": "FlooNoC 2025 Fig11: 32Txns of 4KB; check cases have only one 4096B transaction/source",
+  "formal_exact_paper_bytes": "pending benchmark revision confirmation",
+  "seed": 1,
+  "recipe": "/home/mingwei/noc_rtl/build/compile/recipes/memory.json",
+  "dependency": {
+    "name": "PyYAML",
+    "version": "5.4.1",
+    "sha256": "607774cbba28732bfa802b54baa7484215f530991055bb562efbed5b2f20a45e"
+  }
+}

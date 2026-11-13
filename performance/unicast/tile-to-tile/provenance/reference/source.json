@@ -1,0 +1,12 @@
+{
+  "url": "https://arxiv.org/src/2409.17606v2",
+  "archive_sha256": "a8a13074f7a2687525139dc67aa08ba5e41d2371538bf5613529afa2d31cb6b7",
+  "members": {
+    "figures/lat_gantt.pdf": "3e66c18a29d9a292e88b4fbd4cb138f3fe8480480b8da7dd3a5546a9d1280096",
+    "scripts/plots.py": "9d48a944b135d6ceff64db87f841c74b567567c65db3b16e4c9c9463c31e739e",
+    "scripts/plot_params.py": "0153be0927df5847467789a3702dc82e640d682753852536d5be4f36321b6a54"
+  },
+  "figure": "Fig.7, PDF page9; plot_lat_gantt()",
+  "reference_total_cycles": 22,
+  "note": "Paper includes cluster/LSU and TCDM stages; native AXI-bounded total is not a same-boundary speedup"
+}

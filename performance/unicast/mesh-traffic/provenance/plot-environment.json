@@ -1,0 +1,58 @@
+[
+  {
+    "name": "numpy",
+    "version": "1.19.5",
+    "filename": "numpy-1.19.5-cp36-cp36m-manylinux1_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/45/b2/6c7545bb7a38754d63048c7696804a0d947328125d81bf12beaa692c3ae3/numpy-1.19.5-cp36-cp36m-manylinux1_x86_64.whl",
+    "sha256": "8b5e972b43c8fc27d56550b4120fe6257fdc15f9301914380b27f74856299fea"
+  },
+  {
+    "name": "matplotlib",
+    "version": "3.3.4",
+    "filename": "matplotlib-3.3.4-cp36-cp36m-manylinux1_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/09/03/b7b30fa81cb687d1178e085d0f01111ceaea3bf81f9330c937fb6f6c8ca0/matplotlib-3.3.4-cp36-cp36m-manylinux1_x86_64.whl",
+    "sha256": "a17f0a10604fac7627ec82820439e7db611722e80c408a726cd00d8c974c2fb3"
+  },
+  {
+    "name": "Pillow",
+    "version": "8.4.0",
+    "filename": "Pillow-8.4.0-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/ea/0f/2fa195c2d8c6fe0b3dc2df5fc6ac6b8dbd005ea30aaa0fa43eca88b8c664/Pillow-8.4.0-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+    "sha256": "25a49dc2e2f74e65efaa32b153527fc5ac98508d502fa46e74fa4fd678ed6645"
+  },
+  {
+    "name": "kiwisolver",
+    "version": "1.3.1",
+    "filename": "kiwisolver-1.3.1-cp36-cp36m-manylinux1_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/a7/1b/cbd8ae738719b5f41592a12057ef5442e2ed5f5cb5451f8fc7e9f8875a1a/kiwisolver-1.3.1-cp36-cp36m-manylinux1_x86_64.whl",
+    "sha256": "5a7a7dbff17e66fac9142ae2ecafb719393aaee6a3768c9de2fd425c63b53e21"
+  },
+  {
+    "name": "cycler",
+    "version": "0.11.0",
+    "filename": "cycler-0.11.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/5c/f9/695d6bedebd747e5eb0fe8fad57b72fdf25411273a39791cde838d5a8f51/cycler-0.11.0-py3-none-any.whl",
+    "sha256": "3a27e95f763a428a739d2add979fa7494c912a32c17c4c38c4d5f082cad165a3"
+  },
+  {
+    "name": "pyparsing",
+    "version": "2.4.7",
+    "filename": "pyparsing-2.4.7-py2.py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/8a/bb/488841f56197b13700afd5658fc279a2025a39e22449b7cf29864669b15d/pyparsing-2.4.7-py2.py3-none-any.whl",
+    "sha256": "ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"
+  },
+  {
+    "name": "python-dateutil",
+    "version": "2.8.2",
+    "filename": "python_dateutil-2.8.2-py2.py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/36/7a/87837f39d0296e723bb9b62bbb257d0355c7f6128853c78955f57342a56d/python_dateutil-2.8.2-py2.py3-none-any.whl",
+    "sha256": "961d03dc3453ebbc59dbdea9e4e11c5651520a876d0f4db161e8674aae935da9"
+  },
+  {
+    "name": "six",
+    "version": "1.16.0",
+    "filename": "six-1.16.0-py2.py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/d9/5a/e7c31adbe875f2abbb91bd84cf2dc52d792b5a01506781dbcf25c91daf11/six-1.16.0-py2.py3-none-any.whl",
+    "sha256": "8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"
+  }
+]

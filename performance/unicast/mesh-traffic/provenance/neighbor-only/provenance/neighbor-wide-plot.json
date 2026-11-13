@@ -1,0 +1,80 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/mingwei/noc_rtl/dv/scripts/performance.py",
+    "--results",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/1kib",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/2kib",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/4kib",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/8kib",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/16kib",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/32kib",
+    "--output",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic"
+  ],
+  "script_sha256": "4b88184c43b8b6eb28dbaf919171cb2ca14d1c1ee7ca25cfdb5e0fe3c8cc646e",
+  "python": "3.6.8 (default, Nov 14 2023, 16:29:52) \n[GCC 4.8.5 20150623 (Red Hat 4.8.5-44)]",
+  "matplotlib": "3.3.4",
+  "numpy": "1.19.5",
+  "points": [
+    {
+      "root": "runs/1kib",
+      "run_id": "1kib",
+      "transfer_bytes": 1024,
+      "mean_utilization_percent": 44.817927170868344,
+      "source_tiles": 16,
+      "summary_sha256": "3b6a4fa65a95a998b64fcfa1ee673d52357776a903f9035fd6f017d7cd363c18",
+      "waveform_sha256": "7e0958478875c302c10287b844a3aa13b1ef28174eafceedb8cd52501bdc5a19"
+    },
+    {
+      "root": "runs/2kib",
+      "run_id": "2kib",
+      "transfer_bytes": 2048,
+      "mean_utilization_percent": 61.793103448275865,
+      "source_tiles": 16,
+      "summary_sha256": "ef7bdebfa6276528b12337a83313eb78d6e80cb11b519cbe9d14c66e366cef36",
+      "waveform_sha256": "d898f26d001508dec01a8cb575dc7d88dff052c35d7e7feae2af0fd41afd8d0c"
+    },
+    {
+      "root": "runs/4kib",
+      "run_id": "4kib",
+      "transfer_bytes": 4096,
+      "mean_utilization_percent": 76.31436314363141,
+      "source_tiles": 16,
+      "summary_sha256": "5003c97134529a505816edcb59f588a74c05b9b051d5be103d7617b06a930861",
+      "waveform_sha256": "b4474aae611f8cb6daf364bd8b533b12a108fadddb5960d1816a2449e0579d2f"
+    },
+    {
+      "root": "runs/8kib",
+      "run_id": "8kib",
+      "transfer_bytes": 8192,
+      "mean_utilization_percent": 86.53264543675503,
+      "source_tiles": 16,
+      "summary_sha256": "8cebcba5813364c437ef36fe82c108707983681962a8a73974c36aac2fe55e4c",
+      "waveform_sha256": "02b8d41dc0858c0005733aa596654be33318e7a8c217adc8802f5c2a1031001b"
+    },
+    {
+      "root": "runs/16kib",
+      "run_id": "16kib",
+      "transfer_bytes": 16384,
+      "mean_utilization_percent": 92.76802816172285,
+      "source_tiles": 16,
+      "summary_sha256": "c15947a7ba91c649f8674e1a29b6e5465c1629112583eb1548459a09fe988e9e",
+      "waveform_sha256": "f00c6375770c5ced9c69f530c1bab5c8e8f654225d24414b990bc6f2b303f95c"
+    },
+    {
+      "root": "runs/32kib",
+      "run_id": "32kib",
+      "transfer_bytes": 32768,
+      "mean_utilization_percent": 96.24465175001752,
+      "source_tiles": 16,
+      "summary_sha256": "35e304606c8cd64352bb6feb522351280115dc15e8b6904f111654fe50feb35b",
+      "waveform_sha256": "b838866b1746d0cad2a3bc4b199b88c0ab5d86a71164e6f56fb9e4a539c864c2"
+    }
+  ],
+  "publication_result": false,
+  "metric": "Mean full-width source payload utilization across the 16 native tiles",
+  "traffic": "One neighbor read job per source on the native 4x4 mesh",
+  "limitation": "Native platform and VIP; exact FlooNoC experiment RTL revision is unverified",
+  "script_snapshot": "provenance/performance.py"
+}

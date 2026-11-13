@@ -1,0 +1,137 @@
+{
+  "source": 0,
+  "destination": 1,
+  "source_xy": [
+    0,
+    0
+  ],
+  "destination_xy": [
+    1,
+    0
+  ],
+  "inter_router_edges": 1,
+  "bytes": 8,
+  "clock_period_ns": 1.0,
+  "total_cycles": 14.0,
+  "axi_round_trip_cycles": 13.0,
+  "stages": [
+    {
+      "lane": "Source AXI",
+      "component": "AXI/device",
+      "label": "AR",
+      "start_ns": 7.5,
+      "end_ns": 8.5,
+      "cycles": 1.0,
+      "begin_event": "source_ar_valid",
+      "end_event": "source_ar"
+    },
+    {
+      "lane": "NI 0",
+      "component": "NI",
+      "label": "AR->REQ",
+      "start_ns": 8.5,
+      "end_ns": 10.5,
+      "cycles": 2.0,
+      "begin_event": "source_ar",
+      "end_event": "source_req"
+    },
+    {
+      "lane": "Router 0",
+      "component": "Router",
+      "label": "REQ",
+      "start_ns": 10.5,
+      "end_ns": 11.5,
+      "cycles": 1.0,
+      "begin_event": "source_req",
+      "end_event": "r0_req_east"
+    },
+    {
+      "lane": "Router 1",
+      "component": "Router",
+      "label": "REQ",
+      "start_ns": 11.5,
+      "end_ns": 12.5,
+      "cycles": 1.0,
+      "begin_event": "r0_req_east",
+      "end_event": "target_req"
+    },
+    {
+      "lane": "NI 1",
+      "component": "NI",
+      "label": "REQ->AR",
+      "start_ns": 12.5,
+      "end_ns": 14.5,
+      "cycles": 2.0,
+      "begin_event": "target_req",
+      "end_event": "target_ar"
+    },
+    {
+      "lane": "Device AXI",
+      "component": "AXI/device",
+      "label": "AR->R",
+      "start_ns": 14.5,
+      "end_ns": 15.5,
+      "cycles": 1.0,
+      "begin_event": "target_ar",
+      "end_event": "target_r"
+    },
+    {
+      "lane": "NI 1",
+      "component": "NI",
+      "label": "R->RSP",
+      "start_ns": 15.5,
+      "end_ns": 17.5,
+      "cycles": 2.0,
+      "begin_event": "target_r",
+      "end_event": "target_rsp"
+    },
+    {
+      "lane": "Router 1",
+      "component": "Router",
+      "label": "RSP",
+      "start_ns": 17.5,
+      "end_ns": 18.5,
+      "cycles": 1.0,
+      "begin_event": "target_rsp",
+      "end_event": "r1_rsp_west"
+    },
+    {
+      "lane": "Router 0",
+      "component": "Router",
+      "label": "RSP",
+      "start_ns": 18.5,
+      "end_ns": 19.5,
+      "cycles": 1.0,
+      "begin_event": "r1_rsp_west",
+      "end_event": "source_rsp"
+    },
+    {
+      "lane": "NI 0",
+      "component": "NI",
+      "label": "RSP\u2192R",
+      "start_ns": 19.5,
+      "end_ns": 20.5,
+      "cycles": 1.0,
+      "begin_event": "source_rsp",
+      "end_event": "source_r_valid"
+    },
+    {
+      "lane": "Source AXI",
+      "component": "AXI/device",
+      "label": "R",
+      "start_ns": 20.5,
+      "end_ns": 21.5,
+      "cycles": 1.0,
+      "begin_event": "source_r_valid",
+      "end_event": "source_r"
+    }
+  ],
+  "component_cycles": {
+    "AXI/device": 3.0,
+    "NI": 7.0,
+    "Router": 4.0
+  },
+  "reference": "FlooNoC arXiv:2409.17606v2 Fig.7; source archive plot_lat_gantt()",
+  "boundary": "native source ARVALID assertion through source R acceptance; target is existing VIP",
+  "differences": "Paper includes cluster/LSU and SPM interconnect costs; totals have different endpoint boundaries"
+}

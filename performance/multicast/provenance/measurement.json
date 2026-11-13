@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/mingwei/noc_rtl/dv/scripts/performance.py",
+    "--multicast-results",
+    "/home/mingwei/noc_rtl/performance/multicast/results/row-seq-2kib-b1k",
+    "/home/mingwei/noc_rtl/performance/multicast/results/row-seq-2kib-b2k",
+    "/home/mingwei/noc_rtl/performance/multicast/results/row-tree-2kib",
+    "/home/mingwei/noc_rtl/performance/multicast/results/row-hw-2kib-retry",
+    "--output",
+    "/home/mingwei/noc_rtl/performance/multicast"
+  ],
+  "script_sha256": "87e74cfa8400ebbcd99d67aba85050c5793341b5441a31b0d19c5f6e06e0cc5e",
+  "cases": 4,
+  "scope": "Single-row initial measurements; full size/2D matrix pending",
+  "formula": "runtime_cycles=(last required source B - root AWVALID assertion)/clock_period; no inclusive +1",
+  "source": "picobello cacdc3ad4a3a638e68d03090781dbbc2450c73ed, Fig.4/5",
+  "differences": [
+    "Native root NI12 and row0 NI0..NI3",
+    "VIP push writes, no memory fetch",
+    "Zero-time local memory access; source-B wave barriers, no CPU/DMA/barrier instructions"
+  ],
+  "publication_result": false
+}

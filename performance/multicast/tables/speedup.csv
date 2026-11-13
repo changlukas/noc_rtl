@@ -1,0 +1,2 @@
+message_bytes,seq_batch_bytes,Tseq_cycles,Ttree_cycles,Thw_cycles,speedup
+2048,1024,186.0,162.0,70.0,2.3142857142857145

@@ -836,7 +836,7 @@ def test_contiguous_rejects_crossing_and_conflicting_options(tmp_path):
     base = dict(name="transfer", mode="data", operation="read", count=2,
                 burst_lengths=[64, 64], sequence="contiguous")
     for changes in (dict(burst_lengths=[63, 2]), dict(burst_lengths=[65, 1]),
-                    dict(burst_lengths=[True, 64]), dict(burst_lengths=[64]),
+                    dict(burst_lengths=[True, 64]), dict(burst_lengths=[64]), dict(burst_beats=1),
                     dict(destinations="alternate"), dict(random=True), dict(mode="control")):
         try:
             generate(tmp_path / "invalid", topology, catalog=[dict(base, **changes)], profile="cosim")
@@ -896,3 +896,212 @@ def test_source_destination_map_rejects_destination_modifiers(tmp_path):
             pass
         else:
             raise AssertionError("destination modifier overrode a fixed mapping")
+
+
+def test_zero_load_schedule_and_address_isolation(tmp_path):
+    topology = tmp_path / "entries.json"
+    topology.write_text(json.dumps([dict(space=space, base=node*0x100000000+offset, size=size)
+                                   for space, offset, size in (("memory", 0, 0x2000000), ("config", 0x2000000, 4096))
+                                   for node in range(4)]))
+    case = dict(name="isolated", mode="control", operation="read", count=32,
+                zero_load=True, sources=list(range(4)), source_destination_map=[1, 2, 3, 0])
+    generate(tmp_path / "valid", topology, catalog=[case], profile="cosim", id_width=3)
+    for source in range(4):
+        directory = tmp_path / "valid/isolated"
+        if source:
+            directory = directory / ("source" + str(source))
+        schedule = (directory / "schedule.txt").read_text()
+        assert "+zero_load" in schedule and "+injection_ratio=" not in schedule
+        reads = _parse_read(directory / "read.txt")
+        assert len(reads) == 32
+        assert all(r["len"] == 0 and r["size"] == 3 and r["burst"] == 1 for r in reads)
+        first = case["source_destination_map"][source]*0x100000000 + 0x2000000 + source*0x100
+        assert [r["addr"] for r in reads] == [first + n*8 for n in range(32)]
+    for changes in (dict(zero_load=1), dict(injection_ratio=.1), dict(injection_ratio=0),
+                    dict(mode="data"), dict(operation="write"), dict(burst_beats=2),
+                    dict(concurrent_rw=True)):
+        try:
+            generate(tmp_path / "invalid", topology, catalog=[dict(case, **changes)], profile="cosim")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid zero-load traffic was accepted")
+
+
+def test_interference_sources_and_paper_counts(tmp_path):
+    topology = tmp_path / "entries.json"
+    topology.write_text(json.dumps([dict(space=space, base=node*0x100000000+offset, size=size)
+                                   for space, offset, size in (("memory", 0, 0x2000000), ("config", 0x2000000, 4096))
+                                   for node in range(16)]))
+    cases = load_cases("performance_interference")
+    assert len(cases) == 26
+    generate(tmp_path / "valid", topology, catalog=cases, profile="cosim", id_width=3)
+    for case in cases:
+        for source in case["sources"]:
+            work = case["source_overrides"][str(source)]
+            directory = tmp_path / "valid" / case["name"]
+            if source != case["sources"][0]:
+                directory = directory / ("source" + str(source))
+            reads = _parse_read(directory / "read.txt")
+            assert len(reads) == work["count"]
+            size = 3 if work["mode"] == "control" else 6
+            assert all(r["size"] == size and r["len"] + 1 == work["burst_beats"] for r in reads)
+            start = reads[0]["addr"]
+            assert [r["addr"] for r in reads] == [start + n*work["burst_beats"]*(1 << size)
+                                                  for n in range(work["count"])]
+            assert all(r["addr"] >> 32 == case["source_destination_map"][source] for r in reads)
+            assert all(r["addr"] >> 12 == (r["addr"] + ((r["len"] + 1) << size) - 1) >> 12 for r in reads)
+        assert "+source_mask=" + format(sum(1 << n for n in case["sources"]), "x") in (
+            tmp_path / "valid" / case["name"] / "schedule.txt").read_text()
+    # Probe requests stay byte-identical as background sources are enabled.
+    for probe, source in [("narrow", 0), ("wide", 1)]:
+        baseline = tmp_path / "valid" / ("perf_" + probe + "_uni_0")
+        loaded = tmp_path / "valid" / ("perf_" + probe + "_uni_2")
+        if source:
+            loaded = loaded / ("source" + str(source))
+        assert (baseline / "read.txt").read_bytes() == (loaded / "read.txt").read_bytes()
+        assert "+read_outstanding_limit=16" in (baseline / "schedule.txt").read_text()
+    for case in cases:
+        assert case["source_destination_map"][:4] == [2, 3, 0, 1]
+        for source, work in case["source_overrides"].items():
+            assert work["mode"] == ("control" if int(source) % 2 == 0 else "data")
+    for limit in [0, -1, True, 1.5]:
+        try:
+            generate(tmp_path / "invalid_limit", topology,
+                     catalog=[dict(cases[0], read_outstanding_limit=limit)], profile="cosim")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid read outstanding limit accepted")
+    base = cases[-1]
+    for overrides in ({"9": {"count": 1}}, {"0": {"destination_order": [0]}}, {"0": {"mode": "rand"}}):
+        try:
+            generate(tmp_path / "invalid", topology, catalog=[dict(base, source_overrides=overrides)], profile="cosim")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid source override accepted")
+
+
+def test_cross_write_width_ring_and_limits(tmp_path):
+    topology = tmp_path / "entries.json"
+    topology.write_text(json.dumps([dict(space=space, base=node*0x100000000+offset, size=size)
+        for space, offset, size in (("memory", 0, 0x2000000), ("config", 0x2000000, 4096))
+        for node in range(16)]))
+    cases = load_cases("performance_cross")
+    assert len(cases) == 34
+    out = tmp_path / "inputs"
+    generate(out, topology, id_width=3, catalog=cases, profile="cosim")
+    small = {1, 2, 13, 14}
+    for case in cases:
+        base = out / case["name"]
+        assert "+write_outstanding_limit=16" in (base / "schedule.txt").read_text()
+        for source in case["sources"]:
+            work = case["source_overrides"][str(source)]
+            directory = base if source == case["sources"][0] else base / ("source"+str(source))
+            rows = _parse_write(directory / "write.txt")
+            assert len(rows) == work["count"]
+            assert not (directory / "read.txt").read_text()
+            size = work["beat_bytes"].bit_length()-1
+            assert all(r["size"] == size and r["len"]+1 == work["burst_beats"] and r["id"] == 0 for r in rows)
+            assert all(r["addr"] >> 32 == case["source_destination_map"][source] for r in rows)
+            for r in rows:
+                assert r["addr"] >> 12 == (r["addr"]+((r["len"]+1) << size)-1) >> 12
+                assert all(bin(int(b.split()[1],16)).count("1") == work["beat_bytes"] for b in r["beats"])
+            if source in small:
+                assert len({r["addr"] for r in rows}) == 32
+                assert rows[0]["addr"] == rows[32]["addr"]
+                assert (rows[0]["addr"] % 0x100000000 >= 0x2000000) == (work["mode"] == "control")
+    for direction in ["uni", "bi"]:
+        a = next(c for c in cases if c["name"] == "cross_split_"+direction+"_1024")
+        b = next(c for c in cases if c["name"] == "cross_dat_"+direction+"_1024")
+        for source in a["sources"]:
+            pa = out / a["name"] / ("source"+str(source)) if source != a["sources"][0] else out / a["name"]
+            pb = out / b["name"] / ("source"+str(source)) if source != b["sources"][0] else out / b["name"]
+            ra, rb = _parse_write(pa/"write.txt"), _parse_write(pb/"write.txt")
+            assert [(r["id"],r["len"],r["size"],r["beats"]) for r in ra] == [(r["id"],r["len"],r["size"],r["beats"]) for r in rb]
+    base = dict(name="invalid", mode="data", operation="write", count=2,
+                sequence="contiguous", burst_beats=1, beat_bytes=8, address_span_bytes=256)
+    for change in [dict(beat_bytes=3),dict(beat_bytes=True),dict(address_span_bytes=3),
+                   dict(address_span_bytes=4),dict(write_outstanding_limit=0),
+                   dict(write_outstanding_limit=True),dict(operation="read",write_outstanding_limit=16)]:
+        try:
+            generate(tmp_path/"invalid",topology,catalog=[dict(base,**change)],profile="cosim")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid cross write field accepted")
+
+
+def test_boundary_memory_mapping_and_workspaces(tmp_path):
+    topology = REPO / "dv/config/topology/mesh_4x4_memory.yml"
+    cases = [c for c in load_cases("performance_boundary") if c["name"].endswith("_check")]
+    out = tmp_path / "inputs"
+    generate(out, topology, 3, catalog=cases, profile="cosim")
+    for case in cases:
+        base = out / case["name"]
+        for source in case["sources"]:
+            directory = base if source == case["sources"][0] else base / ("source" + str(source))
+            rows = _parse_read(directory / "read.txt")
+            assert len(rows) == 1 and rows[0]["id"] == 0
+            row = rows[0]
+            if case["mode"] == "data":
+                expected = 0x1000000000 + (source // 4) * 0x100000 + (source % 4) * 0x20000
+                assert row["addr"] == expected and row["len"] == 63 and row["size"] == 6
+            else:
+                assert row["addr"] == 15 * 0x100000000 + 0x2000000 + source * 0x100
+                assert row["len"] == 0 and row["size"] == 3
+    full = dict(cases[0], name="boundary_workspace_check", count=32)
+    generate(tmp_path / "full", topology, 3, catalog=[full], profile="cosim")
+    intervals = {}
+    for source in full["sources"]:
+        base = tmp_path / "full" / full["name"]
+        directory = base if source == 0 else base / ("source" + str(source))
+        rows = _parse_read(directory / "read.txt")
+        assert len(rows) == 32
+        for index, row in enumerate(rows):
+            assert row["addr"] == 0x1000000000 + (source // 4) * 0x100000 + (source % 4) * 0x20000 + index * 4096
+            assert row["addr"] % 4096 == 0
+        intervals[source] = (rows[0]["addr"], rows[-1]["addr"] + 4096)
+    for source, (start, end) in intervals.items():
+        for other, (other_start, other_end) in intervals.items():
+            if other != source:
+                assert end <= other_start or other_end <= start
+    invalid = dict(cases[0], source_overrides={"0": {"address_offset": -1}})
+    try:
+        generate(tmp_path / "invalid", topology, 3, catalog=[invalid], profile="cosim")
+    except ValueError as error:
+        assert "address_offset" in str(error)
+    else:
+        raise AssertionError("Negative source workspace accepted")
+
+
+def test_boundary_formal_matrix(tmp_path):
+    cases = [c for c in load_cases("performance_boundary") if not c["name"].endswith("_check")]
+    by_name = {c["name"]: c for c in cases}
+    expected = {"boundary_read_zero_" + str(n) for n in range(16)}
+    expected |= {"boundary_narrow_zero_" + str(n) for n in range(15)}
+    expected |= {"boundary_read_full", "boundary_narrow_full"}
+    assert set(by_name) == expected
+    out = tmp_path / "inputs"
+    generate(out, REPO / "dv/config/topology/mesh_4x4_memory.yml", 3, catalog=cases, profile="cosim")
+    for work, sources, beat_bytes, beats, limit in (("read", range(16), 64, 64, 16),
+                                                   ("narrow", range(15), 8, 1, 1)):
+        full = by_name["boundary_" + work + "_full"]
+        assert full["sources"] == list(sources) and full["read_outstanding_limit"] == limit
+        for source in sources:
+            zero_name = "boundary_" + work + "_zero_" + str(source)
+            assert by_name[zero_name]["sources"] == [source]
+            directory = out / full["name"]
+            if source != 0:
+                directory /= "source" + str(source)
+            assert (directory / "read.txt").read_bytes() == (out / zero_name / "read.txt").read_bytes()
+            rows = _parse_read(directory / "read.txt")
+            assert len(rows) == (32 if work == "read" else 100)
+            for index, row in enumerate(rows):
+                expected_base = (0x1000000000 + (source // 4) * 0x100000 + (source % 4) * 0x20000
+                                 if work == "read" else 15 * 0x100000000 + 0x2000000 + source * 0x100)
+                assert row["addr"] == expected_base + (index * beats * beat_bytes if work == "read" else (index % 32) * 8)
+                assert row["len"] + 1 == beats and 1 << row["size"] == beat_bytes
+                assert row["id"] == 0 and row["burst"] == 1
+                assert row["addr"] >> 12 == (row["addr"] + beats * beat_bytes - 1) >> 12

@@ -1,0 +1,32 @@
+{
+  "reference": "https://arxiv.org/html/2409.17606v2",
+  "figure": "11(a)/(c), PDF p12",
+  "scope": "Topology and measurement checks only; formal zero/full matrices and heatmaps pending",
+  "checks": [
+    "test_boundary_memory_mapping_and_workspaces",
+    "test_cross_write_width_ring_and_limits"
+  ],
+  "generator_checks": "passed, direct pure-Python test calls with fresh temporary directories",
+  "generator_test_runner": "pytest decorators stubbed; no pytest suite claimed",
+  "files_sha256": {
+    "deps/tvip-axi/src/tvip_axi_slave_driver.svh": "f36df9f707e224c76ea4dfd4f316b355ece4a2e150ea3493a929cb5ca29c43e6",
+    "deps/tvip-axi/src/tvip_axi_slave_default_sequence.svh": "0b038e73a744b7e24d57c2f6878f676baaad9bf3e31dc21f3c35d29bae411e0e",
+    "dv/tb/tb_top.sv": "259b4b9ca9ca4f40f3418c87e7900c0301ac5e92a1f34b4280dabb40a7269136",
+    "dv/config/topology/mesh_4x4_memory.yml": "173010aa336700499a4c1bdea1a15824c401586be4b3d5ebc230d96bd390748d",
+    "dv/scripts/gen_standalone_patterns.py": "42217ce57eeb065d1b53a973764d079c158ca7fcce023266d481f729ca384c9c",
+    "dv/scripts/test_gen_standalone_patterns.py": "45c5a4312b08bb7de89762f38dda51c2dde6dcb58d841be647741db59cbecfdc"
+  },
+  "memory_read_capacity": {
+    "data_bits": 512,
+    "axi_clock_ps": 1000,
+    "peak_bytes_per_cycle": 64,
+    "peak_gb_per_second": 64,
+    "read_write_shared_capacity": false,
+    "service": "Unmodified native VIP; no random stalls, no response hold, no selected response-delay endpoint; R/W independent, no HBM timing model"
+  },
+  "git_fetch": "Workstation fetch attempted with12s timeout; remote main verified through GitHub at43b07cb586673fdf90df72a38f67e2bf5c829fa0",
+  "git_head": "268b2e2836d1b929a9435f3150f89767ec4b2613",
+  "branch": "main",
+  "uncommitted_changes": "preserved; no commit/push",
+  "dependency": "Build-local pure-Python PyYAML5.4.1, original archive SHA recorded in preparation; system Python unchanged"
+}

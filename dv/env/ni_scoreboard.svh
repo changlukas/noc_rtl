@@ -70,7 +70,8 @@ class ni_scoreboard extends uvm_scoreboard;
         foreach (data_check[i]) if (data_check[i] != null) data_check[i].stop();
         ordering.reset();
         foreach (data_check[i]) data_check[i] = new();
-        if ($test$plusargs("preload")) begin
+        // The forwarding output image seeds this checker only, never the device memories.
+        if ($test$plusargs("preload") || $test$plusargs("forwarding")) begin
             void'($value$plusargs("stim_dir=%s", directory));
             foreach (data_check[i]) data_check[i].preload({directory, "/preload.mem"});
         end

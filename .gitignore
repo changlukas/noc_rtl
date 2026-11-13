@@ -10,5 +10,30 @@
 
 /docker/noc-dev/
 
-# Permanent measurement artifacts are retained on disk, not source-synced.
-/performance/*/results/
+# Keep hashed measurement summaries and provenance; retain raw runs outside Git.
+/performance/**
+!/performance/**/
+!/performance/**/measurement.md
+!/performance/**/figures/*.png
+!/performance/**/figures/*.svg
+!/performance/**/tables/*.csv
+!/performance/**/tables/*.json
+!/performance/**/config/*.json
+!/performance/**/config/*.yml
+!/performance/**/config/*.svh
+!/performance/**/provenance/*.json
+!/performance/**/provenance/*.py
+!/performance/**/provenance/*.txt
+!/performance/**/provenance/*SHA256SUMS
+!/performance/**/provenance/*Makefile
+!/performance/**/provenance/reference/**/*.py
+!/performance/**/provenance/reference/**/*.c
+!/performance/**/provenance/reference/**/*.json
+!/performance/**/provenance/reference/**/LICENSE*
+!/performance/**/provenance/reference/README.md
+/performance/**/results/
+/performance/**/runs/
+/performance/**/download-history/
+/performance/**/provenance/source/
+/performance/**/provenance/previous*/
+/performance/**/provenance/plot-draft*/

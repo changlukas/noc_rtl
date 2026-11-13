@@ -1,0 +1,42 @@
+[
+  {
+    "time_ps": 8500,
+    "role": "source",
+    "endpoint": 0,
+    "channel": "ar",
+    "id": 0,
+    "addr": 4328521728,
+    "len": 0,
+    "size": 3,
+    "burst": 1
+  },
+  {
+    "time_ps": 14500,
+    "role": "device",
+    "endpoint": 1,
+    "channel": "ar",
+    "id": 0,
+    "addr": 4328521728,
+    "len": 0,
+    "size": 3,
+    "burst": 1
+  },
+  {
+    "time_ps": 15500,
+    "role": "device",
+    "endpoint": 1,
+    "channel": "r",
+    "id": 0,
+    "resp": 0,
+    "last": 1
+  },
+  {
+    "time_ps": 21500,
+    "role": "source",
+    "endpoint": 0,
+    "channel": "r",
+    "id": 0,
+    "resp": 0,
+    "last": 1
+  }
+]

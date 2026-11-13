@@ -1,0 +1,14 @@
+{
+  "command": [
+    "fsdb2vcd",
+    "/home/mingwei/noc_rtl/performance/unicast/results/20261110T104909_429508015_perf_ctrl_read_neighbor_s1/runs/perf_ctrl_read_neighbor/perf_ctrl_read_neighbor.fsdb",
+    "-o",
+    "/home/mingwei/noc_rtl/performance/unicast/results/20261110T104909_429508015_perf_ctrl_read_neighbor_s1/runs/perf_ctrl_read_neighbor/tile-to-tile.vcd",
+    "-s",
+    "/tb_top",
+    "-level",
+    "3"
+  ],
+  "fsdb_sha256": "eef7ea2c6133b075cca5217a1eec49f63d8cfc9a5b225f95669c36c6cb07dabd",
+  "vcd_sha256": "0fe3217b5e7ff6320df221963113d2e7da254a3c74769cd65bb7114bc58cad14"
+}

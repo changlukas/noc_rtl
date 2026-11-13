@@ -1,0 +1,53 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/mingwei/noc_rtl/dv/scripts/performance.py",
+    "--latency-results",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/neighbor-0p01",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/neighbor-0p1",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/neighbor-0p5",
+    "--output",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic"
+  ],
+  "script_sha256": "4b88184c43b8b6eb28dbaf919171cb2ca14d1c1ee7ca25cfdb5e0fe3c8cc646e",
+  "reference": "arXiv:2409.17606v2 Fig.8",
+  "metric": "Unweighted mean of per-source AR handshake to first R handshake latency",
+  "injection": "Configured Bernoulli parameter on x axis; realized AR interarrival ratio in CSV",
+  "differences": [
+    "Native 4x4/VIP platform",
+    "Paper adds 7 cluster cycles; native values use AXI boundaries",
+    "Public candidate driver quantizes probability through an integer draw in [0,100]",
+    "Exact experiment RTL revision is unverified"
+  ],
+  "points": [
+    {
+      "run": "runs/neighbor-0p01",
+      "injection_ratio": 0.01,
+      "mean_latency_cycles": 14.0,
+      "actual_injection_ratio": 0.010374124216756951,
+      "source_tiles": 16,
+      "reads_per_source": 32,
+      "waveform_sha256": "6c9d24e06b2f152958fea0e5d0bf5cbbaa88e1d4aabe9731fe48f9c2679634a7"
+    },
+    {
+      "run": "runs/neighbor-0p1",
+      "injection_ratio": 0.1,
+      "mean_latency_cycles": 14.0,
+      "actual_injection_ratio": 0.10908157585886175,
+      "source_tiles": 16,
+      "reads_per_source": 32,
+      "waveform_sha256": "33ef4ccaf1abf98a91ce7333218d4e17e57709a63049d2bdc0046a7255bb1e97"
+    },
+    {
+      "run": "runs/neighbor-0p5",
+      "injection_ratio": 0.5,
+      "mean_latency_cycles": 14.0,
+      "actual_injection_ratio": 0.4979516320934927,
+      "source_tiles": 16,
+      "reads_per_source": 32,
+      "waveform_sha256": "1d0775ab98cde3067b64c03a96cd10dafed7ba6e6805449ad8f2a595e9d01acd"
+    }
+  ],
+  "publication_result": false,
+  "script_snapshot": "provenance/performance.py"
+}

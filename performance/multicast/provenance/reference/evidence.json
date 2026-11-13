@@ -1,0 +1,27 @@
+{
+  "commit": "cacdc3ad4a3a638e68d03090781dbbc2450c73ed",
+  "paper": "https://arxiv.org/html/2603.26438v2",
+  "section": "4.2.2, Fig.4/5",
+  "files": {
+    "multicast_benchmark.c": {
+      "url": "https://github.com/pulp-platform/picobello/blob/cacdc3ad4a3a638e68d03090781dbbc2450c73ed/sw/snitch/tests/multicast_benchmark.c",
+      "git_blob": "cc09c50fe2b231b1d4cc1c9a76b12d6b0bb3cd09",
+      "sha256": "124ae9f0a954fa4dc7969055eca7dd702540389f708c04fdc80883546b7305a9"
+    },
+    "experiments.py": {
+      "url": "https://github.com/pulp-platform/picobello/blob/cacdc3ad4a3a638e68d03090781dbbc2450c73ed/experiments/multicast/experiments.py",
+      "git_blob": "6ed5b249901d7ed5905943683770233884baee4d",
+      "sha256": "925a8ab5643e0f926795a3ca83b04501fb2c94d5f49c8e71803451f998729aa8"
+    },
+    "README.md": {
+      "url": "https://github.com/pulp-platform/picobello/blob/cacdc3ad4a3a638e68d03090781dbbc2450c73ed/experiments/multicast/README.md",
+      "git_blob": "5e615395e23e9d9682545b5b154625e36751fb15",
+      "sha256": "e6a6603633d21140024a67269e551aadbaf198ea46a7c2cd782ce35f2253eb86"
+    },
+    "LICENSE": {
+      "url": "https://github.com/pulp-platform/picobello/blob/cacdc3ad4a3a638e68d03090781dbbc2450c73ed/LICENSE",
+      "git_blob": "18e4f67692a9203423564bcd81b8c6c85140e747",
+      "sha256": "6527a46225891b976fa94f634f6ee0cd22e1c7129d6f11c5c98c997627625fc7"
+    }
+  }
+}

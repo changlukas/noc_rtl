@@ -1,7 +1,17 @@
 class ni_pattern_sequence extends tvip_axi_master_sequence_base;
     tvip_axi_master_item writes[$], reads[$];
+
+    typedef tvip_axi_master_item completion_queue[$];
+    completion_queue dependencies[int];
+    tvip_axi_address forward_address[int];
+    tvip_axi_memory forwarding_memory;
     bit concurrent_rw;
     int first_response_delay = 0;
+    int read_outstanding_limit = 0;
+    int write_outstanding_limit = 0;
+    real injection_ratio = 0;
+    bit zero_load;
+    static semaphore zero_load_lock = new(1);
 
     function new(string name = "ni_pattern_sequence");
         super.new(name);
@@ -74,18 +84,56 @@ class ni_pattern_sequence extends tvip_axi_master_sequence_base;
 
     task send_requests(ref tvip_axi_master_item items[$]);
         uvm_event phase_start;
+        int outstanding_limit;
+        outstanding_limit = 0;
         if (items.size() != 0) begin
+            outstanding_limit = items[0].is_read() ? read_outstanding_limit : write_outstanding_limit;
             phase_start = uvm_event_pool::get_global(items[0].is_read() ? "ni_read_start" : "ni_write_start");
             phase_start.trigger();
         end
         foreach (items[i]) begin
+
+            if (!items[i].is_read()) begin
+                if (dependencies.exists(i)) begin
+                    for (int d = 0; d < dependencies[i].size(); d++)
+                        dependencies[i][d].wait_for_done();
+                end
+                if (forward_address.exists(i)) begin
+                    if (forwarding_memory == null || items[i].burst_size != 64)
+                        `uvm_fatal("FORWARD", "Missing full-width forwarding memory")
+                    foreach (items[i].data[beat]) begin
+                        tvip_axi_data data;
+                        for (int b = 0; b < 64; b++) begin
+                            if (!forwarding_memory.exists(1, forward_address[i]+64*beat+b, 0))
+                                `uvm_fatal("FORWARD", "Forwarding data is not yet available")
+                        end
+                        data = forwarding_memory.get(64, forward_address[i], beat);
+                        if (data !== items[i].data[beat])
+                            `uvm_fatal("FORWARD", "Received payload differs from forwarding input")
+                        items[i].data[beat] = data;
+                    end
+                end
+            end
+            if (outstanding_limit > 0 && i >= outstanding_limit)
+                items[i-outstanding_limit].wait_for_done();
             items[i].set_context(configuration, status);
             if (!items[i].randomize(start_delay, write_data_delay, response_ready_delay))
                 `uvm_fatal("PATTERN", "Invalid pattern or delay configuration")
+            if (injection_ratio > 0) begin
+                // The reference driver retries on each cycle after a failed random draw.
+                items[i].start_delay = 0;
+                while ($urandom_range(0, 100) >= injection_ratio * 100)
+                    items[i].start_delay++;
+            end
             if (i == 0 && first_response_delay != 0)
                 items[i].response_ready_delay[0] = first_response_delay;
+            if (zero_load) zero_load_lock.get(1);
             start_item(items[i]);
             finish_item(items[i]);
+            if (zero_load) begin
+                items[i].wait_for_done();
+                zero_load_lock.put(1);
+            end
             if (!items[i].is_read() && items[i].awuser[9:8] == 2'b01)
                 items[i].wait_for_done();
         end

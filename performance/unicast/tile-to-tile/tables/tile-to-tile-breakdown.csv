@@ -1,0 +1,12 @@
+lane,component,label,start_ns,end_ns,cycles,begin_event,end_event
+Source AXI,AXI/device,AR,7.5,8.5,1.0,source_ar_valid,source_ar
+NI 0,NI,AR->REQ,8.5,10.5,2.0,source_ar,source_req
+Router 0,Router,REQ,10.5,11.5,1.0,source_req,r0_req_east
+Router 1,Router,REQ,11.5,12.5,1.0,r0_req_east,target_req
+NI 1,NI,REQ->AR,12.5,14.5,2.0,target_req,target_ar
+Device AXI,AXI/device,AR->R,14.5,15.5,1.0,target_ar,target_r
+NI 1,NI,R->RSP,15.5,17.5,2.0,target_r,target_rsp
+Router 1,Router,RSP,17.5,18.5,1.0,target_rsp,r1_rsp_west
+Router 0,Router,RSP,18.5,19.5,1.0,r1_rsp_west,source_rsp
+NI 0,NI,RSP→R,19.5,20.5,1.0,source_rsp,source_r_valid
+Source AXI,AXI/device,R,20.5,21.5,1.0,source_r_valid,source_r

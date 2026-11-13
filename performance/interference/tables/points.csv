@@ -1,0 +1,6 @@
+case,kind,direction,burst_bytes,roi_start_ns,roi_end_ns,cohort_last_b_ns,small_samples,small_latency_ns,bulk_samples,bulk_latency_ns
+cross_split_uni_128,split,uni,128,71.5,583.5,629.5,512,31.0,684,47.0
+cross_split_uni_64,split,uni,64,71.5,583.5,612.5,512,31.0,1024,31.0
+cross_split_uni_1024,split,uni,1024,71.5,583.5,848.5,512,31.0,120,271.0
+cross_split_uni_512,split,uni,512,71.5,583.5,725.5,512,31.0,228,143.0
+cross_split_uni_256,split,uni,256,71.5,583.5,657.5,512,31.0,408,79.0

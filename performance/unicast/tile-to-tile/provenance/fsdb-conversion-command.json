@@ -1,0 +1,10 @@
+[
+  "fsdb2vcd",
+  "/home/mingwei/noc_rtl/performance/unicast/results/20261110T104909_429508015_perf_ctrl_read_neighbor_s1/runs/perf_ctrl_read_neighbor/perf_ctrl_read_neighbor.fsdb",
+  "-o",
+  "/home/mingwei/noc_rtl/performance/unicast/results/20261110T104909_429508015_perf_ctrl_read_neighbor_s1/runs/perf_ctrl_read_neighbor/interfaces.vcd",
+  "-s",
+  "/tb_top",
+  "-level",
+  "3"
+]

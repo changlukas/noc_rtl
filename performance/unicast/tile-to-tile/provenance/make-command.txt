@@ -1,0 +1,1 @@
+make -C sim perf CASE=perf_ctrl_read_neighbor SINGLE=/home/mingwei/noc_rtl/build/regression/perf28_initial_20261110

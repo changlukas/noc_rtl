@@ -1,0 +1,162 @@
+[
+  {
+    "space": "memory",
+    "base": 0,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 4294967296,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 8589934592,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 12884901888,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 17179869184,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 21474836480,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 25769803776,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 30064771072,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 34359738368,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 38654705664,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 42949672960,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 47244640256,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 51539607552,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 55834574848,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 60129542144,
+    "size": 33554432
+  },
+  {
+    "space": "memory",
+    "base": 64424509440,
+    "size": 33554432
+  },
+  {
+    "space": "config",
+    "base": 33554432,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 4328521728,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 8623489024,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 12918456320,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 17213423616,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 21508390912,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 25803358208,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 30098325504,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 34393292800,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 38688260096,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 42983227392,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 47278194688,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 51573161984,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 55868129280,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 60163096576,
+    "size": 4096
+  },
+  {
+    "space": "config",
+    "base": 64458063872,
+    "size": 4096
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "system": "flooccamy",
+  "experiments": [
+    // {
+    //   "benchmark": "bench_bw_to_hbm_single_channel",
+    //   "direction": ["read", "write"],
+    //   "num_trans": [1],
+    //   "num_iters": 11,
+    //   "trans_size": [1024, 2048, 4096, 8192, 16384, 32768, 65536]
+    // },
+    // {
+    //   "benchmark": "bench_bw_to_hbm_all_channel",
+    //   "direction": ["read", "write"],
+    //   "num_trans": [32],
+    //   "num_iters": 11,
+    //   "trans_size": [1024]
+    // }
+    {
+      "benchmark": "bench_latency_to_tile_zero_load",
+      "direction": ["read"],
+      "num_trans": [32], // not used
+      "num_iters": 100,
+      "trans_size": [1024], // not used
+    },
+    {
+      "benchmark": "bench_latency_to_tile_full_load",
+      "direction": ["read"],
+      "num_trans": [32], // not used
+      "num_iters": 100,
+      "trans_size": [1024], // not used
+    },
+    // {
+    //   "benchmark": "bench_bw_from_hbm_zero_load",
+    //   "direction": ["read"],
+    //   "num_trans": [32],
+    //   "num_iters": 11,
+    //   "trans_size": [1024],
+    // },
+    // {
+    //   "benchmark": "bench_bw_from_hbm_full_load",
+    //   "direction": ["read"],
+    //   "num_trans": [128],
+    //   "num_iters": 2,
+    //   "trans_size": [1024],
+    // }
+  ]
+}

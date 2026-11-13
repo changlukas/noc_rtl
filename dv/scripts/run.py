@@ -74,6 +74,8 @@ def read_performance(path, clock_ps):
                 raise ValueError("R before AR")
             if pending["beats"] > request["len"]:
                 raise ValueError("Too many R beats")
+            if pending["beats"] == 0:
+                pending["first_response_ps"] = response["time_ps"]
             pending["useful"] += read_beat(request, pending["beats"])[1]
             pending["beats"] += 1
             if bool(response["last"]) != (pending["beats"] == request["len"] + 1):
@@ -82,7 +84,7 @@ def read_performance(path, clock_ps):
                 raise ValueError("Non-OKAY R cannot be a performance point")
             if response["last"]:
                 transactions.append(perf_transaction(request, response, "read", pending["useful"],
-                                                    request["time_ps"]))
+                                                    request["time_ps"], pending["first_response_ps"]))
                 reads[response["id"]].popleft()
         if any(reads.values()):
             raise ValueError("Uncompleted read")
@@ -107,6 +109,7 @@ def read_performance(path, clock_ps):
             summary["directions"][direction] = dict(
                 count=len(rows), useful_bytes=useful,
                 mean_latency_cycles=sum(t["latency_ps"] for t in rows) / len(rows) / clock_ps,
+                mean_first_response_latency_cycles=sum(t["first_response_latency_ps"] for t in rows) / len(rows) / clock_ps,
                 bytes_per_cycle=useful * clock_ps / (end - start))
     # Device events remain raw if other sources' setup/readback overlaps this job.
     excluded = [t for t in transactions if t["role"] == "source" and t["phase"] != 1]
@@ -134,7 +137,64 @@ def read_performance(path, clock_ps):
                           if e["channel"] == "W" and start <= e["time_ps"] <= end),
                 read=sum(size for time, size in read_bytes_by_time if start <= time <= end))
         summary["device_window_bytes"] = counters
+    summary["source_tiles"], summary["source_tile_average"] = tile_performance(transactions, groups, clock_ps)
     return transactions, summary
+
+
+def tile_performance(transactions, groups, clock_ps):
+    """Keep job intervals separate from reset-enabled sample counts per source."""
+    tiles = []
+    for (role, endpoint), events in sorted(groups.items()):
+        rows = [t for t in transactions if t["role"] == role and t["endpoint"] == endpoint and t["phase"] == 1]
+        if role != "source" or not rows:
+            continue
+        start = min(t["first_transfer_ps"] for t in rows)
+        end = max(t["completion_ps"] for t in rows)
+        enables = [e["time_ps"] for e in events if e["channel"] == "ENABLE"]
+        dones = [e["time_ps"] for e in events if e["channel"] == "SOURCE_DONE"]
+        monitor = None
+        status = "unavailable: legacy trace has no ENABLE/SOURCE_DONE markers"
+        if enables or dones:
+            if len(enables) != 1 or len(dones) != 1 or enables[0] > start or dones[0] < end:
+                raise ValueError("Invalid or incomplete source monitor window")
+            excluded = any(t["role"] == "source" and t["endpoint"] == endpoint and t["phase"] != 1
+                           and t["first_transfer_ps"] <= dones[0] and t["completion_ps"] >= enables[0]
+                           for t in transactions)
+            if excluded:
+                status = "unavailable: initialization/readback inside reset-to-done window"
+            else:
+                cycles = (dones[0] - enables[0]) // clock_ps + 1
+                monitor = dict(first_enabled_sample_ps=enables[0], source_done_ps=dones[0], cycles=cycles,
+                               definition="enabled rising-edge samples through source sequence completion, inclusive")
+                status = "available: native VIP sequence completion; paper experiment RTL revision unverified"
+        tile = dict(endpoint=endpoint, x=rows[0]["x"], y=rows[0]["y"], port=rows[0]["port"],
+                    job_window=dict(start_ps=start, end_ps=end), monitor_window=monitor,
+                    monitor_status=status, directions={})
+        for direction in ("read", "write"):
+            transfers = [t for t in rows if t["direction"] == direction]
+            if not transfers:
+                continue
+            useful = sum(t["useful_bytes"] for t in transfers)
+            full_width = all(t["size"] == 6 and t["useful_bytes"] == 64*t["beats"] for t in transfers)
+            tile["directions"][direction] = dict(
+                count=len(transfers), useful_bytes=useful, axi_beats=sum(t["beats"] for t in transfers),
+                mean_first_response_latency_cycles=sum(t["first_response_latency_ps"] for t in transfers) / len(transfers) / clock_ps,
+                mean_completion_latency_cycles=sum(t["latency_ps"] for t in transfers) / len(transfers) / clock_ps,
+                job_bytes_per_cycle=useful * clock_ps / (end - start) if end > start else None,
+                monitor_bytes_per_cycle=useful / monitor["cycles"] if monitor else None,
+                source_port_payload_peak_bytes_per_cycle=64 if full_width else None,
+                monitor_payload_utilization_percent=100 * useful / (64 * monitor["cycles"]) if monitor and full_width else None)
+        tiles.append(tile)
+    average = {}
+    for direction in ("read", "write"):
+        rows = [t["directions"][direction] for t in tiles if direction in t["directions"]]
+        if rows:
+            average[direction] = dict(active_source_tiles=len(rows), definition="unweighted arithmetic mean of active source tiles")
+            for key in ("mean_first_response_latency_cycles", "mean_completion_latency_cycles",
+                        "job_bytes_per_cycle", "monitor_bytes_per_cycle", "monitor_payload_utilization_percent"):
+                values = [t[key] for t in rows]
+                average[direction][key] = sum(values) / len(values) if all(v is not None for v in values) else None
+    return tiles, average
 
 
 def validate_burst(request):
@@ -153,15 +213,17 @@ def read_beat(request, index):
     return address, size - (request["addr"] % size) if index == 0 else size
 
 
-def perf_transaction(request, response, direction, useful, first):
+def perf_transaction(request, response, direction, useful, first, first_response=None):
     if response["resp"] != 0:
         raise ValueError("Non-OKAY response cannot be a performance point")
+    first_response = response["time_ps"] if first_response is None else first_response
     return dict(role=request["role"], endpoint=request["endpoint"],
                 x=request["x"], y=request["y"], port=request["port"],
                 phase=request["phase"], direction=direction, id=request["id"],
                 addr=request["addr"], beats=request["len"] + 1, size=request["size"],
                 user=request["user"], request_ps=request["time_ps"],
-                first_transfer_ps=first, completion_ps=response["time_ps"],
+                first_transfer_ps=first, first_response_ps=first_response,
+                first_response_latency_ps=first_response - request["time_ps"], completion_ps=response["time_ps"],
                 latency_ps=response["time_ps"] - request["time_ps"], useful_bytes=useful)
 
 
@@ -207,6 +269,7 @@ p.add_argument("--inputs", type=Path, required=True)
 p.add_argument("--stimulus", type=Path)
 p.add_argument("--campaign", type=Path, required=True)
 p.add_argument("--case", required=True)
+p.add_argument("--scenario", default="unicast", help="Performance scenario recorded in the result")
 p.add_argument("--report", required=True)
 p.add_argument("--mode", choices=("auto", "control", "data", "rand"), default="auto")
 p.add_argument("--wave", action="store_true")
@@ -219,7 +282,10 @@ p.add_argument("--coverage-name", help="Unique native coverage test name")
 p.add_argument("--backpressure", action="store_true")
 p.add_argument("--target", choices=("per_id", "context", "rob"), default="per_id")
 p.add_argument("--seed", type=int, default=1, help="Simulation seed; transaction seed is set during pattern generation")
+p.add_argument("--timeout-seconds", type=int, default=180, help="Wall-clock simulation time limit")
 a = p.parse_args()
+if a.timeout_seconds < 1:
+    p.error("timeout-seconds must be positive")
 if a.perf and a.corrupt:
     p.error("Performance cannot use negative-test corruption mode")
 if a.perf:
@@ -260,13 +326,16 @@ report = Path(a.report).resolve()
 if a.perf:
     if report.parent.name != "runs":
         p.error("Performance --report must be <new campaign>/runs/<run ID>")
-    if report.parent.parent.exists():
+    try:
+        report.parent.parent.mkdir(parents=True)
+    except FileExistsError:
         p.error("Performance campaign already exists; use a new result directory")
 report.mkdir(parents=True, exist_ok=True)
 if a.perf:
     stim = preserve_performance(report, Path(a.binary), stim, a.campaign)
 args = [str(Path(a.binary).resolve()), "+stim_dir=" + str(stim.resolve())]
-args += [v for v in (stim / "schedule.txt").read_text().split() if not v.startswith("+seed=")]
+args += [v for line in (stim / "schedule.txt").read_text().splitlines()
+         for v in line.split("#", 1)[0].split() if not v.startswith("+seed=")]
 manifest = json.loads((stim / "manifest.json").read_text())
 if "acceptance" not in manifest or "files" not in manifest:
     p.error("Pattern manifest has no acceptance criteria or file list; regenerate patterns")
@@ -294,9 +363,9 @@ if a.perf:
 if a.corrupt:
     args += ["+corrupt_rsp"]
 try:
-    r = subprocess.run(args, cwd=str(report.resolve()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+    r = subprocess.run(args, cwd=str(report.resolve()), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=a.timeout_seconds)
 except subprocess.TimeoutExpired as error:
-    r = subprocess.CompletedProcess(args, 124, (error.stdout or b"") + b"\nFatal: simulation timed out after 180 seconds\n")
+    r = subprocess.CompletedProcess(args, 124, (error.stdout or b"") + ("\nFatal: simulation timed out after %d seconds\n" % a.timeout_seconds).encode())
 log = r.stdout.decode(errors="replace")
 log_path = report / (a.case + ("_corrupt" if a.corrupt else "") + ".log")
 diagnostics = re.sub(r"Warning: [^\n]*\nMacro 'FFARN' is deprecated\. Use 'FF' instead\.\n", "", log)
@@ -361,7 +430,7 @@ print(log)
 # The binary may be shared by several stimulus directories.
 build_source = Path(a.binary).resolve().parent
 # Run provenance only. Functional coverage bins/results belong to VCS/URG.
-result = dict(case=a.case, mode=a.mode, target=a.target, backpressure=a.backpressure, seed=a.seed, passed=passed, command=args,
+result = dict(case=a.case, timeout_seconds=a.timeout_seconds, mode=a.mode, target=a.target, backpressure=a.backpressure, seed=a.seed, passed=passed, command=args,
               vdb=str(Path(a.binary).resolve()) + ".vdb",
               stimulus_seed=manifest["seed"], simulation_seed=a.seed,
               source_manifest_sha256=hashlib.sha256((build_source / "SHA256SUMS").read_bytes()).hexdigest(),
@@ -386,7 +455,7 @@ if a.perf:
 if a.perf:
     root = report.parent.parent
     (root / "campaign.json").write_text(json.dumps(dict(case=a.case, run_id=report.name,
-        scenario=root.parent.parent.name, status="passed" if passed else "failed",
+        scenario=a.scenario, status="passed" if passed else "failed",
         purpose="collector_smoke", publication_result=False, command=args,
         binary_sha256=result["binary_sha256"], source_manifest_sha256=result["source_manifest_sha256"],
         waveform=result["waveform"]), indent=2) + "\n")

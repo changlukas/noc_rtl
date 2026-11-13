@@ -1001,6 +1001,6602 @@
           15,
           12
         ]
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "perf_neighbor_read_2kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          32
+        ]
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "perf_neighbor_read_4kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "perf_neighbor_read_8kib",
+        "count": 2,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "perf_neighbor_read_16kib",
+        "count": 4,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "perf_neighbor_read_32kib",
+        "count": 8,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "name": "neighbor_0p01",
+        "mode": "control",
+        "count": 32,
+        "injection_ratio": 0.01,
+        "operation": "read",
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          1,
+          2,
+          3,
+          0,
+          5,
+          6,
+          7,
+          4,
+          9,
+          10,
+          11,
+          8,
+          13,
+          14,
+          15,
+          12
+        ]
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p01",
+        "name": "neighbor_0p1",
+        "injection_ratio": 0.1
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p01",
+        "name": "neighbor_0p5",
+        "injection_ratio": 0.5
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "bit_complement_1kib",
+        "source_destination_map": [
+          15,
+          14,
+          13,
+          12,
+          11,
+          10,
+          9,
+          8,
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1,
+          0
+        ]
+      },
+      {
+        "extends": "performance_unicast/bit_complement_1kib",
+        "name": "bit_complement_32kib",
+        "count": 8,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "bit_complement_0p1",
+        "source_destination_map": [
+          15,
+          14,
+          13,
+          12,
+          11,
+          10,
+          9,
+          8,
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1,
+          0
+        ]
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p5",
+        "injection_ratio": 0.5
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "transpose_1kib",
+        "source_destination_map": [
+          0,
+          4,
+          8,
+          12,
+          1,
+          5,
+          9,
+          13,
+          2,
+          6,
+          10,
+          14,
+          3,
+          7,
+          11,
+          15
+        ]
+      },
+      {
+        "extends": "performance_unicast/transpose_1kib",
+        "name": "transpose_32kib",
+        "count": 8,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "transpose_0p1",
+        "source_destination_map": [
+          0,
+          4,
+          8,
+          12,
+          1,
+          5,
+          9,
+          13,
+          2,
+          6,
+          10,
+          14,
+          3,
+          7,
+          11,
+          15
+        ]
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p5",
+        "injection_ratio": 0.5
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_0p001",
+        "injection_ratio": 0.001
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_0p05",
+        "injection_ratio": 0.05
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_0p15",
+        "injection_ratio": 0.15
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_0p2",
+        "injection_ratio": 0.2
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_0p25",
+        "injection_ratio": 0.25
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_0p3",
+        "injection_ratio": 0.3
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_0p4",
+        "injection_ratio": 0.4
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p001",
+        "injection_ratio": 0.001
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p01",
+        "injection_ratio": 0.01
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p05",
+        "injection_ratio": 0.05
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p15",
+        "injection_ratio": 0.15
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p2",
+        "injection_ratio": 0.2
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p25",
+        "injection_ratio": 0.25
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p3",
+        "injection_ratio": 0.3
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_0p4",
+        "injection_ratio": 0.4
+      },
+      {
+        "extends": "performance_unicast/bit_complement_1kib",
+        "name": "bit_complement_2kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          32
+        ]
+      },
+      {
+        "extends": "performance_unicast/bit_complement_1kib",
+        "name": "bit_complement_4kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/bit_complement_1kib",
+        "name": "bit_complement_8kib",
+        "count": 2,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/bit_complement_1kib",
+        "name": "bit_complement_16kib",
+        "count": 4,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p001",
+        "injection_ratio": 0.001
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p01",
+        "injection_ratio": 0.01
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p05",
+        "injection_ratio": 0.05
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p15",
+        "injection_ratio": 0.15
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p2",
+        "injection_ratio": 0.2
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p25",
+        "injection_ratio": 0.25
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p3",
+        "injection_ratio": 0.3
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_0p4",
+        "injection_ratio": 0.4
+      },
+      {
+        "extends": "performance_unicast/transpose_1kib",
+        "name": "transpose_2kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          32
+        ]
+      },
+      {
+        "extends": "performance_unicast/transpose_1kib",
+        "name": "transpose_4kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/transpose_1kib",
+        "name": "transpose_8kib",
+        "count": 2,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/transpose_1kib",
+        "name": "transpose_16kib",
+        "count": 4,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "neighbor_zero",
+        "injection_ratio": null,
+        "zero_load": true
+      },
+      {
+        "extends": "performance_unicast/bit_complement_0p1",
+        "name": "bit_complement_zero",
+        "injection_ratio": null,
+        "zero_load": true
+      },
+      {
+        "extends": "performance_unicast/transpose_0p1",
+        "name": "transpose_zero",
+        "injection_ratio": null,
+        "zero_load": true
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "uniform_1kib",
+        "source_destination_map": [
+          6,
+          0,
+          4,
+          0,
+          5,
+          4,
+          11,
+          3,
+          0,
+          7,
+          6,
+          10,
+          3,
+          11,
+          9,
+          2
+        ]
+      },
+      {
+        "extends": "performance_unicast/uniform_1kib",
+        "name": "uniform_2kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          32
+        ]
+      },
+      {
+        "extends": "performance_unicast/uniform_1kib",
+        "name": "uniform_4kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/uniform_1kib",
+        "name": "uniform_8kib",
+        "count": 2,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/uniform_1kib",
+        "name": "uniform_16kib",
+        "count": 4,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/uniform_1kib",
+        "name": "uniform_32kib",
+        "count": 8,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "uniform_0p1",
+        "source_destination_map": [
+          6,
+          0,
+          4,
+          0,
+          5,
+          4,
+          11,
+          3,
+          0,
+          7,
+          6,
+          10,
+          3,
+          11,
+          9,
+          2
+        ]
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p001",
+        "injection_ratio": 0.001
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p01",
+        "injection_ratio": 0.01
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p05",
+        "injection_ratio": 0.05
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p15",
+        "injection_ratio": 0.15
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p2",
+        "injection_ratio": 0.2
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p25",
+        "injection_ratio": 0.25
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p3",
+        "injection_ratio": 0.3
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p4",
+        "injection_ratio": 0.4
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_0p5",
+        "injection_ratio": 0.5
+      },
+      {
+        "extends": "performance_unicast/uniform_0p1",
+        "name": "uniform_zero",
+        "injection_ratio": null,
+        "zero_load": true
+      },
+      {
+        "extends": "performance_unicast/perf_neighbor_read_1kib",
+        "name": "shuffle_1kib",
+        "source_destination_map": [
+          0,
+          8,
+          1,
+          9,
+          2,
+          10,
+          3,
+          11,
+          4,
+          12,
+          5,
+          13,
+          6,
+          14,
+          7,
+          15
+        ]
+      },
+      {
+        "extends": "performance_unicast/shuffle_1kib",
+        "name": "shuffle_2kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          32
+        ]
+      },
+      {
+        "extends": "performance_unicast/shuffle_1kib",
+        "name": "shuffle_4kib",
+        "count": 1,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/shuffle_1kib",
+        "name": "shuffle_8kib",
+        "count": 2,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/shuffle_1kib",
+        "name": "shuffle_16kib",
+        "count": 4,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/shuffle_1kib",
+        "name": "shuffle_32kib",
+        "count": 8,
+        "sequence": "contiguous",
+        "burst_lengths": [
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "extends": "performance_unicast/neighbor_0p1",
+        "name": "shuffle_0p1",
+        "source_destination_map": [
+          0,
+          8,
+          1,
+          9,
+          2,
+          10,
+          3,
+          11,
+          4,
+          12,
+          5,
+          13,
+          6,
+          14,
+          7,
+          15
+        ]
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p001",
+        "injection_ratio": 0.001
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p01",
+        "injection_ratio": 0.01
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p05",
+        "injection_ratio": 0.05
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p15",
+        "injection_ratio": 0.15
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p2",
+        "injection_ratio": 0.2
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p25",
+        "injection_ratio": 0.25
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p3",
+        "injection_ratio": 0.3
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p4",
+        "injection_ratio": 0.4
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_0p5",
+        "injection_ratio": 0.5
+      },
+      {
+        "extends": "performance_unicast/shuffle_0p1",
+        "name": "shuffle_zero",
+        "injection_ratio": null,
+        "zero_load": true
+      }
+    ],
+    "performance_interference": [
+      {
+        "name": "perf_narrow_uni_0",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_uni_2",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 2,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_uni_4",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 4,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_uni_8",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 8,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_uni_16",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_uni_32",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 32,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_bi_0",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          2
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_bi_2",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 2,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 2,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_bi_4",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 4,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 4,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_bi_8",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 8,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 8,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_bi_16",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_narrow_bi_32",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 100,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 32,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 32,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_uni_0",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_uni_2",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 2,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_uni_4",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 4,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_uni_8",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 8,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_uni_16",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_uni_32",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 32,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_uni_64",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 64,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_bi_0",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          1,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_bi_2",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 2,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 2,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_bi_4",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 4,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 4,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_bi_8",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 8,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 8,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_bi_16",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_bi_32",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 32,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 32,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "perf_wide_bi_64",
+        "mode": "data",
+        "operation": "read",
+        "count": 16,
+        "sources": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "source_destination_map": [
+          2,
+          3,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "control",
+            "count": 64,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "2": {
+            "mode": "control",
+            "count": 64,
+            "sequence": "contiguous",
+            "burst_beats": 1
+          },
+          "1": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          },
+          "3": {
+            "mode": "data",
+            "count": 16,
+            "sequence": "contiguous",
+            "burst_beats": 16
+          }
+        },
+        "read_outstanding_limit": 16
+      }
+    ],
+    "performance_cross": [
+      {
+        "name": "cross_split_uni_64",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_uni_128",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_uni_256",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_uni_512",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_uni_1024",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_uni_64",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_uni_128",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_uni_256",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_uni_512",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_uni_1024",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_uni_64",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_uni_128",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_uni_256",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_uni_512",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_uni_1024",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          4,
+          8,
+          12
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          3,
+          7,
+          5,
+          6,
+          7,
+          11,
+          9,
+          10,
+          11,
+          15,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_narrow_split_uni",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          1,
+          2
+        ],
+        "source_destination_map": [
+          0,
+          13,
+          14,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_narrow_dat_uni",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          1,
+          2
+        ],
+        "source_destination_map": [
+          0,
+          13,
+          14,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_overrides": {
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_bi_64",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_bi_128",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_bi_256",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_bi_512",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_split_bi_1024",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_bi_64",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_bi_128",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_bi_256",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_bi_512",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_dat_bi_1024",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          13,
+          14,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          1,
+          2,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_bi_64",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          13,
+          14,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_bi_128",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          13,
+          14,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 342,
+            "sequence": "contiguous",
+            "burst_beats": 2,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_bi_256",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          13,
+          14,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 205,
+            "sequence": "contiguous",
+            "burst_beats": 4,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_bi_512",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          13,
+          14,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 114,
+            "sequence": "contiguous",
+            "burst_beats": 8,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_data_bi_1024",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          0,
+          3,
+          4,
+          7,
+          8,
+          11,
+          12,
+          15
+        ],
+        "source_destination_map": [
+          3,
+          1,
+          2,
+          0,
+          7,
+          5,
+          6,
+          4,
+          11,
+          9,
+          10,
+          8,
+          15,
+          13,
+          14,
+          12
+        ],
+        "source_overrides": {
+          "0": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "4": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "8": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "12": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "3": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "7": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "11": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          },
+          "15": {
+            "mode": "data",
+            "count": 61,
+            "sequence": "contiguous",
+            "burst_beats": 16,
+            "beat_bytes": 64
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_narrow_split_bi",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          1,
+          2,
+          13,
+          14
+        ],
+        "source_destination_map": [
+          0,
+          13,
+          14,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          1,
+          2,
+          15
+        ],
+        "source_overrides": {
+          "1": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "control",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      },
+      {
+        "name": "cross_narrow_dat_bi",
+        "mode": "data",
+        "operation": "write",
+        "count": 1,
+        "sources": [
+          1,
+          2,
+          13,
+          14
+        ],
+        "source_destination_map": [
+          0,
+          13,
+          14,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          1,
+          2,
+          15
+        ],
+        "source_overrides": {
+          "1": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "2": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "13": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          },
+          "14": {
+            "mode": "data",
+            "count": 512,
+            "sequence": "contiguous",
+            "burst_beats": 1,
+            "beat_bytes": 8,
+            "address_span_bytes": 256
+          }
+        },
+        "write_outstanding_limit": 16
+      }
+    ],
+    "performance_boundary": [
+      {
+        "name": "boundary_memory_check",
+        "mode": "data",
+        "operation": "read",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "0": {
+            "address_offset": 0
+          },
+          "1": {
+            "address_offset": 131072
+          },
+          "2": {
+            "address_offset": 262144
+          },
+          "3": {
+            "address_offset": 393216
+          },
+          "4": {
+            "address_offset": 0
+          },
+          "5": {
+            "address_offset": 131072
+          },
+          "6": {
+            "address_offset": 262144
+          },
+          "7": {
+            "address_offset": 393216
+          },
+          "8": {
+            "address_offset": 0
+          },
+          "9": {
+            "address_offset": 131072
+          },
+          "10": {
+            "address_offset": 262144
+          },
+          "11": {
+            "address_offset": 393216
+          },
+          "12": {
+            "address_offset": 0
+          },
+          "13": {
+            "address_offset": 131072
+          },
+          "14": {
+            "address_offset": 262144
+          },
+          "15": {
+            "address_offset": 393216
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_narrow_check",
+        "mode": "control",
+        "operation": "read",
+        "count": 1,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1
+      },
+      {
+        "name": "boundary_read_zero_0",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          0
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "0": {
+            "address_offset": 0
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_1",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          1
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "1": {
+            "address_offset": 131072
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_2",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          2
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "2": {
+            "address_offset": 262144
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_3",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          3
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "3": {
+            "address_offset": 393216
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_4",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          4
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "4": {
+            "address_offset": 0
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_5",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          5
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "5": {
+            "address_offset": 131072
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_6",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          6
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "6": {
+            "address_offset": 262144
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_7",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          7
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "7": {
+            "address_offset": 393216
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_8",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          8
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "8": {
+            "address_offset": 0
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_9",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          9
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "9": {
+            "address_offset": 131072
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_10",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          10
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "10": {
+            "address_offset": 262144
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_11",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          11
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "11": {
+            "address_offset": 393216
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_12",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          12
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "12": {
+            "address_offset": 0
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_13",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          13
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "13": {
+            "address_offset": 131072
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_14",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          14
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "14": {
+            "address_offset": 262144
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_zero_15",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          15
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "15": {
+            "address_offset": 393216
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_read_full",
+        "mode": "data",
+        "operation": "read",
+        "count": 32,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "source_destination_map": [
+          16,
+          16,
+          16,
+          16,
+          17,
+          17,
+          17,
+          17,
+          18,
+          18,
+          18,
+          18,
+          19,
+          19,
+          19,
+          19,
+          16,
+          17,
+          18,
+          19
+        ],
+        "source_overrides": {
+          "0": {
+            "address_offset": 0
+          },
+          "1": {
+            "address_offset": 131072
+          },
+          "2": {
+            "address_offset": 262144
+          },
+          "3": {
+            "address_offset": 393216
+          },
+          "4": {
+            "address_offset": 0
+          },
+          "5": {
+            "address_offset": 131072
+          },
+          "6": {
+            "address_offset": 262144
+          },
+          "7": {
+            "address_offset": 393216
+          },
+          "8": {
+            "address_offset": 0
+          },
+          "9": {
+            "address_offset": 131072
+          },
+          "10": {
+            "address_offset": 262144
+          },
+          "11": {
+            "address_offset": 393216
+          },
+          "12": {
+            "address_offset": 0
+          },
+          "13": {
+            "address_offset": 131072
+          },
+          "14": {
+            "address_offset": 262144
+          },
+          "15": {
+            "address_offset": 393216
+          }
+        },
+        "sequence": "contiguous",
+        "burst_beats": 64,
+        "read_outstanding_limit": 16
+      },
+      {
+        "name": "boundary_narrow_zero_0",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "0": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_1",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          1
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "1": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_2",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          2
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "2": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_3",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          3
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "3": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_4",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          4
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "4": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_5",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          5
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "5": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_6",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          6
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "6": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_7",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          7
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "7": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_8",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          8
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "8": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_9",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          9
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "9": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_10",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          10
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "10": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_11",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          11
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "11": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_12",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          12
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "12": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_13",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          13
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "13": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_zero_14",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          14
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "14": {
+            "address_span_bytes": 256
+          }
+        }
+      },
+      {
+        "name": "boundary_narrow_full",
+        "mode": "control",
+        "operation": "read",
+        "count": 100,
+        "sources": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ],
+        "source_destination_map": [
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "read_outstanding_limit": 1,
+        "sequence": "contiguous",
+        "burst_beats": 1,
+        "source_overrides": {
+          "0": {
+            "address_span_bytes": 256
+          },
+          "1": {
+            "address_span_bytes": 256
+          },
+          "2": {
+            "address_span_bytes": 256
+          },
+          "3": {
+            "address_span_bytes": 256
+          },
+          "4": {
+            "address_span_bytes": 256
+          },
+          "5": {
+            "address_span_bytes": 256
+          },
+          "6": {
+            "address_span_bytes": 256
+          },
+          "7": {
+            "address_span_bytes": 256
+          },
+          "8": {
+            "address_span_bytes": 256
+          },
+          "9": {
+            "address_span_bytes": 256
+          },
+          "10": {
+            "address_span_bytes": 256
+          },
+          "11": {
+            "address_span_bytes": 256
+          },
+          "12": {
+            "address_span_bytes": 256
+          },
+          "13": {
+            "address_span_bytes": 256
+          },
+          "14": {
+            "address_span_bytes": 256
+          }
+        }
+      }
+    ],
+    "performance_multicast": [
+      {
+        "name": "row_seq_2kib_b1k",
+        "multicast_method": "seq",
+        "message_bytes": 2048,
+        "batch_bytes": 1024
+      },
+      {
+        "name": "row_seq_2kib_b2k",
+        "multicast_method": "seq",
+        "message_bytes": 2048,
+        "batch_bytes": 2048
+      },
+      {
+        "name": "row_tree_2kib",
+        "multicast_method": "tree",
+        "message_bytes": 2048
+      },
+      {
+        "name": "row_hw_2kib",
+        "multicast_method": "hw",
+        "message_bytes": 2048
       }
     ]
   }
