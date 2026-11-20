@@ -1,5 +1,27 @@
 # Boundary 量測場景與結果
 
+## #33 第一步：資料盤點（2026-11-16）
+
+| 資料 | Runs／FSDB | Source read transactions |
+|---|---:|---:|
+| Memory reads，zero-load | 16 | 512 |
+| Memory reads，full-load | 1 | 512 |
+| 固定 NI15 narrow reads，zero-load | 15 | 1500 |
+| 固定 NI15 narrow reads，full-load | 1 | 1500 |
+| 合計 | 33 | 4024 |
+
+本次重新核對 33 份 FSDB 的實際 SHA256、source manifest、交易數、payload bytes、source→device mapping 及時間順序，均一致。原 per-source latency、tile BW 與 memory aggregate BW 可由交易重算；62 列 source 與 20 列 device CSV 數值一致。
+
+本批 build 為 e3caa23aab2d。代表 source 快照的 148 個檔案均符合 manifest，其中 46 份 DUT RTL／define 與 mesh 三個 builds 相同。原 checker／drain 狀態取自各 run 記錄，本次執行離線盤點。
+
+Memory zero-load 仍允許單來源最多 16 outstanding；其平均延遲可能包含自身排隊。Tile BW 採自身 first AR→last RLAST 的 inclusive 窗口，memory aggregate 採共同窗口；latency 採 AR→RLAST、不加一。原 ns 數值依實際 1 ns clock 換算。
+
+代表 FSDB 的完整 hierarchy 包含 16 tiles 與 4 memory endpoints 的 AXI／NI 介面，以及 16 routers 的 FIFO、routing、仲裁 request/select/grant 與 REQ/RSP/DAT 訊號。逐交易配對與服務空檔／仲裁／背壓的動態歸因仍待校準。
+
+目前可直接離線解析 memory 8192／8214 cycles 及各 tile 完成時間。尚未發現必須因缺少訊號補跑的案例。
+
+逐 run 證據、mapping、版本、hash、檢查指令與訊號路徑見 [盤點表](tables/inventory.csv) 及 [inventory.json](provenance/inventory.json)。
+
 ## 1. 量測場景
 
 量測 memory reads 的平均 BW utilization，以及各來源到固定右上角 tile 的平均 narrow read latency。場景採用 zero-load 與 full-load 的定義 [1]：

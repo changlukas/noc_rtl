@@ -338,7 +338,11 @@ def narrow_curve(results, output):
 
 
 def sampled_handshakes(path, bindings, payloads=None):
-    """Read pre-edge handshakes and VALID assertions (bindings with no READY)."""
+    """Read pre-edge handshakes and VALID assertions (bindings with no READY).
+
+    Payload fields may be signal names or (name, lsb, width, required_mask).
+    Conditional slices avoid reading unknown bits from inactive FIFO heads.
+    """
     scope, signals, values = [], {}, {}
     events = {name: [] for name in bindings}
     payloads = payloads or {}
@@ -366,14 +370,16 @@ def sampled_handshakes(path, bindings, payloads=None):
         names = {name for clock_reset in domains.values() for name in clock_reset}
         names.update(signal for _, valid, ready, _ in bindings.values()
                      for signal in (valid, ready) if signal is not None)
-        names.update(signal for fields in payloads.values() for signal in fields)
+        names.update(field if isinstance(field, str) else field[0]
+                     for fields in payloads.values() for field in fields)
         wanted = {signals[name][0] for name in names}
 
-        def value(name, bit=None):
+        def value(name, bit=None, field_width=1):
             code, width = signals[name]
             raw = values.get(code, "x")
             if bit is not None:
-                raw = raw.rjust(width, raw[0] if raw[0].lower() in "xz" else "0")[-1-bit]
+                raw = raw.rjust(width, raw[0] if raw[0].lower() in "xz" else "0")
+                raw = raw[width-bit-field_width:width-bit]
             if any(c in raw.lower() for c in "xz"):
                 raise ValueError("Unknown sampled value: " + name)
             return int(raw, 2)
@@ -396,7 +402,10 @@ def sampled_handshakes(path, bindings, payloads=None):
                         if mask:
                             event = dict(time_ps=time, mask=mask)
                             if name in payloads:
-                                event["payload"] = [value(signal) for signal in payloads[name]]
+                                event["payload"] = [
+                                    value(field) if isinstance(field, str) else
+                                    (value(*field[:3]) if mask & field[3] else None)
+                                    for field in payloads[name]]
                             events[name].append(event)
             values.update(updates)
 
@@ -418,9 +427,1093 @@ def sampled_handshakes(path, bindings, payloads=None):
     return events
 
 
+
+
+
+
+def bandwidth_comparison(root):
+    """Compare saved 32 KiB source averages with an equal-rate capacity reference."""
+    from collections import Counter
+    root = root.resolve()
+    points = list(csv.DictReader((root/"tables/bandwidth.csv").open()))
+    rows, evidence = [], []
+    for pattern in TRAFFIC:
+        point, = [r for r in points if r["pattern"]==pattern and int(r["transfer_bytes"])==32768]
+        result = root/point["root"]
+        run, = [r for r in (result/"runs").iterdir() if r.is_dir()]
+        record_path = run/(run.name+".run.json")
+        record = json.loads(record_path.read_text())
+        summary_path = result/"tables/summary.json"
+        summary = json.loads(summary_path.read_text())
+        saved_pattern, config = traffic_case(result,run.name)
+        wave = run/(run.name+".fsdb")
+        if (saved_pattern != pattern or digest(wave) != point["waveform_sha256"] or
+                digest(wave) != record["waveform"]["sha256"] or
+                digest(summary_path) != point["summary_sha256"] or summary != record["performance"]):
+            raise ValueError("Original measured case changed")
+        if record["clock"] != dict(axi_period_ps=1000,noc_period_ps=1000,noc_phase_ps=0):
+            raise ValueError("Expected the original aligned 1 GHz platform")
+        tiles = summary["source_tiles"]
+        if len(tiles)!=16 or {r["endpoint"] for r in tiles}!=set(range(16)):
+            raise ValueError("Expected all sixteen source averages, including local accesses")
+        utils=[]
+        for tile in tiles:
+            window=tile["monitor_window"]
+            cycles=(window["source_done_ps"]-window["first_enabled_sample_ps"])//1000+1
+            measured=tile["directions"]["read"]
+            if measured["useful_bytes"]!=32768 or cycles!=window["cycles"]:
+                raise ValueError("Per-source workload/window differs")
+            util=100*32768/(64*cycles)
+            if abs(util-measured["monitor_payload_utilization_percent"])>1e-9:
+                raise ValueError("Per-source utilization differs")
+            utils.append(util)
+        mean=sum(utils)/16
+        if abs(mean-float(point["mean_utilization_percent"]))>1e-9:
+            raise ValueError("Original averaged bandwidth differs")
+        links, injection, ejection = Counter(), Counter(), Counter()
+        paths=[]
+        mapping=config["source_destination_map"]
+        for source,target in enumerate(mapping):
+            node=target
+            route=[node]
+            injection[target]+=1
+            ejection[source]+=1
+            while node%4 != source%4:
+                other=node+(1 if node%4<source%4 else -1)
+                links[(node,other)]+=1
+                node=other
+                route.append(node)
+            while node//4 != source//4:
+                other=node+(4 if node//4<source//4 else -4)
+                links[(node,other)]+=1
+                node=other
+                route.append(node)
+            paths.append(dict(source=source,target=target,dat_nodes=route))
+        inter=max(links.values(),default=0)
+        inj=max(injection.values())
+        eject=max(ejection.values())
+        maximum=max(inter,inj,eject)
+        rows.append(dict(pattern=pattern,transfer_bytes=32768,
+            max_inter_router_flows=inter,max_ni_injection_flows=inj,max_ni_ejection_flows=eject,
+            max_channel_load=maximum,local_accesses=sum(s==d for s,d in enumerate(mapping)),
+            equal_rate_reference_percent=100/maximum,measured_percent=mean))
+        evidence.append(dict(pattern=pattern,result=point["root"],case=run.name,
+            command=record["command"],clock=record["clock"],seed=record["seed"],
+            run_record_sha256=digest(record_path),summary_sha256=digest(summary_path),
+            fsdb_sha256=digest(wave),source_manifest_sha256=point["source_manifest_sha256"],
+            binary_sha256=point["binary_sha256"],config_sha256=digest(result/"provenance/config.json"),
+            mapping=mapping,dat_paths=paths,
+            inter_router_loads=[dict(start=a,end=b,flows=n) for (a,b),n in sorted(links.items())],
+            ni_injection_loads=dict(injection),ni_ejection_loads=dict(ejection)))
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig,ax=plt.subplots(figsize=(9.2,4.8))
+    centers=list(range(len(rows)))
+    width=.36
+    for shift,field,label,color in (
+        (-width/2,"equal_rate_reference_percent","Equal-rate reference","#7B3294"),
+        (width/2,"measured_percent","Measured (32 KiB/source)","#009E73")):
+        bars=ax.bar([x+shift for x in centers],[r[field] for r in rows],width,
+                    color=color,label=label,zorder=3)
+        for bar,row in zip(bars,rows):
+            value=row[field]
+            ax.text(bar.get_x()+bar.get_width()/2,value+1.2,
+                    "{:.2f}".format(value).rstrip("0").rstrip("."),
+                    ha="center",va="bottom",fontsize=8)
+    ax.set(xticks=centers,xticklabels=[TRAFFIC[r["pattern"]][0] for r in rows],
+           ylabel="Avg. BW Util [%]",ylim=(0,108),yticks=(0,25,50,75,100))
+    ax.grid(axis="y",color="#DDDDDD",linestyle="--",linewidth=.7)
+    ax.set_axisbelow(True)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.legend(loc="upper center",bbox_to_anchor=(.5,1.13),ncol=2,frameon=False,fontsize=9)
+    fig.tight_layout()
+    outputs=[]
+    for suffix in ("png","svg"):
+        p=root/"figures"/("bandwidth-comparison."+suffix)
+        fig.savefig(str(p),dpi=200)
+        outputs.append(p)
+    plt.close(fig)
+    p=root/"tables/bandwidth-comparison.csv"
+    with p.open("w",newline="") as stream:
+        writer=csv.DictWriter(stream,fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    outputs.append(p)
+    snapshot=root/"provenance/bandwidth-comparison-performance.py"
+    snapshot.write_bytes(Path(__file__).read_bytes())
+    outputs.append(snapshot)
+    proof=dict(
+        command=["python3","-B","-c",
+                 "from pathlib import Path; from performance import bandwidth_comparison; bandwidth_comparison(Path('performance/unicast/mesh-traffic'))"],
+        script_sha256=digest(snapshot),
+        reference_figure="https://chatgpt.com/s/w_6afc1d796fb88191b6fbf6ae2af9fb20",
+        input_table_sha256=digest(root/"tables/bandwidth.csv"),
+        reference_formula="100 / max channel flow count; independent device-to-source XY paths; "
+                          "one 64 B flit/cycle on each inter-router and local NI injection/ejection channel",
+        reference_assumption="Every source has the same persistent achieved rate; excludes pipeline/queuing costs",
+        measured_formula="mean_i(100*32768/(64*inclusive_ENABLE_to_SOURCE_DONE_cycles_i)), all 16 sources",
+        interpretation="Equal-rate reference is not an upper bound on the measured finite-batch mean of "
+                       "per-source own-window rates. Values above the reference do not violate channel capacity.",
+        cases=evidence,outputs={str(p.relative_to(root)):digest(p) for p in outputs})
+    (root/"provenance/bandwidth-comparison.json").write_text(json.dumps(proof,indent=2)+"\n")
+    print("Saved five-pattern grouped bandwidth comparison",rows)
+
+
+def contention_example(root):
+    """Pair two DAT output paths with their actual per-cycle input requests."""
+    root = root.resolve()
+    proof_path = root/"provenance/contention.json"
+    original = json.loads(proof_path.read_text())
+    case = next(r for r in original["cases"] if r["pattern"] == "bit_complement")
+    if (digest(Path(case["fsdb"])) != case["fsdb_sha256"] or
+            digest(Path(case["vcd"])) != case["vcd_sha256"]):
+        raise ValueError("Example waveform differs from the measured case")
+    period = case["clock"]["noc_period_ps"]
+    if period != 1000:
+        raise ValueError("Expected the original 1 GHz case")
+    first, last = 50, 69
+    examples = [(4, 1, 8, ((7,8), (3,12))), (1, 2, 2, ((0,15), (1,14)))]
+    keys = ["DAT_{}_{}".format(node,port) for node,port,_,_ in examples]
+    bindings = {k: tuple(case["signal_bindings"][k]) for k in keys+["samples"]}
+    payloads = {k: case["header_slices"][k] for k in keys}
+    sampled = sampled_handshakes(Path(case["vcd"]),bindings,payloads)
+    begin = case["begin_ps"]
+    clocks = {(e["time_ps"]-begin)//period for e in sampled["samples"]}
+    if not set(range(first,last+1)).issubset(clocks):
+        raise ValueError("Missing sample clock edges in the selected interval")
+    rows = []
+    for node,port,other,flows in examples:
+        key = "DAT_{}_{}".format(node,port)
+        events = {(e["time_ps"]-begin)//period:e for e in sampled[key]}
+        for cycle in range(first,last+1):
+            e = events.get(cycle)
+            mask = e["mask"] if e else 0
+            active = []
+            if e:
+                for i in range(5):
+                    if mask & (1 << i):
+                        sx,sy,sp,dx,dy,dp,kind=e["payload"][i*7:(i+1)*7]
+                        if sp or dp or kind != 9:
+                            raise ValueError("Unexpected DAT endpoint or packet type")
+                        active.append((4*sy+sx,4*dy+dx))
+            if len(active) != len(set(active)) or set(active)-set(flows):
+                raise ValueError("Unexpected/ambiguous flow at the selected output")
+            rows.append(dict(router=node, output="North" if port==1 else "East",
+                next_router=other, cycle=cycle, time_ps=begin+cycle*period, request_mask=mask,
+                flow_a="{}>{}".format(*flows[0]), flow_a_request=int(flows[0] in active),
+                flow_b="{}>{}".format(*flows[1]), flow_b_request=int(flows[1] in active),
+                contention=int(bin(mask).count("1")>=2)))
+
+    routes = list(csv.DictReader((root/"tables/contention-routes.csv").open()))
+    colors = ("#1665A8","#E69F00")
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+    fig = plt.figure(figsize=(14,9.0))
+    grid = fig.add_gridspec(2,2,height_ratios=(3.8,1.25),hspace=.40,wspace=.34)
+    for col,(node,port,other,flows) in enumerate(examples):
+        ax = fig.add_subplot(grid[0,col])
+        for n in range(16):
+            x,y=n%4,n//4
+            if x<3:ax.plot([x,x+1],[y,y],color="#DDDDDD",lw=1,zorder=0)
+            if y<3:ax.plot([x,x],[y,y+1],color="#DDDDDD",lw=1,zorder=0)
+            ax.scatter(x,y,s=620,facecolor="#EEEEEE" if n==node else "white",
+                       edgecolor="#333333" if n==node else "#BBBBBB",
+                       linewidth=2 if n==node else 1,zorder=4)
+            ax.text(x,y,str(n),ha="center",va="center",fontsize=10,zorder=5)
+        # A broad gray stroke identifies the selected physical output. The
+        # flow arrows remain separate; gray does not assert contention.
+        ax.plot([node%4,other%4],[node//4,other//4],color="#B7B7B7",lw=9,zorder=1)
+        for j,(a,b) in enumerate(flows):
+            matches=[r for r in routes if r["pattern"]=="bit_complement" and r["network"]=="DAT"
+                     and int(r["flow_start"])==a and int(r["flow_end"])==b]
+            if len(matches)!=1:raise ValueError("Expected one saved XY path per flow")
+            nodes=[int(n) for n in matches[0]["router_path"].split(";")]
+            if (node,other) not in list(zip(nodes,nodes[1:])):
+                raise ValueError("Selected flow does not use the observed output")
+            offset=(j-.5)*.075
+            for n,m in zip(nodes,nodes[1:]):
+                x,y=n%4,n//4
+                xx,yy=m%4,m//4
+                if y==yy:y+=offset;yy+=offset
+                else:x+=offset;xx+=offset
+                ax.annotate("",xy=(xx,yy),xytext=(x,y),
+                    arrowprops=dict(arrowstyle="-|>",color=colors[j],lw=2.3,
+                                    shrinkA=14,shrinkB=14),zorder=3)
+        ax.set(title="Router{} to Router{} / DAT".format(node,other),aspect="equal",
+               xlim=(-.3,3.3),ylim=(-.3,3.3),xticks=[],yticks=[])
+        for spine in ax.spines.values():spine.set_visible(False)
+        ax.legend(handles=[Patch(color=c,label="Node{} to Node{}".format(a,b))
+                           for c,(a,b) in zip(colors,flows)],
+                  loc="upper center",bbox_to_anchor=(.5,-.025),ncol=2,frameon=False,fontsize=9)
+        ax=fig.add_subplot(grid[1,col])
+        own=[r for r in rows if r["router"]==node]
+        for lane,field,color in ((0,"flow_a_request",colors[0]),(1,"flow_b_request",colors[1]),
+                                 (2,"contention","#B2182B")):
+            ax.axhspan(lane-.34,lane+.34,color="#F1F1F1",zorder=0)
+            for r in own:
+                if r[field]:
+                    ax.barh(lane,.88,left=r["cycle"]-.44,height=.58,color=color,linewidth=0)
+        labels=["Node{} to Node{}".format(*flows[0]),"Node{} to Node{}".format(*flows[1]),"Both requests"]
+        ax.set(yticks=(0,1,2),yticklabels=labels,ylim=(2.6,-.6),
+               xticks=range(first,last+1),xlim=(first-.5,last+.5),
+               xlabel="Time from ENABLE [cycles]")
+        ax.tick_params(axis="x",labelsize=8,length=3)
+        ax.tick_params(axis="y",labelsize=9,length=0)
+        for label,color in zip(ax.get_yticklabels(),colors+("#B2182B",)):label.set_color(color)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+    fig.subplots_adjust(left=.105,right=.98,top=.95,bottom=.09)
+    outputs=[]
+    for suffix in ("png","svg"):
+        p=root/"figures"/("contention-example."+suffix)
+        fig.savefig(str(p),dpi=200)
+        outputs.append(p)
+    plt.close(fig)
+    p=root/"tables/contention-example.csv"
+    with p.open("w",newline="") as stream:
+        writer=csv.DictWriter(stream,fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    outputs.append(p)
+    snapshot=root/"provenance/contention-example-performance.py"
+    snapshot.write_bytes(Path(__file__).read_bytes())
+    outputs.append(snapshot)
+    evidence=dict(
+        command=["python3","-B","-c",
+                 "from pathlib import Path; from performance import contention_example; contention_example(Path('performance/unicast/mesh-traffic'))"],
+        script_sha256=digest(snapshot),
+        case={k:case[k] for k in ("pattern","result","case","clock","seed","run_record_sha256",
+                                  "source_manifest_sha256","binary_sha256","fsdb","fsdb_sha256",
+                                  "vcd","vcd_sha256","begin_ps")},
+        signal_bindings=bindings,header_slices=payloads,
+        first_cycle=first,last_cycle=last,
+        selection="Illustrative comparison: Router4 North interleaved requests vs Router1 East simultaneous requests",
+        meaning="Colored cells are active current input requests to the selected output, not accepted transfers; "
+                "red is popcount(req)>=2. Gray mesh stroke identifies the selected link.",
+        route_table_sha256=digest(root/"tables/contention-routes.csv"),
+        contention_proof_sha256=digest(proof_path),
+        outputs={str(p.relative_to(root)):digest(p) for p in outputs})
+    (root/"provenance/contention-example.json").write_text(json.dumps(evidence,indent=2)+"\n")
+    print("Saved two path/request examples:",len(rows),"samples; contention cycles",
+          {node:sum(r["contention"] for r in rows if r["router"]==node) for node,_,_,_ in examples})
+
+
+def contention_heatmap(root):
+    """Count cycles of simultaneous demand at each router output in 32 KiB reads."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    root = root.resolve()
+    repo = Path(__file__).resolve().parents[2]
+    points = list(csv.DictReader((root/"tables/bandwidth.csv").open()))
+    rows, cases = [], []
+    networks = ("REQ", "DAT")
+    patterns = ("neighbor", "bit_complement", "transpose", "uniform", "shuffle")
+    bindings = {"edges": ("noc", "tb_top.noc_rst_n", "tb_top.noc_rst_n", None)}
+    signals = ["tb_top.clk", "tb_top.axi_rst_n", "tb_top.noc_clk", "tb_top.noc_rst_n"]
+    for node in range(16):
+        for port in range(5):
+            base = "tb_top.i_router.gen_router[{}].i_router".format(node)
+            for net, suffix in (("REQ", ".i_req_router.gen_output[{}].req"),
+                                ("DAT", ".i_dat_router.gen_output[{}].gen_vc[1].req")):
+                signal = base + suffix.format(port)
+                signals.append(signal)
+                bindings[(net, node, port)] = ("noc", signal, signal, None)
+
+    for pattern in patterns:
+        point, = [r for r in points if r["pattern"] == pattern and int(r["transfer_bytes"]) == 32768]
+        result = root/point["root"]
+        run, = [path for path in (result/"runs").iterdir() if path.is_dir()]
+        record_path = run/(run.name+".run.json")
+        record = json.loads(record_path.read_text())
+        summary = result/"tables/summary.json"
+        wave = run/(run.name+".fsdb")
+        if (digest(summary) != point["summary_sha256"] or
+                digest(wave) != point["waveform_sha256"] or
+                point["waveform_sha256"] != record["waveform"]["sha256"]):
+            raise ValueError("Run inventory mismatch: "+pattern)
+        tiles = json.loads(summary.read_text())["source_tiles"]
+        begin, = {t["monitor_window"]["first_enabled_sample_ps"] for t in tiles}
+        end = max(t["monitor_window"]["source_done_ps"] for t in tiles)
+        period = record["clock"]["noc_period_ps"]
+        if len(tiles) != 16 or period != 1000:
+            raise ValueError("Unexpected mesh or clock")
+        expected = range(begin, end+1, period)
+        cache = repo/"build/contention"/run.name
+        cache.mkdir(exist_ok=True, parents=True)
+        vcd = cache/"heatmap.vcd"
+        cmd = ["fsdb2vcd", str(wave), "-o", str(vcd), "-bt", "0ps", "-et",
+               str(end+period)+"ps", "-keep_last_time", "-s"]
+        cmd.extend("/"+name.replace(".", "/") for name in signals)
+        with (cache/"heatmap-export.log").open("w") as log:
+            subprocess.check_call(cmd, stdout=log, stderr=subprocess.STDOUT)
+        samples = sampled_handshakes(vcd, bindings)
+        if [e["time_ps"] for e in samples["edges"] if begin <= e["time_ps"] <= end] != list(expected):
+            raise ValueError("Incomplete NoC clock coverage: "+pattern)
+        for net in networks:
+            for node in range(16):
+                hits = {e["time_ps"] for port in range(5) for e in samples[(net,node,port)]
+                        if e["time_ps"] in expected and bin(e["mask"]).count("1") >= 2}
+                rows.append(dict(pattern=pattern, network=net, router=node,
+                                 contention_cycles=len(hits), window_cycles=len(expected)))
+        cases.append(dict(pattern=pattern, record=str(record_path.relative_to(root)),
+                          record_sha256=digest(record_path), summary_sha256=digest(summary),
+                          source_manifest_sha256=point["source_manifest_sha256"], seed=record["seed"],
+                          fsdb_sha256=point["waveform_sha256"], export_command=cmd, vcd_sha256=digest(vcd)))
+        print(pattern, len(expected), flush=True)
+
+    counts = {(r["pattern"], r["network"], r["router"]): r["contention_cycles"] for r in rows}
+    for r in csv.DictReader((root/"tables/contention.csv").open()):
+        if counts[r["pattern"],r["network"],int(r["router"])] != int(r["contention_cycles"]):
+            raise ValueError("Count differs from prior per-router trace")
+    table = root/"tables/contention-32kib.csv"
+    with table.open("w", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=("pattern","network","router","contention_cycles","window_cycles"))
+        writer.writeheader()
+        writer.writerows(rows)
+    fig, axes = plt.subplots(2, 6, figsize=(16,6.2), constrained_layout=True,
+                             gridspec_kw={"width_ratios":[1,1,1,1,1,.06]})
+    for row, net in enumerate(networks):
+        peak = max(r["contention_cycles"] for r in rows if r["network"] == net)
+        for col, pattern in enumerate(patterns):
+            ax = axes[row,col]
+            values = [counts[pattern,net,node] for node in range(16)]
+            im = ax.imshow(np.reshape(values,(4,4)), origin="lower", cmap="YlOrRd", vmin=0, vmax=max(1,peak))
+            for node, value in enumerate(values):
+                ax.text(node%4,node//4,str(value),ha="center",va="center",
+                        color="white" if value > .6*peak else "#222222")
+            ax.set(xticks=range(4), yticks=range(4), xlabel="x")
+            if not col:
+                ax.set_ylabel(net+"   y")
+            if not row:
+                ax.set_title(TRAFFIC[pattern][0])
+        fig.colorbar(im,cax=axes[row,-1],label="Contention [cycles]")
+    outputs = [table]
+    for fmt in ("png","svg"):
+        out = root/"figures"/("contention-32kib."+fmt)
+        fig.savefig(str(out), dpi=200)
+        outputs.append(out)
+    plt.close(fig)
+    snapshot = root/"provenance/contention-32kib-performance.py"
+    snapshot.write_bytes(Path(__file__).read_bytes())
+    outputs.append(snapshot)
+    proof = dict(command="PYTHONPATH=build/perf_plot_deps/site-packages:dv/scripts MPLCONFIGDIR=build/perf_plot_deps/cache python3 -B -c \"from pathlib import Path; from performance import contention_heatmap; contention_heatmap(Path('performance/unicast/mesh-traffic'))\"",
+                 cases=cases, outputs={str(p.relative_to(root)):digest(p) for p in outputs})
+    (root/"provenance/contention-32kib.json").write_text(json.dumps(proof,indent=2)+"\n")
+
+
+def router_contention(root):
+    """Locate simultaneous output requests in two existing wide-read waveforms."""
+    from collections import defaultdict
+    root = root.resolve()
+    repo = Path(__file__).resolve().parents[2]
+    point_rows = list(csv.DictReader((root/"tables/bandwidth.csv").open()))
+    source_rows = list(csv.DictReader((root/"tables/bandwidth-sources.csv").open()))
+    points = [r for r in point_rows if r["pattern"] in ("neighbor", "bit_complement")
+              and int(r["transfer_bytes"]) == 32768]
+    if len(points) != 2:
+        raise ValueError("Expected Neighbor and Bit-complement at 32 KiB")
+    ports = ("Local", "North", "East", "South", "West")
+
+    def path(start, target):
+        result = []
+        node = start
+        while node % 4 != target % 4:
+            step = 1 if node % 4 < target % 4 else -1
+            result.append((node, 2 if step == 1 else 4))
+            node += step
+        while node // 4 != target // 4:
+            step = 4 if node // 4 < target // 4 else -4
+            result.append((node, 1 if step == 4 else 3))
+            node += step
+        return result+[(target, 0)]
+
+    node_rows, port_rows, event_rows, evidence = [], [], [], []
+    timelines, rois, pairings = {}, {}, {}
+    for point in sorted(points, key=lambda r: r["pattern"]):
+        result = root/point["root"]
+        run, = [p for p in (result/"runs").iterdir() if p.is_dir()]
+        record_path = run/(run.name+".run.json")
+        record = json.loads(record_path.read_text())
+        pattern, case = traffic_case(result, run.name)
+        pairings[pattern] = case["source_destination_map"]
+        if record["clock"] != dict(axi_period_ps=1000, noc_period_ps=1000, noc_phase_ps=0):
+            raise ValueError("Only aligned 1 GHz saved cases are supported")
+        window = [r for r in source_rows if r["pattern"] == pattern and int(r["transfer_bytes"]) == 32768]
+        if len(window) != 16 or len({r["enable_ps"] for r in window}) != 1:
+            raise ValueError("Expected sixteen sources with a common ENABLE")
+        begin = int(window[0]["enable_ps"])
+        end = max(int(r["done_ps"]) for r in window)
+        length = (end-begin)//1000+1
+        rois[pattern] = length
+        wave = run/(run.name+".fsdb")
+        wave_hash = digest(wave)
+        if wave_hash != point["waveform_sha256"] or wave_hash != record["waveform"]["sha256"]:
+            raise ValueError("FSDB differs from the saved case")
+        cache = repo/"build/contention"/run.name
+        cache.mkdir(parents=True, exist_ok=True)
+        bindings, payloads = {}, {}
+        selected = ["/tb_top/clk", "/tb_top/axi_rst_n", "/tb_top/noc_clk", "/tb_top/noc_rst_n"]
+        expected_routes = defaultdict(set)
+        for source, target in enumerate(case["source_destination_map"]):
+            for net, a, b in (("REQ", source, target), ("DAT", target, source)):
+                for node, port in path(a, b):
+                    expected_routes[(net, node, port)].add((a, b))
+        for node in range(16):
+            base = "tb_top.i_router.gen_router[{}].i_router".format(node)
+            for net in ("REQ", "DAT"):
+                head = (base+".i_req_router.head" if net == "REQ" else
+                        base+".i_dat_router.head")
+
+                selected.append("/"+head.replace(".", "/"))
+                for port in range(5):
+                    scope = (base+".i_req_router.gen_output[{}]".format(port) if net == "REQ" else
+                             base+".i_dat_router.gen_output[{}].gen_vc[1]".format(port))
+                    request = scope+".req"
+                    selected.append("/"+request.replace(".", "/"))
+                    key = "{}_{}_{}".format(net, node, port)
+                    # req is a 5-bit input mask. Read only the header of each
+                    # requesting input; unused FIFO heads can contain X values.
+                    bindings[key] = ("noc", request, request, None)
+                    payloads[key] = []
+                    for i in range(5):
+                        header = head+"[{}].header".format(i if net == "REQ" else i*2+1)
+                        for field, width in (("src_id.x",4), ("src_id.y",4), ("src_id.port_id",2),
+                                             ("dst_id.x",4), ("dst_id.y",4), ("dst_id.port_id",2),
+                                             ("packet_type",4)):
+                            payloads[key].append((header+"."+field, 0, width, 1 << i))
+        bindings["samples"] = ("noc", "tb_top.noc_rst_n", "tb_top.noc_rst_n", None)
+        vcd, receipt = cache/"heads.vcd", cache/"heads-export.json"
+        command = ["fsdb2vcd", str(wave), "-o", str(vcd), "-bt", "0ps", "-et",
+                   str(end+1000)+"ps", "-keep_last_time", "-s"]+selected
+        if not receipt.exists():
+            with (cache/"heads-export.log").open("w") as log:
+                subprocess.check_call(command, cwd=str(cache), stdout=log, stderr=subprocess.STDOUT)
+            receipt.write_text(json.dumps(dict(command=command, fsdb_sha256=wave_hash,
+                                               vcd_sha256=digest(vcd)), indent=2)+"\n")
+        exported = json.loads(receipt.read_text())
+        if exported["fsdb_sha256"] != wave_hash or exported["vcd_sha256"] != digest(vcd):
+            raise ValueError("Request export does not match this waveform")
+        print("Sampling router requests:", pattern, flush=True)
+        events = sampled_handshakes(vcd, bindings, payloads)
+        clocks = [r["time_ps"] for r in events.pop("samples") if begin <= r["time_ps"] <= end]
+        if clocks != list(range(begin, end+1, 1000)):
+            raise ValueError("Missing NoC sample edges inside the original inclusive window")
+        masks = {(net, node): [0]*length for net in ("REQ", "DAT") for node in range(16)}
+        for name, samples in events.items():
+            net, node, port = name.split("_")
+            node, port = int(node), int(port)
+            hits = set()
+            for event in samples:
+                time = event["time_ps"]
+                if not begin <= time <= end:
+                    continue
+                mask = event["mask"]
+                if not 0 < mask < 32 or (time-begin) % 1000:
+                    raise ValueError("Invalid request mask/timestamp")
+                actual_flows = []
+                for i in range(5):
+                    if mask & (1 << i):
+                        sx, sy, sp, dx, dy, dp, kind = event["payload"][i*7:(i+1)*7]
+                        if sp or dp or max(sx,sy,dx,dy) >= 4 or kind != (7 if net == "REQ" else 9):
+                            raise ValueError("Unexpected endpoint/packet type at an active request")
+                        flow = (4*sy+sx, 4*dy+dx)
+                        if flow not in expected_routes[(net, node, port)]:
+                            raise ValueError("Active request is outside its saved XY path")
+                        actual_flows.append((i, flow[0], flow[1]))
+                if bin(mask).count("1") < 2:
+                    continue
+                cycle = (time-begin)//1000
+                if cycle in hits:
+                    raise ValueError("Duplicate request sample at a port")
+                hits.add(cycle)
+                masks[(net, node)][cycle] = 1
+                event_rows.append(dict(pattern=pattern, network=net, router=node, output=ports[port],
+                    vc=-1 if net == "REQ" else 1, time_ps=time, cycle=cycle,
+                    request_mask=mask, requesting_inputs=len(actual_flows),
+                    input_flows=";".join("{}:{}>{}".format(i,a,b) for i,a,b in actual_flows)))
+            port_rows.append(dict(pattern=pattern, network=net, router=node, output=ports[port],
+                                  vc=-1 if net == "REQ" else 1,
+                                  contention_cycles=len(hits), window_cycles=length))
+        for net in ("REQ", "DAT"):
+            for node in range(16):
+                timeline = masks[(net, node)]
+                timelines[(pattern, net, node)] = timeline
+                node_rows.append(dict(pattern=pattern, network=net, router=node,
+                    contention_cycles=sum(timeline), window_cycles=length))
+        evidence.append(dict(pattern=pattern, result=point["root"], case=run.name,
+            run_command=record["command"], seed=record["seed"], clock=record["clock"],
+            run_record_sha256=digest(record_path), source_manifest_sha256=point["source_manifest_sha256"],
+            binary_sha256=point["binary_sha256"], fsdb=str(wave), fsdb_sha256=wave_hash,
+            vcd=str(vcd), vcd_sha256=digest(vcd), export_command=exported["command"],
+            begin_ps=begin, end_ps=end, sampled_cycles=len(clocks),
+            signal_bindings=bindings, header_slices=payloads))
+        print(pattern, {net: sum(r["contention_cycles"] for r in node_rows
+                               if r["pattern"] == pattern and r["network"] == net)
+                        for net in ("REQ", "DAT")}, flush=True)
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+    import numpy as np
+    patterns, networks = ("neighbor", "bit_complement"), ("REQ", "DAT")
+    titles = {"neighbor": "Neighbor", "bit_complement": "Bit-complement"}
+    outputs = []
+    fig, axes = plt.subplots(2, 3, figsize=(11, 9.2),
+                             gridspec_kw={"width_ratios": [1, 1, .045]})
+    for row, net in enumerate(networks):
+        peak = max(r["contention_cycles"] for r in node_rows if r["network"] == net)
+        for col, pattern in enumerate(patterns):
+            ax = axes[row,col]
+            grid = np.array([next(r["contention_cycles"] for r in node_rows
+                                  if r["pattern"] == pattern and r["network"] == net and r["router"] == n)
+                             for n in range(16)]).reshape(4,4)
+            im = ax.imshow(grid, origin="lower", cmap="YlOrRd", vmin=0, vmax=max(peak,1))
+            for n in range(16):
+                value = int(grid[n//4,n%4])
+                ax.text(n%4,n//4,"Router{}\n{}".format(n,value),ha="center",va="center",
+                        fontsize=10,color="white" if peak and value > peak*.60 else "#222222")
+            ax.set(title=titles[pattern]+" / "+net, xticks=[], yticks=[])
+            ax.set_xticks(np.arange(-.5,4,1),minor=True)
+            ax.set_yticks(np.arange(-.5,4,1),minor=True)
+            ax.grid(which="minor", color="white", linewidth=2)
+            ax.tick_params(which="minor",bottom=False,left=False)
+            for spine in ax.spines.values(): spine.set_visible(False)
+        fig.colorbar(im, cax=axes[row,2], label="Contention [cycles]")
+    fig.subplots_adjust(left=.035,right=.91,top=.95,bottom=.04,wspace=.23,hspace=.22)
+    for suffix in ("png","svg"):
+        p=root/"figures"/("contention."+suffix)
+        fig.savefig(str(p),dpi=200)
+        outputs.append(p)
+    plt.close(fig)
+
+    fig, axes = plt.subplots(2, 2, figsize=(15, 9.5), sharex=True, sharey=True)
+    longest = max(rois.values())
+    for row, net in enumerate(networks):
+        for col, pattern in enumerate(patterns):
+            ax = axes[row,col]
+            for node in range(16):
+                active = np.flatnonzero(timelines[(pattern,net,node)])
+                # Merge adjacent sample cells, preserving exact on/off cycles.
+                intervals = []
+                for cycle in active:
+                    if intervals and cycle == intervals[-1][0]+intervals[-1][1]:
+                        intervals[-1]=(intervals[-1][0],intervals[-1][1]+1)
+                    else: intervals.append((int(cycle),1))
+                if intervals:
+                    ax.broken_barh(intervals,(node-.30,.60),facecolors="#B2182B")
+            if rois[pattern] < longest:
+                ax.axvspan(rois[pattern],longest,facecolor="#EEEEEE",hatch="///",
+                           edgecolor="#CCCCCC",linewidth=0)
+            ax.set(title=titles[pattern]+" / "+net, xlabel="Time from ENABLE [cycles]",
+                   yticks=range(16),yticklabels=["Router{}".format(n) for n in range(16)],
+                   ylim=(15.6,-.6),xlim=(0,longest))
+            ax.tick_params(axis="y",labelleft=True,labelsize=8)
+            ax.grid(axis="x",alpha=.25)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+    fig.legend(handles=[Patch(color="#B2182B",label="Contention"),
+                        Patch(facecolor="#EEEEEE",hatch="///",edgecolor="#CCCCCC",label="Outside window")],
+               loc="lower center",ncol=2,frameon=False,bbox_to_anchor=(.5,.005))
+    fig.tight_layout(rect=(0,.045,1,1))
+    for suffix in ("png","svg"):
+        p=root/"figures"/("contention-timeline."+suffix)
+        fig.savefig(str(p),dpi=200)
+        outputs.append(p)
+    plt.close(fig)
+
+    # Draw all sixteen reads, with the same requester color for REQ and DAT.
+    # Parallel lanes keep flows and opposite directions visible on shared links.
+    link_rows = [r for r in csv.DictReader((root/"tables/bandwidth-links.csv").open())
+                 if int(r["transfer_bytes"]) == 32768]
+    route_rows = []
+    palette = ("#1665A8", "#E69F00", "#009E73", "#7B3294",
+               "#C44E52", "#8C564B", "#CC79A7", "#008B8B",
+               "#9A8700", "#253494", "#17BECF", "#AA3377",
+               "#228833", "#BB5566", "#777700", "#555555")
+    fig, axes = plt.subplots(2,2,figsize=(14,15.6))
+    for col, pattern in enumerate(patterns):
+        mapping = pairings[pattern]
+        for row, net in enumerate(networks):
+            ax = axes[row,col]
+            edges = defaultdict(list)
+            for source, target in enumerate(mapping):
+                a,b = (source,target) if net == "REQ" else (target,source)
+                links = path(a,b)
+                observed = {(int(r["router"]),int(r["port"])) for r in link_rows
+                            if r["pattern"] == pattern and r["network"] == net.lower()
+                            and int(r["flow_start"]) == a and int(r["flow_end"]) == b}
+                if observed != set(links):
+                    raise ValueError("XY path differs from the saved per-flow FSDB link table")
+                route_rows.append(dict(pattern=pattern, network=net, source=source, target=target,
+                    flow_start=a, flow_end=b, hops=len(links)-1,
+                    router_path=";".join(str(n) for n,_ in links),
+                    output_ports=";".join(ports[p] for _,p in links)))
+                for node,port in links:
+                    if not port:
+                        continue
+                    other=node+{1:4,2:1,3:-4,4:-1}[port]
+                    edges[tuple(sorted((node,other)))].append((source,node,other))
+            for n in range(16):
+                x,y=n%4,n//4
+                if x<3: ax.plot([x,x+1],[y,y],color="#E5E5E5",lw=1,zorder=0)
+                if y<3: ax.plot([x,x],[y,y+1],color="#E5E5E5",lw=1,zorder=0)
+                contested = any(r["pattern"]==pattern and r["network"]==net and
+                                r["router"]==n and r["contention_cycles"]>0 for r in node_rows)
+                ax.scatter(x,y,s=650,facecolor="white",
+                           edgecolor="#B2182B" if contested else "#999999",
+                           linewidth=2 if contested else 1,zorder=4)
+                ax.text(x,y,str(n),ha="center",va="center",fontsize=10,zorder=5)
+            for edge, users in sorted(edges.items()):
+                users.sort(key=lambda item:(item[1]>item[2],item[0]))
+                for j,(source,node,other) in enumerate(users):
+                    offset=(j-(len(users)-1)/2)*.07
+                    x,y=node%4,node//4
+                    xx,yy=other%4,other//4
+                    if y==yy: y+=offset;yy+=offset
+                    else: x+=offset;xx+=offset
+                    ax.annotate("",xy=(xx,yy),xytext=(x,y),
+                        arrowprops=dict(arrowstyle="-|>",color=palette[source],lw=1.8,
+                                        shrinkA=14,shrinkB=14),zorder=3)
+            ax.set(title="{} / {}".format(titles[pattern],"DAT return" if net=="DAT" else net),
+                   xlim=(-.35,3.35),ylim=(-.35,3.35),aspect="equal",xticks=[],yticks=[])
+            for spine in ax.spines.values():spine.set_visible(False)
+        handles=[Patch(color=palette[s],label="Node{} to Node{}".format(s,d))
+                 for s,d in enumerate(mapping)]
+        axes[1,col].legend(handles=handles,title="Read source to target",
+                           loc="upper center",bbox_to_anchor=(.5,-.035),
+                           ncol=2,frameon=False,fontsize=8.5,title_fontsize=9)
+    from matplotlib.lines import Line2D
+    fig.legend(handles=[Line2D([0],[0],marker="o",color="none",markerfacecolor="white",
+                              markeredgecolor="#B2182B",markeredgewidth=2,markersize=8,
+                              label="Router with observed contention")],
+               loc="lower center",bbox_to_anchor=(.5,.005),frameon=False)
+    fig.subplots_adjust(left=.035,right=.965,bottom=.18,top=.965,wspace=.10,hspace=.16)
+    for suffix in ("png","svg"):
+        p=root/"figures"/("contention-routes."+suffix)
+        fig.savefig(str(p),dpi=200)
+        outputs.append(p)
+    plt.close(fig)
+
+    for name,rows in (("contention",node_rows),("contention-ports",port_rows),("contention-events",event_rows),
+                      ("contention-routes",route_rows)):
+        p=root/"tables"/(name+".csv")
+        with p.open("w",newline="") as stream:
+            writer=csv.DictWriter(stream,fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+        outputs.append(p)
+    snapshot=root/"provenance/contention-performance.py"
+    snapshot.write_bytes(Path(__file__).read_bytes())
+    outputs.append(snapshot)
+    proof=dict(
+        command=["python3","-B","-c",
+                 "from pathlib import Path; from performance import router_contention; router_contention(Path('performance/unicast/mesh-traffic'))"],
+        script_sha256=digest(snapshot),cases=evidence,
+        definition="popcount(current output req)>=2; per-router cycle is the OR across all five outputs",
+        networks="REQ and DAT read VC1 separately; local output included; DAT write VC0 and RSP excluded",
+        window="Common source ENABLE to last SOURCE_DONE, inclusive; sample stable values before NoC rising edge",
+        flow_decode="Active input header src_id/dst_id x,y,port_id and packet_type; DAT head index input*2+1",
+        limitations="Counts simultaneous requests, including cycles when the output cannot accept. "
+                    "Not lost cycles, automatic cause attribution, or detection of packets hidden behind one FIFO head.",
+        routes=route_rows,
+        route_definition="All sixteen requester/target pairs per pattern; REQ requester-to-target XY, "
+                         "DAT target-to-requester XY independently; colors identify the requester",
+        route_check="All 64 network paths match the existing FSDB-validated per-flow link table, including Local",
+        route_link_table_sha256=digest(root/"tables/bandwidth-links.csv"),
+        input_table_sha256=digest(root/"tables/bandwidth-sources.csv"),
+        outputs={str(p.relative_to(root)):digest(p) for p in outputs})
+    (root/"provenance/contention.json").write_text(json.dumps(proof,indent=2)+"\n")
+    print("Saved contention heatmaps, routes, timelines and raw per-output events under",root)
+
+
+def mesh_node_timeline(root):
+    """Plot all sources and preserve overlapping AXI bursts from saved waveforms."""
+    from collections import defaultdict
+    root = root.resolve()
+    repo = Path(__file__).resolve().parents[2]
+    points = [p for p in csv.DictReader((root/"tables/bandwidth.csv").open())
+              if p["pattern"] in ("neighbor", "bit_complement") and int(p["transfer_bytes"]) == 32768]
+    if len(points) != 2:
+        raise ValueError("Expected the two saved 32 KiB cases")
+
+    def route(start, target):
+        links = []
+        node = start
+        while node % 4 != target % 4:
+            step = 1 if node % 4 < target % 4 else -1
+            links.append((node, 2 if step == 1 else 4))
+            node += step
+        while node // 4 != target // 4:
+            step = 4 if node // 4 < target // 4 else -4
+            links.append((node, 1 if step == 4 else 3))
+            node += step
+        return links + [(target, 0)]
+
+    def endpoints(flit):
+        ids = [(flit >> shift) & 1023 for shift in (4, 14)]
+        if any(n >> 8 or (n & 15) >= 4 or (n >> 4) >= 4 for n in ids):
+            raise ValueError("Non-native endpoint")
+        return tuple(4*(n >> 4)+(n & 15) for n in ids)
+
+    def r_payload(flit):
+        return ((flit >> 58) & ((1 << 512)-1), (flit >> 44) & 1)
+
+    transactions, stages, beats, evidence = [], [], [], []
+    for point in sorted(points, key=lambda p: p["pattern"]):
+        result = root/point["root"]
+        run, = [p for p in (result/"runs").iterdir() if p.is_dir()]
+        record_path = run/(run.name+".run.json")
+        record = json.loads(record_path.read_text())
+        pattern, case = traffic_case(result, run.name)
+        if not record["passed"] or record["clock"] != dict(
+                axi_period_ps=1000, noc_period_ps=1000, noc_phase_ps=0):
+            raise ValueError("Expected a saved aligned 1 GHz run")
+        wave = run/(run.name+".fsdb")
+        cache = repo/"build/perf-bw-analysis"/run.name
+        vcd = cache/"interfaces.vcd"
+        export = json.loads((cache/"export.json").read_text())
+        if (digest(wave) != point["waveform_sha256"] or
+                export["fsdb_sha256"] != digest(wave) or export["vcd_sha256"] != digest(vcd)):
+            raise ValueError("FSDB/VCD provenance mismatch")
+        if digest(result/"tables/summary.json") != point["summary_sha256"]:
+            raise ValueError("Original summary changed")
+        definitions = result/"provenance/source/define"
+        for filename, patterns in {
+            "noc_header_pkg.sv": [r"ORD_TAG_WIDTH\s*=\s*8\s*;", r"X_WIDTH\s*=\s*4\s*;",
+                                 r"Y_WIDTH\s*=\s*4\s*;", r"PORT_ID_WIDTH\s*=\s*2\s*;"],
+            "noc_payload_pkg.sv": [r"AXI_ID_WIDTH\s*=\s*3\s*;", r"AXI_ADDR_WIDTH\s*=\s*48\s*;",
+                                  r"DATA_WIDTH\s*=\s*512\s*;", r"RUSER_WIDTH\s*=\s*8\s*;",
+                                  r"DATA_R_RLAST_LSB\s*=\s*0\s*;"],
+            "noc_unit_params_pkg.sv": [r"DAT_READ_VC\s*=\s*1\s*;"],
+        }.items():
+            text = (definitions/filename).read_text()
+            if any(not re.search(check, text) for check in patterns):
+                raise ValueError("Saved packet layout changed")
+
+        bindings, payloads = {}, {}
+        for node in range(16):
+            for role in ("source", "device"):
+                base = "tb_top.gen_node[{}].{}_bus.".format(node, role)
+                for channel, fields in (("ar", ("addr", "len", "size", "id")),
+                                        ("r", ("data", "last", "id"))):
+                    name = "{}_{}_{}".format(role, node, channel)
+                    bindings[name] = ("axi", base+channel+"valid", base+channel+"ready", None)
+                    payloads[name] = [base+channel+field for field in fields]
+            for channel in ("req", "dat"):
+                for direction, ports in (("rx", (0,)), ("tx", range(5))):
+                    for port in ports:
+                        name = "{}_{}_{}_{}".format(channel, direction, node, port)
+                        base = "tb_top.i_router.{}_{}".format(direction, channel)
+                        index = "[{}]".format(node) if channel == "req" else "[{}][{}]".format(node, port)
+                        bindings[name] = ("noc", base+"_valid"+index, base+"_ready"+index,
+                                          port if channel == "req" else 1)
+                        payloads[name] = [base+"_flit[{}][{}]".format(node, port)]
+        print("Reading", pattern, vcd, flush=True)
+        sampled = sampled_handshakes(vcd, bindings, payloads)
+        packets = defaultdict(list)
+        for name, events in sampled.items():
+            if name.startswith(("source_", "device_")):
+                continue
+            channel, direction, node, port = name.split("_")
+            for event in events:
+                flit, = event["payload"]
+                if flit & 15 != (7 if channel == "req" else 9) or not ((flit >> 24) & 1):
+                    raise ValueError("Expected a single-flit DATA_AR or DATA_R packet")
+                packets[(channel, direction, int(node), int(port), endpoints(flit))].append(event)
+        tx = json.loads((result/"tables/transactions.json").read_text())
+        sources = [t for t in tx if t["role"] == "source" and t["phase"] == 1]
+        devices = [t for t in tx if t["role"] == "device"]
+        if len(sources) != 128 or len(devices) != 128:
+            raise ValueError("Expected eight transactions on every source/device")
+        device_index = {}
+        for t in devices:
+            key = (t["endpoint"], t["addr"], t["beats"], t["size"], t["user"])
+            if key in device_index:
+                raise ValueError("Ambiguous target transaction")
+            device_index[key] = t
+        with (run/"axi-events.csv").open() as stream:
+            raw = list(csv.DictReader(stream))
+        enable_times = {int(r["time_ps"]) for r in raw
+                        if r["role"] == "source" and r["channel"] == "ENABLE"}
+        if len(enable_times) != 1:
+            raise ValueError("Expected a common ENABLE edge")
+        origin, = enable_times
+        matched_devices = set()
+        matched_boundaries = set()
+        case_stages = []
+        for node, target in enumerate(case["source_destination_map"]):
+            own = sorted((t for t in sources if t["endpoint"] == node), key=lambda t: t["request_ps"])
+            if len(own) != 8 or any(t["beats"] != 64 or t["size"] != 6 for t in own):
+                raise ValueError("Expected eight full-width 64-beat bursts")
+            target_own = [device_index[(target, t["addr"], t["beats"], t["size"], t["user"])] for t in own]
+            for role, endpoint, rows in (("source", node, own), ("device", target, target_own)):
+                ars = sampled["{}_{}_ar".format(role, endpoint)]
+                rs = sampled["{}_{}_r".format(role, endpoint)]
+                if len(ars) != 8 or len(rs) != 512:
+                    raise ValueError("AXI handshake count mismatch")
+                for j, t in enumerate(rows):
+                    ar, rb = ars[j], rs[j*64:(j+1)*64]
+                    if (ar["time_ps"] != t["request_ps"] or
+                            ar["payload"] != [t["addr"], 63, 6, t["id"]] or
+                            rb[0]["time_ps"] != t["first_response_ps"] or
+                            rb[-1]["time_ps"] != t["completion_ps"] or
+                            any(e["payload"][2] != t["id"] or e["payload"][1] != int(k == 63)
+                                for k, e in enumerate(rb))):
+                        raise ValueError("AXI waveform disagrees with transaction table")
+                stamps = [int(r["time_ps"]) for r in raw if r["role"] == role and
+                          int(r["endpoint"]) == endpoint and r["channel"] in ("AR", "R")]
+                observed = sorted(e["time_ps"] for e in ars+rs)
+                if sorted(stamps) != observed:
+                    raise ValueError("Raw AXI timestamp mismatch")
+
+            request_boundaries = [("req", "rx", node, 0, (node, target))]
+            request_boundaries += [("req", "tx", n, p, (node, target)) for n, p in route(node, target)]
+            return_boundaries = [("dat", "rx", target, 0, (target, node))]
+            return_boundaries += [("dat", "tx", n, p, (target, node)) for n, p in route(target, node)]
+            matched_boundaries.update(request_boundaries + return_boundaries)
+            req_events = [packets[key] for key in request_boundaries]
+            dat_events = [packets[key] for key in return_boundaries]
+            source_r = sampled["source_{}_r".format(node)]
+            device_r = sampled["device_{}_r".format(target)]
+            for events in req_events:
+                if len(events) != 8 or [((e["payload"][0] >> 47) & ((1 << 48)-1))
+                                       for e in events] != [t["addr"] for t in own]:
+                    raise ValueError("REQ addresses/order differ from the source")
+            for events in dat_events:
+                if len(events) != 512 or [r_payload(e["payload"][0]) for e in events] != [
+                        tuple(e["payload"][:2]) for e in source_r]:
+                    raise ValueError("DAT RDATA/RLAST/order mismatch")
+            if [e["payload"][:2] for e in source_r] != [e["payload"][:2] for e in device_r]:
+                raise ValueError("Device/source R payload mismatch")
+
+            for j, (t, d) in enumerate(zip(own, target_own)):
+                matched_devices.add((target, d["addr"], d["beats"], d["size"], d["user"]))
+                req_tag = (req_events[0][j]["payload"][0] >> 26) & 255
+                if any(((events[j]["payload"][0] >> 26) & 255) != req_tag for events in req_events):
+                    raise ValueError("REQ tag changed along its route")
+                if any(((events[k]["payload"][0] >> 26) & 255) != req_tag
+                       for events in dat_events for k in range(j*64, (j+1)*64)):
+                    raise ValueError("Return tag differs from its request")
+                common = dict(pattern=pattern, source=node, target=target, transaction=j,
+                              addr=t["addr"], origin_ps=origin)
+                milestones = [("Source AR", t["request_ps"])]
+                milestones.append(("REQ injection", req_events[0][j]["time_ps"]))
+                for key, events in zip(request_boundaries[1:], req_events[1:]):
+                    milestones.append(("REQ Router{} port{}".format(key[2], key[3]), events[j]["time_ps"]))
+                milestones += [("Target AR", d["request_ps"]), ("Target first R", d["first_response_ps"]),
+                               ("DAT injection", dat_events[0][j*64]["time_ps"])]
+                for key, events in zip(return_boundaries[1:], dat_events[1:]):
+                    milestones.append(("DAT Router{} port{}".format(key[2], key[3]), events[j*64]["time_ps"]))
+                milestones.append(("Source first R", t["first_response_ps"]))
+                labels = (["NI"] + ["REQ routers"]*len(route(node, target)) +
+                          ["NI", "Target AR to first R", "NI"] +
+                          ["DAT routers"]*len(route(target, node)) + ["NI"])
+                if len(labels) != len(milestones)-1:
+                    raise ValueError("Stage boundary mismatch")
+                for k, ((begin, start), (end, finish), component) in enumerate(
+                        zip(milestones, milestones[1:], labels)):
+                    if finish < start or (finish-start) % 1000:
+                        raise ValueError("Invalid stage ordering")
+                    row = dict(common, stage=k, component=component, begin_event=begin, end_event=end,
+                               start_ps=start, end_ps=finish, cycles=(finish-start)//1000)
+                    stages.append(row)
+                    case_stages.append(row)
+                if sum(s["cycles"] for s in case_stages if
+                       s["source"] == node and s["transaction"] == j) != t["first_response_latency_ps"]/1000:
+                    raise ValueError("Stages do not sum to the original AR-to-first-R latency")
+                for k in range(64):
+                    i = j*64+k
+                    times = [device_r[i]["time_ps"]] + [events[i]["time_ps"] for events in dat_events] + [
+                        source_r[i]["time_ps"]]
+                    if times != sorted(times):
+                        raise ValueError("Beat appears out of order across the return path")
+                    beats.append(dict(common, beat=k, rlast=int(k == 63),
+                                      device_r_ps=times[0], dat_injection_ps=times[1],
+                                      source_r_ps=times[-1],
+                                      return_boundary_ps=";".join(str(v) for v in times[1:-1])))
+                transactions.append(dict(common, source_ar_ps=t["request_ps"], target_ar_ps=d["request_ps"],
+                    target_first_r_ps=d["first_response_ps"], target_last_r_ps=d["completion_ps"],
+                    source_first_r_ps=t["first_response_ps"], source_last_r_ps=t["completion_ps"],
+                    first_r_latency_cycles=t["first_response_latency_ps"]//1000,
+                    completion_latency_cycles=t["latency_ps"]//1000,
+                    source_beats=64, useful_bytes=4096))
+        if len(matched_devices) != 128:
+            raise ValueError("Target transactions were not matched one-to-one")
+        if set(packets) != matched_boundaries:
+            raise ValueError("Unexpected packets outside the mapped request/return routes")
+        evidence.append(dict(pattern=pattern, result=point["root"], case=run.name,
+            run_command=record["command"], clock=record["clock"], seed=record["seed"],
+            fsdb_sha256=digest(wave), vcd_sha256=digest(vcd),
+            vcd=str(vcd), fsdb=str(wave), export_command=export["command"],
+            run_record_sha256=digest(record_path),
+            source_manifest_sha256=point["source_manifest_sha256"],
+            binary_sha256=point["binary_sha256"],
+            transaction_table_sha256=digest(result/"tables/transactions.json"),
+            raw_axi_sha256=digest(run/"axi-events.csv"), origin_ps=origin,
+            signal_bindings=bindings, signal_payloads=payloads,
+            routes={str(n): dict(request=route(n, d), response=route(d, n))
+                    for n, d in enumerate(case["source_destination_map"])}))
+        print("Validated", pattern, "128 transactions / 8192 source R beats", flush=True)
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+    from matplotlib.lines import Line2D
+    colors = {"NI": "#1665A8", "REQ routers": "#6C757D",
+              "Target AR to first R": "#E69F00", "DAT routers": "#7B3294"}
+    order = ("neighbor", "bit_complement")
+    titles = {"neighbor": "Neighbor", "bit_complement": "Bit-complement"}
+    figs = []
+    fig, axes = plt.subplots(1, 2, figsize=(15, 10.6), sharex=True, sharey=True)
+    xmax = max((r["source_last_r_ps"]-r["origin_ps"])/1000 for r in transactions)+8
+    for ax, pattern in zip(axes, order):
+        selected = [r for r in transactions if r["pattern"] == pattern]
+        for row in selected:
+            y = row["source"]-.35+row["transaction"]*.1
+            origin = row["origin_ps"]
+            start = (row["source_ar_ps"]-origin)/1000
+            first = (row["source_first_r_ps"]-origin)/1000
+            last = (row["source_last_r_ps"]-origin)/1000
+            for segment in stages:
+                if (segment["pattern"] == pattern and segment["source"] == row["source"] and
+                        segment["transaction"] == row["transaction"]):
+                    ax.barh(y, segment["cycles"], left=(segment["start_ps"]-origin)/1000,
+                            height=.065, color=colors[segment["component"]], linewidth=0)
+            ax.plot([first, last], [y, y], color="#D5D5D5", lw=.7)
+            ts = [(b["source_r_ps"]-origin)/1000 for b in beats if
+                  b["pattern"] == pattern and b["source"] == row["source"] and
+                  b["transaction"] == row["transaction"]]
+            ax.vlines(ts, y-.031, y+.031, color="#009E73", linewidth=.55)
+            ax.plot(start, y, marker="|", color="#1665A8", ms=3)
+            ax.plot(last, y, marker="D", color="#C44E52", ms=1.8)
+        ax.set(title=titles[pattern], xlabel="Time from ENABLE [cycles]", xlim=(0, xmax),
+               yticks=range(16), yticklabels=["Node{}".format(n) for n in range(16)],
+               ylim=(15.6, -.6))
+        ax.tick_params(axis="y", labelleft=True)
+        for n in range(0, 16, 2):
+            ax.axhspan(n-.48, n+.48, color="#F3F4F5", zorder=-1)
+        ax.grid(axis="x", alpha=.25)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+    handles = [Patch(color=c, label=k) for k,c in colors.items()]
+    handles += [Line2D([0],[0],color="#009E73",marker="|",linestyle="None",label="Accepted R beat"),
+               Line2D([0],[0],color="#C44E52",marker="D",linestyle="None",ms=4,label="RLAST")]
+    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(.5,.005))
+    fig.tight_layout(rect=(0,.07,1,1))
+    figs.append(("node-timeline", fig))
+    fig, axes = plt.subplots(1, 2, figsize=(15, 9.6), sharex=True, sharey=True)
+    first_stages = [r for r in stages if r["transaction"] == 0]
+    xmax = max((r["end_ps"]-r["origin_ps"])/1000 for r in first_stages)+1
+    for ax, pattern in zip(axes, order):
+        for row in first_stages:
+            if row["pattern"] != pattern:
+                continue
+            start = (row["start_ps"]-row["origin_ps"])/1000
+            ax.barh(row["source"], row["cycles"], left=start, height=.58,
+                    color=colors[row["component"]], edgecolor="white", linewidth=.35)
+        ax.set(title=titles[pattern], xlabel="Time from ENABLE [cycles]",
+               xlim=(0, xmax), ylim=(15.6, -.6), yticks=range(16),
+               yticklabels=["Node{}".format(n) for n in range(16)])
+        ax.tick_params(axis="y", labelleft=True)
+        ax.grid(axis="x", alpha=.25)
+        ax.set_axisbelow(True)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+    fig.legend(handles=[Patch(color=c,label=k) for k,c in colors.items()],
+               loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(.5,.005))
+    fig.tight_layout(rect=(0,.04,1,1))
+    figs.append(("node-first", fig))
+    components = [("NI", "ni_cycles"), ("REQ routers", "req_router_cycles"),
+                  ("Target AR to first R", "target_ar_to_first_r_cycles"),
+                  ("DAT routers", "dat_router_cycles")]
+    mean_rows = []
+    for pattern in order:
+        for node in range(16):
+            own = [r for r in transactions if r["pattern"] == pattern and r["source"] == node]
+            if {r["transaction"] for r in own} != set(range(8)):
+                raise ValueError("Mean requires all eight transactions on each node")
+            selected = [r for r in stages if r["pattern"] == pattern and r["source"] == node]
+            row = dict(pattern=pattern, source=node, transactions=len(own))
+            for component, field in components:
+                row[field] = sum(r["cycles"] for r in selected if r["component"] == component)/len(own)
+            row["latency_cycles"] = sum(r["first_r_latency_cycles"] for r in own)/len(own)
+            if abs(sum(row[field] for _,field in components)-row["latency_cycles"]) > 1e-9:
+                raise ValueError("Mean stage durations do not sum to mean transaction latency")
+            mean_rows.append(row)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 9.6), sharex=True, sharey=True)
+    xmax = max(r["latency_cycles"] for r in mean_rows)*1.04
+    for ax, pattern in zip(axes, order):
+        for row in mean_rows:
+            if row["pattern"] != pattern:
+                continue
+            start = 0
+            for component, field in components:
+                ax.barh(row["source"], row[field], left=start, height=.58,
+                        color=colors[component], edgecolor="white", linewidth=.35)
+                start += row[field]
+        ax.set(title=titles[pattern], xlabel="Latency [cycles]",
+               xlim=(0, xmax), ylim=(15.6, -.6), yticks=range(16),
+               yticklabels=["Node{}".format(n) for n in range(16)])
+        ax.tick_params(axis="y", labelleft=True)
+        ax.grid(axis="x", alpha=.25)
+        ax.set_axisbelow(True)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+    fig.legend(handles=[Patch(color=colors[c],label=c) for c,_ in components],
+               loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(.5,.005))
+    fig.tight_layout(rect=(0,.04,1,1))
+    figs.append(("node-stages", fig))
+    outputs = []
+    for name, fig in figs:
+        for suffix in ("png", "svg"):
+            p = root/"figures"/(name+"."+suffix)
+            fig.savefig(str(p), dpi=200)
+            outputs.append(p)
+        plt.close(fig)
+    for name, rows in (("transactions", transactions), ("stages", stages), ("beats", beats),
+                       ("mean", mean_rows)):
+        p = root/"tables"/("node-timeline-"+name+".csv")
+        with p.open("w", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+        outputs.append(p)
+    snapshot = root/"provenance/node-timeline-performance.py"
+    snapshot.write_bytes(Path(__file__).read_bytes())
+    outputs.append(snapshot)
+    proof = dict(command=[sys.executable]+sys.argv, script_sha256=digest(snapshot),
+        cases=evidence, source_transactions=len(transactions), source_accepted_r_beats=len(beats),
+        stage_rows=len(stages), sampling="Stable pre-edge VALID & READY at rising AXI/NoC edge, 1 ps VCD",
+        boundary="Common ENABLE origin; durations are timestamp differences, not inclusive BW windows",
+        stages="All 128 bursts/case: accepted source AR to first accepted R; target AR-to-first-R includes waiting",
+        figure_selection="node-stages: arithmetic mean of all eight bursts/node, durations aligned at source AR; "
+                         "node-timeline: all bursts at common ENABLE; node-first: transaction 0 at common ENABLE",
+        mean_formula="Each component: sum of its stage durations across all eight bursts / 8; "
+                     "four components sum to mean(source first R - source AR) / clock period",
+        limits="Boundary residence intervals include pipeline/waiting; no arbitration/FIFO causal attribution",
+        checks="AXI payload/timestamps vs raw collector and transaction tables; one-to-one device pairing; "
+               "REQ address/tag per hop; DAT RDATA/RLAST/tag/beat-order per hop; "
+               "each beat chronological; stages sum to original first-R latency",
+        outputs={str(p.relative_to(root)): digest(p) for p in outputs})
+    (root/"provenance/node-timeline.json").write_text(json.dumps(proof, indent=2)+"\n")
+    print("Saved Node0-Node15 timelines and per-transaction/per-beat evidence under", root)
+
+
 def tile_to_tile(root):
     """FlooNoC Fig.7 presentation, with native AXI/NI/router boundaries."""
     root = root.resolve()
+    if (root/"tables/bandwidth.csv").exists():
+        return mesh_node_timeline(root)
     case = "perf_ctrl_read_neighbor"
     run = root / "runs" / case
     record = json.loads((run / (case + ".run.json")).read_text())
@@ -1370,9 +2463,6 @@ def multicast_report(roots, output):
     for folder in ("tables","provenance"):
         (output/folder).mkdir(exist_ok=True)
     points.sort(key=lambda p:(p["message_bytes"],p["method"],p["batch_bytes"]))
-    with (output/"tables/points.csv").open("w",newline="") as f:
-        w=csv.DictWriter(f,fieldnames=list(points[0]));w.writeheader();w.writerows(points)
-
     speedups=[]
     for size in sorted({p["message_bytes"] for p in points}):
         cohort=[p for p in points if p["message_bytes"]==size]
@@ -1387,17 +2477,176 @@ def multicast_report(roots, output):
             Tseq_cycles=best["runtime_cycles"],Ttree_cycles=tree["runtime_cycles"],
             Thw_cycles=hw["runtime_cycles"],
             speedup=min(best["runtime_cycles"],tree["runtime_cycles"])/hw["runtime_cycles"]))
+    with (output/"tables/points.csv").open("w",newline="") as f:
+        w=csv.DictWriter(f,fieldnames=list(points[0]));w.writeheader();w.writerows(points)
     with (output/"tables/speedup.csv").open("w",newline="") as f:
         w=csv.DictWriter(f,fieldnames=list(speedups[0]));w.writeheader();w.writerows(speedups)
     (output/"provenance/performance.py").write_bytes(Path(__file__).read_bytes())
     (output/"provenance/measurement.json").write_text(json.dumps(dict(command=[sys.executable]+sys.argv,
-        script_sha256=digest(Path(__file__)),cases=len(points),scope="Single-row initial measurements; full size/2D matrix pending",
+        script_sha256=digest(Path(__file__)),cases=len(points),scope="Single-row saved measurements; 2D campaign separate",
         formula="runtime_cycles=(last required source B - root AWVALID assertion)/clock_period; no inclusive +1",
         source="picobello cacdc3ad4a3a638e68d03090781dbbc2450c73ed, Fig.4/5",
         differences=["Native root NI12 and row0 NI0..NI3","VIP push writes, no memory fetch",
                      "Zero-time local memory access; source-B wave barriers, no CPU/DMA/barrier instructions"],
         publication_result=False),indent=2)+"\n")
-    print("Validated",len(points),"one-row multicast runs; full curves pending")
+    print("Validated",len(points),"one-row multicast runs")
+
+
+def multicast_plots(output):
+    """Plot validated single-row cohorts and multicast dataflows."""
+    output = output.resolve()
+    points_path = output/"tables/points.csv"
+    points = list(csv.DictReader(points_path.open()))
+    sizes = sorted({int(p["message_bytes"]) for p in points})
+    measured = {}
+    for size in sizes:
+        cohort = [p for p in points if int(p["message_bytes"]) == size]
+        expected = {(method, size) for method in ("tree", "hw")}
+        expected.update(("seq", batch) for batch in WIDE_SIZES if batch <= size)
+        if len(cohort) != len(expected) or {(p["method"], int(p["batch_bytes"])) for p in cohort} != expected:
+            raise ValueError("Incomplete multicast cohort: {}".format(size))
+        measured[size] = {method: min(float(p["runtime_cycles"]) for p in cohort if p["method"] == method)
+                          for method in ("seq", "tree", "hw")}
+    configs, records = {}, []
+    for point in points:
+        root = output/point["run"]
+        run = root/"runs"/point["case"]
+        config_path = run/"inputs/manifest.json"
+        config = json.loads(config_path.read_text())["multicast"]
+        metrics_path = root/"tables/metrics.json"
+        metrics = json.loads(metrics_path.read_text())
+        validation_path = root/"validation.json"
+        validation = json.loads(validation_path.read_text())
+        wave = run/(point["case"]+".fsdb")
+        if (any(str(metrics[key]) != value for key, value in point.items()) or
+                not validation["checker_passed"] or not validation["drain"] or
+                validation["offline_calibration_comparison"] != "passed_against_this_run_FSDB" or
+                not wave.is_file() or wave.stat().st_size == 0):
+            raise ValueError("Saved multicast evidence differs from the CSV: "+point["case"])
+        if (config["root"] != 12 or config["members"] != [0, 1, 2, 3] or
+                config["message_bytes"] != int(point["message_bytes"]) or config["method"] != point["method"] or
+                config["batch_bytes"] != int(point["batch_bytes"]) or
+                int(point["root"]) != 12 or int(point["recipients"]) != 4 or
+                int(point["message_bytes"]) not in WIDE_SIZES):
+            raise ValueError("Unexpected dataflow geometry or workload")
+        configs[config["method"]] = config
+        records.append(dict(case=point["case"], runtime_cycles=float(point["runtime_cycles"]),
+            run=point["run"], seed=int(point["seed"]), binary_sha256=point["binary_sha256"],
+            source_manifest_sha256=point["source_manifest_sha256"],
+            manifest_sha256=digest(config_path), metrics_sha256=digest(metrics_path),
+            validation_sha256=digest(validation_path), fsdb_sha256=validation["fsdb_sha256"]))
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyArrowPatch, Rectangle
+    figures = output/"figures"
+    figures.mkdir(exist_ok=True)
+    colors = dict(seq="#4477AA", tree="#CC6677", hw="#228833")
+    plt.rcParams.update({"font.size": 11, "svg.fonttype": "none"})
+    series = (("seq", "Sequential", "o"), ("tree", "Binary tree", "s"), ("hw", "Hardware multicast", "^"))
+    x = [size//1024 for size in sizes]
+    for name, ylabel in (("runtime", "Runtime [cycles]"), ("speedup", "Speedup [×]")):
+        fig, ax = plt.subplots(figsize=(6.7, 4.0))
+        if name == "runtime":
+            for method, label, marker in series:
+                ax.plot(x, [measured[s][method] for s in sizes], marker=marker,
+                        color=colors[method], label=label)
+            ax.legend(frameon=False)
+        else:
+            ax.plot(x, [min(measured[s]["seq"], measured[s]["tree"])/measured[s]["hw"] for s in sizes],
+                    marker="o", color=colors["hw"])
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(x)
+        ax.set_xticklabels(x)
+        ax.set(xlabel="Message size [KiB]", ylabel=ylabel, ylim=(0,None))
+        ax.grid(axis="y", linestyle="--", alpha=.25)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        fig.tight_layout()
+        for suffix in ("png", "svg"):
+            fig.savefig(str(figures/(name+"."+suffix)), dpi=220)
+        plt.close(fig)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12.5, 3.5))
+    positions = {12: (0, 0), 0: (0, 1.8), 1: (1.5, 1.8),
+                 2: (3, 1.8), 3: (4.5, 1.8)}
+    for ax, method, title in zip(axes, ("seq", "tree", "hw"),
+                                ("Sequential", "Binary tree", "Hardware multicast")):
+        config = configs[method]
+        color = colors[method]
+        for node, (x, y) in positions.items():
+            ax.add_patch(Rectangle((x-.42, y-.26), .84, .52, zorder=3,
+                facecolor="#F0F0F0" if node == 12 else "#EAF0F6",
+                edgecolor="#637080", linewidth=1.1))
+            ax.text(x, y, "NI"+str(node), ha="center", va="center", zorder=4)
+        if method == "hw":
+            ax.plot([0, 0, 4.5], [.26, .85, .85], color=color, linewidth=2)
+            for member in config["members"]:
+                x, y = positions[member]
+                ax.add_patch(FancyArrowPatch((x, .85), (x, y-.28),
+                    arrowstyle="-|>", mutation_scale=13, linewidth=2, color=color))
+                ax.plot(x, .85, "o", color=color, markersize=3)
+        else:
+            edges = {(job["source"], job["destination"]) for job in config["jobs"]}
+            for source, destination in sorted(edges):
+                curved = source == 0 and destination == 2
+                ax.add_patch(FancyArrowPatch(positions[source], positions[destination],
+                    arrowstyle="-|>", mutation_scale=13, linewidth=2, color=color,
+                    shrinkA=22 if source == 12 else 29,
+                    shrinkB=22 if source == 12 else 29,
+                    connectionstyle="arc3,rad=-.5" if curved else "arc3,rad=0"))
+        ax.text(0, -.52, "Root", ha="center", fontsize=10)
+        ax.set_title(title, fontsize=12)
+        ax.set_xlim(-.65, 5.05)
+        ax.set_ylim(-.72, 2.95)
+        ax.axis("off")
+    fig.tight_layout(w_pad=1.2)
+    for suffix in ("png", "svg"):
+        fig.savefig(str(figures/("data-flow."+suffix)), dpi=220)
+    plt.close(fig)
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
+    for ax, use_mask in zip(axes, (False, True)):
+        for y in range(4):
+            for col in range(5):
+                label = "M{}".format(y) if col == 0 else "NI{}".format(4*y+col-1)
+                ax.text(col, y, label, ha="center", va="center", zorder=4,
+                        bbox=dict(boxstyle="round,pad=.26", facecolor="#F2F5F8", edgecolor="#617281"))
+            ax.annotate("", (0.8,y), (.20,y), arrowprops=dict(arrowstyle="-|>", color="#333333"))
+            for x in ((2,) if use_mask else (2,3,4)):
+                ax.add_patch(FancyArrowPatch((1.18,y),(x-.18,y),arrowstyle="-|>",
+                    mutation_scale=12,color="#4477AA",lw=1.6,connectionstyle="arc3,rad={}".format(.11*(x-2))))
+            if use_mask:
+                ax.plot([1,1,4],[y+.14,y+.34,y+.34],color="#228833",lw=1.7)
+                for x in (3,4):
+                    ax.annotate("",(x,y+.13),(x,y+.35),arrowprops=dict(arrowstyle="-|>",color="#228833"))
+        ax.set_title("Unicast + masked multicast" if use_mask else "Direct unicast")
+        ax.set(xlim=(-.45,4.45),ylim=(-.80,3.62))
+        ax.axis("off")
+    from matplotlib.lines import Line2D
+    fig.legend(handles=[Line2D([0],[0],color=c,label=l) for c,l in
+               (("#333333","Memory read data"),("#4477AA","Unicast"),("#228833","Multicast"))],
+               loc="lower center",ncol=3,frameon=False)
+    fig.tight_layout(rect=(0,.08,1,1))
+    for suffix in ("png", "svg"):
+        fig.savefig(str(figures/("memory-data-flow."+suffix)),dpi=220)
+    plt.close(fig)
+
+    snapshot = output/"provenance/plot-performance.py"
+    snapshot.write_bytes(Path(__file__).read_bytes())
+    files = [figures/(name+"."+suffix) for name in ("runtime", "speedup", "data-flow", "memory-data-flow") for suffix in ("png", "svg")]
+    (output/"provenance/plot.json").write_text(json.dumps(dict(
+        command=[sys.executable]+sys.argv, script_sha256=digest(snapshot),
+        input_csv_sha256=digest(points_path), message_bytes=sizes, cases=records,
+        geometry="Measured single-row distribution from NI12 to NI0..NI3. Branches show logical fanout.",
+        memory_data_flow="Planned scenario only: four west memories, four row roots, and three peers per row. No measured accelerator utilization.",
+        software_edges="Unique source/destination pairs from each saved input manifest",
+        runtime_boundary="root AWVALID assertion to last required source B handshake, in cycles",
+        outputs={str(p.relative_to(output)): digest(p) for p in files}), indent=2)+"\n")
+    print("Saved multicast runtime and logical dataflow figures under", figures)
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
@@ -1409,9 +2658,12 @@ if __name__ == "__main__":
     group.add_argument("--cross-results", nargs="+", type=Path)
     group.add_argument("--boundary-results", nargs="+", type=Path)
     group.add_argument("--multicast-results", nargs="+", type=Path)
+    group.add_argument("--multicast-plot", type=Path)
     parser.add_argument("--output", type=Path, help="Directory for the combined traffic plots")
     args = parser.parse_args()
-    if args.multicast_results:
+    if args.multicast_plot:
+        multicast_plots(args.multicast_plot)
+    elif args.multicast_results:
         if args.output is None:
             parser.error("--multicast-results requires --output")
         multicast_report(args.multicast_results,args.output)

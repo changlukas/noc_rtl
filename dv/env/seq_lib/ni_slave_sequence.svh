@@ -20,6 +20,10 @@ class ni_slave_sequence extends tvip_axi_slave_default_sequence;
         uvm_event phase_start = uvm_event_pool::get_global(item.is_read() ? "ni_read_start" : "ni_write_start");
         time epoch = phase_start.get_trigger_time();
         int remaining;
+        int memory_delay;
+        if (item.is_read() && ni_nsu_port_id(port) == 1 &&
+                $value$plusargs("memory_read_delay=%d", memory_delay))
+            return memory_delay;
         if (hold_cycles == 0 || (hold_port != 0 && hold_port != port) ||
                 hold_epoch[item.is_read()] == epoch) return -1;
         hold_epoch[item.is_read()] = epoch;

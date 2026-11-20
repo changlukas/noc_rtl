@@ -1,0 +1,13 @@
+pattern,transfer_bytes,mean_utilization_percent,min_source_cycles,max_source_cycles,max_flows_per_directed_DAT_link,max_DAT_link_flits,common_enable_done_cycles,capacity_bound_gap_cycles,selected_link_from,selected_link_to,before_link_cycles,accepted_link_slots,unaccepted_slots_within_link_span,after_link_cycles
+bit_complement,1024,26.22971894071638,54,69,2,32,69,37,11,7,26,32,5,6
+bit_complement,2048,34.314026751512365,86,101,2,64,101,37,11,7,26,64,5,6
+bit_complement,4096,40.64604971408566,150,165,2,128,165,37,11,7,26,128,5,6
+bit_complement,8192,44.67117416409314,278,295,2,256,295,39,11,7,27,256,6,6
+bit_complement,16384,47.198603020481926,533,552,2,512,552,40,11,7,27,512,5,8
+bit_complement,32768,48.55644794929666,1045,1064,2,1024,1064,40,11,7,27,1024,5,8
+neighbor,1024,44.817927170868344,34,42,1,16,42,26,14,15,21,16,0,5
+neighbor,2048,61.793103448275865,50,58,1,32,58,26,14,15,21,32,0,5
+neighbor,4096,76.31436314363141,82,90,1,64,90,26,14,15,21,64,0,5
+neighbor,8192,86.53264543675503,146,154,1,128,154,26,14,15,21,128,0,5
+neighbor,16384,92.76802816172285,274,282,1,256,282,26,14,15,21,256,0,5
+neighbor,32768,96.24465175001752,530,538,1,512,538,26,14,15,21,512,0,5

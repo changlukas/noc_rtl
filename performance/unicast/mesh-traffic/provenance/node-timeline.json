@@ -1,0 +1,6226 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "/home/mingwei/noc_rtl/dv/scripts/performance.py",
+    "--tile-to-tile",
+    "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic"
+  ],
+  "script_sha256": "67f59c9b805989d5c911e64979617b8bd38efe2196ea5c88fb1a61eb4aa3ef34",
+  "cases": [
+    {
+      "pattern": "bit_complement",
+      "result": "runs/bit-complement-32kib",
+      "case": "bit_complement_32kib",
+      "run_command": [
+        "/home/mingwei/noc_rtl/build/compile/fdfe3d0fee6f/simv",
+        "+stim_dir=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/inputs",
+        "+case_name=bit_complement_32kib",
+        "+source_mask=ffff",
+        "+reset_seed=1",
+        "+ntb_random_seed=1",
+        "+check_min_outstanding=1",
+        "+check_min_unique=1",
+        "+preload",
+        "-cm",
+        "line+cond+fsm+tgl+branch+assert",
+        "-cm_dir",
+        "/home/mingwei/noc_rtl/build/compile/fdfe3d0fee6f/simv.vdb",
+        "-cm_name",
+        "bit_complement_32kib_auto_s1",
+        "+wave_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/bit_complement_32kib.fsdb",
+        "+perf_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/axi-events.csv"
+      ],
+      "clock": {
+        "axi_period_ps": 1000,
+        "noc_period_ps": 1000,
+        "noc_phase_ps": 0
+      },
+      "seed": 1,
+      "fsdb_sha256": "8702bdfc5ed8a1db3c8be7eff1b80b25770e63668ca3cae0970c5e1976b2fe52",
+      "vcd_sha256": "54765ed79907e0a5a21e709dd4049d3d9403fe168b7bbfeadeb92563f4aa9e06",
+      "vcd": "/home/mingwei/noc_rtl/build/perf-bw-analysis/bit_complement_32kib/interfaces.vcd",
+      "fsdb": "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/bit_complement_32kib.fsdb",
+      "export_command": [
+        "fsdb2vcd",
+        "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/bit_complement_32kib.fsdb",
+        "-o",
+        "/home/mingwei/noc_rtl/build/perf-bw-analysis/bit_complement_32kib/interfaces.vcd",
+        "-s",
+        "/tb_top",
+        "-level",
+        "3"
+      ],
+      "run_record_sha256": "efb9ba20b5db83b4d99b4bcb9927543bd877d321ed4e8592e31af0650959cf6d",
+      "source_manifest_sha256": "ec44b093751ca0fa7948c9812b045799a0ec51d5406f87eae409817d93a9e700",
+      "binary_sha256": "ea21915549c31d673d36b9c94763c52b044b1a600d163ff5329114a0c1f4bac1",
+      "transaction_table_sha256": "4cefed3163960d9211842c09efc5b2c3889346f4710d7f3896d2ca716bd7cbb8",
+      "raw_axi_sha256": "9ac312b78eb37f29ef3abb2f0e8e3a69f3e8f4da53602c481b227821001cb037",
+      "origin_ps": 7500,
+      "signal_bindings": {
+        "source_0_ar": [
+          "axi",
+          "tb_top.gen_node[0].source_bus.arvalid",
+          "tb_top.gen_node[0].source_bus.arready",
+          null
+        ],
+        "source_0_r": [
+          "axi",
+          "tb_top.gen_node[0].source_bus.rvalid",
+          "tb_top.gen_node[0].source_bus.rready",
+          null
+        ],
+        "device_0_ar": [
+          "axi",
+          "tb_top.gen_node[0].device_bus.arvalid",
+          "tb_top.gen_node[0].device_bus.arready",
+          null
+        ],
+        "device_0_r": [
+          "axi",
+          "tb_top.gen_node[0].device_bus.rvalid",
+          "tb_top.gen_node[0].device_bus.rready",
+          null
+        ],
+        "req_rx_0_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[0]",
+          "tb_top.i_router.rx_req_ready[0]",
+          0
+        ],
+        "req_tx_0_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          0
+        ],
+        "req_tx_0_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          1
+        ],
+        "req_tx_0_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          2
+        ],
+        "req_tx_0_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          3
+        ],
+        "req_tx_0_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          4
+        ],
+        "dat_rx_0_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[0][0]",
+          "tb_top.i_router.rx_dat_ready[0][0]",
+          1
+        ],
+        "dat_tx_0_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][0]",
+          "tb_top.i_router.tx_dat_ready[0][0]",
+          1
+        ],
+        "dat_tx_0_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][1]",
+          "tb_top.i_router.tx_dat_ready[0][1]",
+          1
+        ],
+        "dat_tx_0_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][2]",
+          "tb_top.i_router.tx_dat_ready[0][2]",
+          1
+        ],
+        "dat_tx_0_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][3]",
+          "tb_top.i_router.tx_dat_ready[0][3]",
+          1
+        ],
+        "dat_tx_0_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][4]",
+          "tb_top.i_router.tx_dat_ready[0][4]",
+          1
+        ],
+        "source_1_ar": [
+          "axi",
+          "tb_top.gen_node[1].source_bus.arvalid",
+          "tb_top.gen_node[1].source_bus.arready",
+          null
+        ],
+        "source_1_r": [
+          "axi",
+          "tb_top.gen_node[1].source_bus.rvalid",
+          "tb_top.gen_node[1].source_bus.rready",
+          null
+        ],
+        "device_1_ar": [
+          "axi",
+          "tb_top.gen_node[1].device_bus.arvalid",
+          "tb_top.gen_node[1].device_bus.arready",
+          null
+        ],
+        "device_1_r": [
+          "axi",
+          "tb_top.gen_node[1].device_bus.rvalid",
+          "tb_top.gen_node[1].device_bus.rready",
+          null
+        ],
+        "req_rx_1_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[1]",
+          "tb_top.i_router.rx_req_ready[1]",
+          0
+        ],
+        "req_tx_1_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          0
+        ],
+        "req_tx_1_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          1
+        ],
+        "req_tx_1_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          2
+        ],
+        "req_tx_1_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          3
+        ],
+        "req_tx_1_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          4
+        ],
+        "dat_rx_1_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[1][0]",
+          "tb_top.i_router.rx_dat_ready[1][0]",
+          1
+        ],
+        "dat_tx_1_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][0]",
+          "tb_top.i_router.tx_dat_ready[1][0]",
+          1
+        ],
+        "dat_tx_1_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][1]",
+          "tb_top.i_router.tx_dat_ready[1][1]",
+          1
+        ],
+        "dat_tx_1_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][2]",
+          "tb_top.i_router.tx_dat_ready[1][2]",
+          1
+        ],
+        "dat_tx_1_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][3]",
+          "tb_top.i_router.tx_dat_ready[1][3]",
+          1
+        ],
+        "dat_tx_1_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][4]",
+          "tb_top.i_router.tx_dat_ready[1][4]",
+          1
+        ],
+        "source_2_ar": [
+          "axi",
+          "tb_top.gen_node[2].source_bus.arvalid",
+          "tb_top.gen_node[2].source_bus.arready",
+          null
+        ],
+        "source_2_r": [
+          "axi",
+          "tb_top.gen_node[2].source_bus.rvalid",
+          "tb_top.gen_node[2].source_bus.rready",
+          null
+        ],
+        "device_2_ar": [
+          "axi",
+          "tb_top.gen_node[2].device_bus.arvalid",
+          "tb_top.gen_node[2].device_bus.arready",
+          null
+        ],
+        "device_2_r": [
+          "axi",
+          "tb_top.gen_node[2].device_bus.rvalid",
+          "tb_top.gen_node[2].device_bus.rready",
+          null
+        ],
+        "req_rx_2_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[2]",
+          "tb_top.i_router.rx_req_ready[2]",
+          0
+        ],
+        "req_tx_2_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          0
+        ],
+        "req_tx_2_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          1
+        ],
+        "req_tx_2_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          2
+        ],
+        "req_tx_2_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          3
+        ],
+        "req_tx_2_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          4
+        ],
+        "dat_rx_2_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[2][0]",
+          "tb_top.i_router.rx_dat_ready[2][0]",
+          1
+        ],
+        "dat_tx_2_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][0]",
+          "tb_top.i_router.tx_dat_ready[2][0]",
+          1
+        ],
+        "dat_tx_2_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][1]",
+          "tb_top.i_router.tx_dat_ready[2][1]",
+          1
+        ],
+        "dat_tx_2_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][2]",
+          "tb_top.i_router.tx_dat_ready[2][2]",
+          1
+        ],
+        "dat_tx_2_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][3]",
+          "tb_top.i_router.tx_dat_ready[2][3]",
+          1
+        ],
+        "dat_tx_2_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][4]",
+          "tb_top.i_router.tx_dat_ready[2][4]",
+          1
+        ],
+        "source_3_ar": [
+          "axi",
+          "tb_top.gen_node[3].source_bus.arvalid",
+          "tb_top.gen_node[3].source_bus.arready",
+          null
+        ],
+        "source_3_r": [
+          "axi",
+          "tb_top.gen_node[3].source_bus.rvalid",
+          "tb_top.gen_node[3].source_bus.rready",
+          null
+        ],
+        "device_3_ar": [
+          "axi",
+          "tb_top.gen_node[3].device_bus.arvalid",
+          "tb_top.gen_node[3].device_bus.arready",
+          null
+        ],
+        "device_3_r": [
+          "axi",
+          "tb_top.gen_node[3].device_bus.rvalid",
+          "tb_top.gen_node[3].device_bus.rready",
+          null
+        ],
+        "req_rx_3_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[3]",
+          "tb_top.i_router.rx_req_ready[3]",
+          0
+        ],
+        "req_tx_3_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          0
+        ],
+        "req_tx_3_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          1
+        ],
+        "req_tx_3_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          2
+        ],
+        "req_tx_3_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          3
+        ],
+        "req_tx_3_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          4
+        ],
+        "dat_rx_3_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[3][0]",
+          "tb_top.i_router.rx_dat_ready[3][0]",
+          1
+        ],
+        "dat_tx_3_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][0]",
+          "tb_top.i_router.tx_dat_ready[3][0]",
+          1
+        ],
+        "dat_tx_3_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][1]",
+          "tb_top.i_router.tx_dat_ready[3][1]",
+          1
+        ],
+        "dat_tx_3_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][2]",
+          "tb_top.i_router.tx_dat_ready[3][2]",
+          1
+        ],
+        "dat_tx_3_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][3]",
+          "tb_top.i_router.tx_dat_ready[3][3]",
+          1
+        ],
+        "dat_tx_3_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][4]",
+          "tb_top.i_router.tx_dat_ready[3][4]",
+          1
+        ],
+        "source_4_ar": [
+          "axi",
+          "tb_top.gen_node[4].source_bus.arvalid",
+          "tb_top.gen_node[4].source_bus.arready",
+          null
+        ],
+        "source_4_r": [
+          "axi",
+          "tb_top.gen_node[4].source_bus.rvalid",
+          "tb_top.gen_node[4].source_bus.rready",
+          null
+        ],
+        "device_4_ar": [
+          "axi",
+          "tb_top.gen_node[4].device_bus.arvalid",
+          "tb_top.gen_node[4].device_bus.arready",
+          null
+        ],
+        "device_4_r": [
+          "axi",
+          "tb_top.gen_node[4].device_bus.rvalid",
+          "tb_top.gen_node[4].device_bus.rready",
+          null
+        ],
+        "req_rx_4_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[4]",
+          "tb_top.i_router.rx_req_ready[4]",
+          0
+        ],
+        "req_tx_4_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          0
+        ],
+        "req_tx_4_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          1
+        ],
+        "req_tx_4_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          2
+        ],
+        "req_tx_4_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          3
+        ],
+        "req_tx_4_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          4
+        ],
+        "dat_rx_4_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[4][0]",
+          "tb_top.i_router.rx_dat_ready[4][0]",
+          1
+        ],
+        "dat_tx_4_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][0]",
+          "tb_top.i_router.tx_dat_ready[4][0]",
+          1
+        ],
+        "dat_tx_4_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][1]",
+          "tb_top.i_router.tx_dat_ready[4][1]",
+          1
+        ],
+        "dat_tx_4_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][2]",
+          "tb_top.i_router.tx_dat_ready[4][2]",
+          1
+        ],
+        "dat_tx_4_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][3]",
+          "tb_top.i_router.tx_dat_ready[4][3]",
+          1
+        ],
+        "dat_tx_4_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][4]",
+          "tb_top.i_router.tx_dat_ready[4][4]",
+          1
+        ],
+        "source_5_ar": [
+          "axi",
+          "tb_top.gen_node[5].source_bus.arvalid",
+          "tb_top.gen_node[5].source_bus.arready",
+          null
+        ],
+        "source_5_r": [
+          "axi",
+          "tb_top.gen_node[5].source_bus.rvalid",
+          "tb_top.gen_node[5].source_bus.rready",
+          null
+        ],
+        "device_5_ar": [
+          "axi",
+          "tb_top.gen_node[5].device_bus.arvalid",
+          "tb_top.gen_node[5].device_bus.arready",
+          null
+        ],
+        "device_5_r": [
+          "axi",
+          "tb_top.gen_node[5].device_bus.rvalid",
+          "tb_top.gen_node[5].device_bus.rready",
+          null
+        ],
+        "req_rx_5_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[5]",
+          "tb_top.i_router.rx_req_ready[5]",
+          0
+        ],
+        "req_tx_5_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          0
+        ],
+        "req_tx_5_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          1
+        ],
+        "req_tx_5_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          2
+        ],
+        "req_tx_5_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          3
+        ],
+        "req_tx_5_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          4
+        ],
+        "dat_rx_5_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[5][0]",
+          "tb_top.i_router.rx_dat_ready[5][0]",
+          1
+        ],
+        "dat_tx_5_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][0]",
+          "tb_top.i_router.tx_dat_ready[5][0]",
+          1
+        ],
+        "dat_tx_5_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][1]",
+          "tb_top.i_router.tx_dat_ready[5][1]",
+          1
+        ],
+        "dat_tx_5_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][2]",
+          "tb_top.i_router.tx_dat_ready[5][2]",
+          1
+        ],
+        "dat_tx_5_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][3]",
+          "tb_top.i_router.tx_dat_ready[5][3]",
+          1
+        ],
+        "dat_tx_5_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][4]",
+          "tb_top.i_router.tx_dat_ready[5][4]",
+          1
+        ],
+        "source_6_ar": [
+          "axi",
+          "tb_top.gen_node[6].source_bus.arvalid",
+          "tb_top.gen_node[6].source_bus.arready",
+          null
+        ],
+        "source_6_r": [
+          "axi",
+          "tb_top.gen_node[6].source_bus.rvalid",
+          "tb_top.gen_node[6].source_bus.rready",
+          null
+        ],
+        "device_6_ar": [
+          "axi",
+          "tb_top.gen_node[6].device_bus.arvalid",
+          "tb_top.gen_node[6].device_bus.arready",
+          null
+        ],
+        "device_6_r": [
+          "axi",
+          "tb_top.gen_node[6].device_bus.rvalid",
+          "tb_top.gen_node[6].device_bus.rready",
+          null
+        ],
+        "req_rx_6_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[6]",
+          "tb_top.i_router.rx_req_ready[6]",
+          0
+        ],
+        "req_tx_6_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          0
+        ],
+        "req_tx_6_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          1
+        ],
+        "req_tx_6_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          2
+        ],
+        "req_tx_6_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          3
+        ],
+        "req_tx_6_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          4
+        ],
+        "dat_rx_6_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[6][0]",
+          "tb_top.i_router.rx_dat_ready[6][0]",
+          1
+        ],
+        "dat_tx_6_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][0]",
+          "tb_top.i_router.tx_dat_ready[6][0]",
+          1
+        ],
+        "dat_tx_6_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][1]",
+          "tb_top.i_router.tx_dat_ready[6][1]",
+          1
+        ],
+        "dat_tx_6_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][2]",
+          "tb_top.i_router.tx_dat_ready[6][2]",
+          1
+        ],
+        "dat_tx_6_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][3]",
+          "tb_top.i_router.tx_dat_ready[6][3]",
+          1
+        ],
+        "dat_tx_6_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][4]",
+          "tb_top.i_router.tx_dat_ready[6][4]",
+          1
+        ],
+        "source_7_ar": [
+          "axi",
+          "tb_top.gen_node[7].source_bus.arvalid",
+          "tb_top.gen_node[7].source_bus.arready",
+          null
+        ],
+        "source_7_r": [
+          "axi",
+          "tb_top.gen_node[7].source_bus.rvalid",
+          "tb_top.gen_node[7].source_bus.rready",
+          null
+        ],
+        "device_7_ar": [
+          "axi",
+          "tb_top.gen_node[7].device_bus.arvalid",
+          "tb_top.gen_node[7].device_bus.arready",
+          null
+        ],
+        "device_7_r": [
+          "axi",
+          "tb_top.gen_node[7].device_bus.rvalid",
+          "tb_top.gen_node[7].device_bus.rready",
+          null
+        ],
+        "req_rx_7_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[7]",
+          "tb_top.i_router.rx_req_ready[7]",
+          0
+        ],
+        "req_tx_7_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          0
+        ],
+        "req_tx_7_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          1
+        ],
+        "req_tx_7_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          2
+        ],
+        "req_tx_7_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          3
+        ],
+        "req_tx_7_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          4
+        ],
+        "dat_rx_7_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[7][0]",
+          "tb_top.i_router.rx_dat_ready[7][0]",
+          1
+        ],
+        "dat_tx_7_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][0]",
+          "tb_top.i_router.tx_dat_ready[7][0]",
+          1
+        ],
+        "dat_tx_7_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][1]",
+          "tb_top.i_router.tx_dat_ready[7][1]",
+          1
+        ],
+        "dat_tx_7_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][2]",
+          "tb_top.i_router.tx_dat_ready[7][2]",
+          1
+        ],
+        "dat_tx_7_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][3]",
+          "tb_top.i_router.tx_dat_ready[7][3]",
+          1
+        ],
+        "dat_tx_7_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][4]",
+          "tb_top.i_router.tx_dat_ready[7][4]",
+          1
+        ],
+        "source_8_ar": [
+          "axi",
+          "tb_top.gen_node[8].source_bus.arvalid",
+          "tb_top.gen_node[8].source_bus.arready",
+          null
+        ],
+        "source_8_r": [
+          "axi",
+          "tb_top.gen_node[8].source_bus.rvalid",
+          "tb_top.gen_node[8].source_bus.rready",
+          null
+        ],
+        "device_8_ar": [
+          "axi",
+          "tb_top.gen_node[8].device_bus.arvalid",
+          "tb_top.gen_node[8].device_bus.arready",
+          null
+        ],
+        "device_8_r": [
+          "axi",
+          "tb_top.gen_node[8].device_bus.rvalid",
+          "tb_top.gen_node[8].device_bus.rready",
+          null
+        ],
+        "req_rx_8_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[8]",
+          "tb_top.i_router.rx_req_ready[8]",
+          0
+        ],
+        "req_tx_8_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          0
+        ],
+        "req_tx_8_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          1
+        ],
+        "req_tx_8_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          2
+        ],
+        "req_tx_8_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          3
+        ],
+        "req_tx_8_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          4
+        ],
+        "dat_rx_8_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[8][0]",
+          "tb_top.i_router.rx_dat_ready[8][0]",
+          1
+        ],
+        "dat_tx_8_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][0]",
+          "tb_top.i_router.tx_dat_ready[8][0]",
+          1
+        ],
+        "dat_tx_8_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][1]",
+          "tb_top.i_router.tx_dat_ready[8][1]",
+          1
+        ],
+        "dat_tx_8_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][2]",
+          "tb_top.i_router.tx_dat_ready[8][2]",
+          1
+        ],
+        "dat_tx_8_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][3]",
+          "tb_top.i_router.tx_dat_ready[8][3]",
+          1
+        ],
+        "dat_tx_8_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][4]",
+          "tb_top.i_router.tx_dat_ready[8][4]",
+          1
+        ],
+        "source_9_ar": [
+          "axi",
+          "tb_top.gen_node[9].source_bus.arvalid",
+          "tb_top.gen_node[9].source_bus.arready",
+          null
+        ],
+        "source_9_r": [
+          "axi",
+          "tb_top.gen_node[9].source_bus.rvalid",
+          "tb_top.gen_node[9].source_bus.rready",
+          null
+        ],
+        "device_9_ar": [
+          "axi",
+          "tb_top.gen_node[9].device_bus.arvalid",
+          "tb_top.gen_node[9].device_bus.arready",
+          null
+        ],
+        "device_9_r": [
+          "axi",
+          "tb_top.gen_node[9].device_bus.rvalid",
+          "tb_top.gen_node[9].device_bus.rready",
+          null
+        ],
+        "req_rx_9_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[9]",
+          "tb_top.i_router.rx_req_ready[9]",
+          0
+        ],
+        "req_tx_9_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          0
+        ],
+        "req_tx_9_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          1
+        ],
+        "req_tx_9_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          2
+        ],
+        "req_tx_9_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          3
+        ],
+        "req_tx_9_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          4
+        ],
+        "dat_rx_9_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[9][0]",
+          "tb_top.i_router.rx_dat_ready[9][0]",
+          1
+        ],
+        "dat_tx_9_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][0]",
+          "tb_top.i_router.tx_dat_ready[9][0]",
+          1
+        ],
+        "dat_tx_9_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][1]",
+          "tb_top.i_router.tx_dat_ready[9][1]",
+          1
+        ],
+        "dat_tx_9_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][2]",
+          "tb_top.i_router.tx_dat_ready[9][2]",
+          1
+        ],
+        "dat_tx_9_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][3]",
+          "tb_top.i_router.tx_dat_ready[9][3]",
+          1
+        ],
+        "dat_tx_9_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][4]",
+          "tb_top.i_router.tx_dat_ready[9][4]",
+          1
+        ],
+        "source_10_ar": [
+          "axi",
+          "tb_top.gen_node[10].source_bus.arvalid",
+          "tb_top.gen_node[10].source_bus.arready",
+          null
+        ],
+        "source_10_r": [
+          "axi",
+          "tb_top.gen_node[10].source_bus.rvalid",
+          "tb_top.gen_node[10].source_bus.rready",
+          null
+        ],
+        "device_10_ar": [
+          "axi",
+          "tb_top.gen_node[10].device_bus.arvalid",
+          "tb_top.gen_node[10].device_bus.arready",
+          null
+        ],
+        "device_10_r": [
+          "axi",
+          "tb_top.gen_node[10].device_bus.rvalid",
+          "tb_top.gen_node[10].device_bus.rready",
+          null
+        ],
+        "req_rx_10_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[10]",
+          "tb_top.i_router.rx_req_ready[10]",
+          0
+        ],
+        "req_tx_10_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          0
+        ],
+        "req_tx_10_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          1
+        ],
+        "req_tx_10_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          2
+        ],
+        "req_tx_10_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          3
+        ],
+        "req_tx_10_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          4
+        ],
+        "dat_rx_10_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[10][0]",
+          "tb_top.i_router.rx_dat_ready[10][0]",
+          1
+        ],
+        "dat_tx_10_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][0]",
+          "tb_top.i_router.tx_dat_ready[10][0]",
+          1
+        ],
+        "dat_tx_10_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][1]",
+          "tb_top.i_router.tx_dat_ready[10][1]",
+          1
+        ],
+        "dat_tx_10_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][2]",
+          "tb_top.i_router.tx_dat_ready[10][2]",
+          1
+        ],
+        "dat_tx_10_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][3]",
+          "tb_top.i_router.tx_dat_ready[10][3]",
+          1
+        ],
+        "dat_tx_10_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][4]",
+          "tb_top.i_router.tx_dat_ready[10][4]",
+          1
+        ],
+        "source_11_ar": [
+          "axi",
+          "tb_top.gen_node[11].source_bus.arvalid",
+          "tb_top.gen_node[11].source_bus.arready",
+          null
+        ],
+        "source_11_r": [
+          "axi",
+          "tb_top.gen_node[11].source_bus.rvalid",
+          "tb_top.gen_node[11].source_bus.rready",
+          null
+        ],
+        "device_11_ar": [
+          "axi",
+          "tb_top.gen_node[11].device_bus.arvalid",
+          "tb_top.gen_node[11].device_bus.arready",
+          null
+        ],
+        "device_11_r": [
+          "axi",
+          "tb_top.gen_node[11].device_bus.rvalid",
+          "tb_top.gen_node[11].device_bus.rready",
+          null
+        ],
+        "req_rx_11_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[11]",
+          "tb_top.i_router.rx_req_ready[11]",
+          0
+        ],
+        "req_tx_11_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          0
+        ],
+        "req_tx_11_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          1
+        ],
+        "req_tx_11_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          2
+        ],
+        "req_tx_11_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          3
+        ],
+        "req_tx_11_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          4
+        ],
+        "dat_rx_11_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[11][0]",
+          "tb_top.i_router.rx_dat_ready[11][0]",
+          1
+        ],
+        "dat_tx_11_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][0]",
+          "tb_top.i_router.tx_dat_ready[11][0]",
+          1
+        ],
+        "dat_tx_11_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][1]",
+          "tb_top.i_router.tx_dat_ready[11][1]",
+          1
+        ],
+        "dat_tx_11_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][2]",
+          "tb_top.i_router.tx_dat_ready[11][2]",
+          1
+        ],
+        "dat_tx_11_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][3]",
+          "tb_top.i_router.tx_dat_ready[11][3]",
+          1
+        ],
+        "dat_tx_11_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][4]",
+          "tb_top.i_router.tx_dat_ready[11][4]",
+          1
+        ],
+        "source_12_ar": [
+          "axi",
+          "tb_top.gen_node[12].source_bus.arvalid",
+          "tb_top.gen_node[12].source_bus.arready",
+          null
+        ],
+        "source_12_r": [
+          "axi",
+          "tb_top.gen_node[12].source_bus.rvalid",
+          "tb_top.gen_node[12].source_bus.rready",
+          null
+        ],
+        "device_12_ar": [
+          "axi",
+          "tb_top.gen_node[12].device_bus.arvalid",
+          "tb_top.gen_node[12].device_bus.arready",
+          null
+        ],
+        "device_12_r": [
+          "axi",
+          "tb_top.gen_node[12].device_bus.rvalid",
+          "tb_top.gen_node[12].device_bus.rready",
+          null
+        ],
+        "req_rx_12_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[12]",
+          "tb_top.i_router.rx_req_ready[12]",
+          0
+        ],
+        "req_tx_12_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          0
+        ],
+        "req_tx_12_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          1
+        ],
+        "req_tx_12_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          2
+        ],
+        "req_tx_12_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          3
+        ],
+        "req_tx_12_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          4
+        ],
+        "dat_rx_12_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[12][0]",
+          "tb_top.i_router.rx_dat_ready[12][0]",
+          1
+        ],
+        "dat_tx_12_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][0]",
+          "tb_top.i_router.tx_dat_ready[12][0]",
+          1
+        ],
+        "dat_tx_12_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][1]",
+          "tb_top.i_router.tx_dat_ready[12][1]",
+          1
+        ],
+        "dat_tx_12_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][2]",
+          "tb_top.i_router.tx_dat_ready[12][2]",
+          1
+        ],
+        "dat_tx_12_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][3]",
+          "tb_top.i_router.tx_dat_ready[12][3]",
+          1
+        ],
+        "dat_tx_12_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][4]",
+          "tb_top.i_router.tx_dat_ready[12][4]",
+          1
+        ],
+        "source_13_ar": [
+          "axi",
+          "tb_top.gen_node[13].source_bus.arvalid",
+          "tb_top.gen_node[13].source_bus.arready",
+          null
+        ],
+        "source_13_r": [
+          "axi",
+          "tb_top.gen_node[13].source_bus.rvalid",
+          "tb_top.gen_node[13].source_bus.rready",
+          null
+        ],
+        "device_13_ar": [
+          "axi",
+          "tb_top.gen_node[13].device_bus.arvalid",
+          "tb_top.gen_node[13].device_bus.arready",
+          null
+        ],
+        "device_13_r": [
+          "axi",
+          "tb_top.gen_node[13].device_bus.rvalid",
+          "tb_top.gen_node[13].device_bus.rready",
+          null
+        ],
+        "req_rx_13_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[13]",
+          "tb_top.i_router.rx_req_ready[13]",
+          0
+        ],
+        "req_tx_13_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          0
+        ],
+        "req_tx_13_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          1
+        ],
+        "req_tx_13_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          2
+        ],
+        "req_tx_13_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          3
+        ],
+        "req_tx_13_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          4
+        ],
+        "dat_rx_13_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[13][0]",
+          "tb_top.i_router.rx_dat_ready[13][0]",
+          1
+        ],
+        "dat_tx_13_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][0]",
+          "tb_top.i_router.tx_dat_ready[13][0]",
+          1
+        ],
+        "dat_tx_13_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][1]",
+          "tb_top.i_router.tx_dat_ready[13][1]",
+          1
+        ],
+        "dat_tx_13_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][2]",
+          "tb_top.i_router.tx_dat_ready[13][2]",
+          1
+        ],
+        "dat_tx_13_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][3]",
+          "tb_top.i_router.tx_dat_ready[13][3]",
+          1
+        ],
+        "dat_tx_13_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][4]",
+          "tb_top.i_router.tx_dat_ready[13][4]",
+          1
+        ],
+        "source_14_ar": [
+          "axi",
+          "tb_top.gen_node[14].source_bus.arvalid",
+          "tb_top.gen_node[14].source_bus.arready",
+          null
+        ],
+        "source_14_r": [
+          "axi",
+          "tb_top.gen_node[14].source_bus.rvalid",
+          "tb_top.gen_node[14].source_bus.rready",
+          null
+        ],
+        "device_14_ar": [
+          "axi",
+          "tb_top.gen_node[14].device_bus.arvalid",
+          "tb_top.gen_node[14].device_bus.arready",
+          null
+        ],
+        "device_14_r": [
+          "axi",
+          "tb_top.gen_node[14].device_bus.rvalid",
+          "tb_top.gen_node[14].device_bus.rready",
+          null
+        ],
+        "req_rx_14_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[14]",
+          "tb_top.i_router.rx_req_ready[14]",
+          0
+        ],
+        "req_tx_14_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          0
+        ],
+        "req_tx_14_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          1
+        ],
+        "req_tx_14_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          2
+        ],
+        "req_tx_14_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          3
+        ],
+        "req_tx_14_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          4
+        ],
+        "dat_rx_14_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[14][0]",
+          "tb_top.i_router.rx_dat_ready[14][0]",
+          1
+        ],
+        "dat_tx_14_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][0]",
+          "tb_top.i_router.tx_dat_ready[14][0]",
+          1
+        ],
+        "dat_tx_14_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][1]",
+          "tb_top.i_router.tx_dat_ready[14][1]",
+          1
+        ],
+        "dat_tx_14_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][2]",
+          "tb_top.i_router.tx_dat_ready[14][2]",
+          1
+        ],
+        "dat_tx_14_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][3]",
+          "tb_top.i_router.tx_dat_ready[14][3]",
+          1
+        ],
+        "dat_tx_14_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][4]",
+          "tb_top.i_router.tx_dat_ready[14][4]",
+          1
+        ],
+        "source_15_ar": [
+          "axi",
+          "tb_top.gen_node[15].source_bus.arvalid",
+          "tb_top.gen_node[15].source_bus.arready",
+          null
+        ],
+        "source_15_r": [
+          "axi",
+          "tb_top.gen_node[15].source_bus.rvalid",
+          "tb_top.gen_node[15].source_bus.rready",
+          null
+        ],
+        "device_15_ar": [
+          "axi",
+          "tb_top.gen_node[15].device_bus.arvalid",
+          "tb_top.gen_node[15].device_bus.arready",
+          null
+        ],
+        "device_15_r": [
+          "axi",
+          "tb_top.gen_node[15].device_bus.rvalid",
+          "tb_top.gen_node[15].device_bus.rready",
+          null
+        ],
+        "req_rx_15_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[15]",
+          "tb_top.i_router.rx_req_ready[15]",
+          0
+        ],
+        "req_tx_15_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          0
+        ],
+        "req_tx_15_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          1
+        ],
+        "req_tx_15_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          2
+        ],
+        "req_tx_15_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          3
+        ],
+        "req_tx_15_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          4
+        ],
+        "dat_rx_15_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[15][0]",
+          "tb_top.i_router.rx_dat_ready[15][0]",
+          1
+        ],
+        "dat_tx_15_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][0]",
+          "tb_top.i_router.tx_dat_ready[15][0]",
+          1
+        ],
+        "dat_tx_15_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][1]",
+          "tb_top.i_router.tx_dat_ready[15][1]",
+          1
+        ],
+        "dat_tx_15_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][2]",
+          "tb_top.i_router.tx_dat_ready[15][2]",
+          1
+        ],
+        "dat_tx_15_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][3]",
+          "tb_top.i_router.tx_dat_ready[15][3]",
+          1
+        ],
+        "dat_tx_15_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][4]",
+          "tb_top.i_router.tx_dat_ready[15][4]",
+          1
+        ]
+      },
+      "signal_payloads": {
+        "source_0_ar": [
+          "tb_top.gen_node[0].source_bus.araddr",
+          "tb_top.gen_node[0].source_bus.arlen",
+          "tb_top.gen_node[0].source_bus.arsize",
+          "tb_top.gen_node[0].source_bus.arid"
+        ],
+        "source_0_r": [
+          "tb_top.gen_node[0].source_bus.rdata",
+          "tb_top.gen_node[0].source_bus.rlast",
+          "tb_top.gen_node[0].source_bus.rid"
+        ],
+        "device_0_ar": [
+          "tb_top.gen_node[0].device_bus.araddr",
+          "tb_top.gen_node[0].device_bus.arlen",
+          "tb_top.gen_node[0].device_bus.arsize",
+          "tb_top.gen_node[0].device_bus.arid"
+        ],
+        "device_0_r": [
+          "tb_top.gen_node[0].device_bus.rdata",
+          "tb_top.gen_node[0].device_bus.rlast",
+          "tb_top.gen_node[0].device_bus.rid"
+        ],
+        "req_rx_0_0": [
+          "tb_top.i_router.rx_req_flit[0][0]"
+        ],
+        "req_tx_0_0": [
+          "tb_top.i_router.tx_req_flit[0][0]"
+        ],
+        "req_tx_0_1": [
+          "tb_top.i_router.tx_req_flit[0][1]"
+        ],
+        "req_tx_0_2": [
+          "tb_top.i_router.tx_req_flit[0][2]"
+        ],
+        "req_tx_0_3": [
+          "tb_top.i_router.tx_req_flit[0][3]"
+        ],
+        "req_tx_0_4": [
+          "tb_top.i_router.tx_req_flit[0][4]"
+        ],
+        "dat_rx_0_0": [
+          "tb_top.i_router.rx_dat_flit[0][0]"
+        ],
+        "dat_tx_0_0": [
+          "tb_top.i_router.tx_dat_flit[0][0]"
+        ],
+        "dat_tx_0_1": [
+          "tb_top.i_router.tx_dat_flit[0][1]"
+        ],
+        "dat_tx_0_2": [
+          "tb_top.i_router.tx_dat_flit[0][2]"
+        ],
+        "dat_tx_0_3": [
+          "tb_top.i_router.tx_dat_flit[0][3]"
+        ],
+        "dat_tx_0_4": [
+          "tb_top.i_router.tx_dat_flit[0][4]"
+        ],
+        "source_1_ar": [
+          "tb_top.gen_node[1].source_bus.araddr",
+          "tb_top.gen_node[1].source_bus.arlen",
+          "tb_top.gen_node[1].source_bus.arsize",
+          "tb_top.gen_node[1].source_bus.arid"
+        ],
+        "source_1_r": [
+          "tb_top.gen_node[1].source_bus.rdata",
+          "tb_top.gen_node[1].source_bus.rlast",
+          "tb_top.gen_node[1].source_bus.rid"
+        ],
+        "device_1_ar": [
+          "tb_top.gen_node[1].device_bus.araddr",
+          "tb_top.gen_node[1].device_bus.arlen",
+          "tb_top.gen_node[1].device_bus.arsize",
+          "tb_top.gen_node[1].device_bus.arid"
+        ],
+        "device_1_r": [
+          "tb_top.gen_node[1].device_bus.rdata",
+          "tb_top.gen_node[1].device_bus.rlast",
+          "tb_top.gen_node[1].device_bus.rid"
+        ],
+        "req_rx_1_0": [
+          "tb_top.i_router.rx_req_flit[1][0]"
+        ],
+        "req_tx_1_0": [
+          "tb_top.i_router.tx_req_flit[1][0]"
+        ],
+        "req_tx_1_1": [
+          "tb_top.i_router.tx_req_flit[1][1]"
+        ],
+        "req_tx_1_2": [
+          "tb_top.i_router.tx_req_flit[1][2]"
+        ],
+        "req_tx_1_3": [
+          "tb_top.i_router.tx_req_flit[1][3]"
+        ],
+        "req_tx_1_4": [
+          "tb_top.i_router.tx_req_flit[1][4]"
+        ],
+        "dat_rx_1_0": [
+          "tb_top.i_router.rx_dat_flit[1][0]"
+        ],
+        "dat_tx_1_0": [
+          "tb_top.i_router.tx_dat_flit[1][0]"
+        ],
+        "dat_tx_1_1": [
+          "tb_top.i_router.tx_dat_flit[1][1]"
+        ],
+        "dat_tx_1_2": [
+          "tb_top.i_router.tx_dat_flit[1][2]"
+        ],
+        "dat_tx_1_3": [
+          "tb_top.i_router.tx_dat_flit[1][3]"
+        ],
+        "dat_tx_1_4": [
+          "tb_top.i_router.tx_dat_flit[1][4]"
+        ],
+        "source_2_ar": [
+          "tb_top.gen_node[2].source_bus.araddr",
+          "tb_top.gen_node[2].source_bus.arlen",
+          "tb_top.gen_node[2].source_bus.arsize",
+          "tb_top.gen_node[2].source_bus.arid"
+        ],
+        "source_2_r": [
+          "tb_top.gen_node[2].source_bus.rdata",
+          "tb_top.gen_node[2].source_bus.rlast",
+          "tb_top.gen_node[2].source_bus.rid"
+        ],
+        "device_2_ar": [
+          "tb_top.gen_node[2].device_bus.araddr",
+          "tb_top.gen_node[2].device_bus.arlen",
+          "tb_top.gen_node[2].device_bus.arsize",
+          "tb_top.gen_node[2].device_bus.arid"
+        ],
+        "device_2_r": [
+          "tb_top.gen_node[2].device_bus.rdata",
+          "tb_top.gen_node[2].device_bus.rlast",
+          "tb_top.gen_node[2].device_bus.rid"
+        ],
+        "req_rx_2_0": [
+          "tb_top.i_router.rx_req_flit[2][0]"
+        ],
+        "req_tx_2_0": [
+          "tb_top.i_router.tx_req_flit[2][0]"
+        ],
+        "req_tx_2_1": [
+          "tb_top.i_router.tx_req_flit[2][1]"
+        ],
+        "req_tx_2_2": [
+          "tb_top.i_router.tx_req_flit[2][2]"
+        ],
+        "req_tx_2_3": [
+          "tb_top.i_router.tx_req_flit[2][3]"
+        ],
+        "req_tx_2_4": [
+          "tb_top.i_router.tx_req_flit[2][4]"
+        ],
+        "dat_rx_2_0": [
+          "tb_top.i_router.rx_dat_flit[2][0]"
+        ],
+        "dat_tx_2_0": [
+          "tb_top.i_router.tx_dat_flit[2][0]"
+        ],
+        "dat_tx_2_1": [
+          "tb_top.i_router.tx_dat_flit[2][1]"
+        ],
+        "dat_tx_2_2": [
+          "tb_top.i_router.tx_dat_flit[2][2]"
+        ],
+        "dat_tx_2_3": [
+          "tb_top.i_router.tx_dat_flit[2][3]"
+        ],
+        "dat_tx_2_4": [
+          "tb_top.i_router.tx_dat_flit[2][4]"
+        ],
+        "source_3_ar": [
+          "tb_top.gen_node[3].source_bus.araddr",
+          "tb_top.gen_node[3].source_bus.arlen",
+          "tb_top.gen_node[3].source_bus.arsize",
+          "tb_top.gen_node[3].source_bus.arid"
+        ],
+        "source_3_r": [
+          "tb_top.gen_node[3].source_bus.rdata",
+          "tb_top.gen_node[3].source_bus.rlast",
+          "tb_top.gen_node[3].source_bus.rid"
+        ],
+        "device_3_ar": [
+          "tb_top.gen_node[3].device_bus.araddr",
+          "tb_top.gen_node[3].device_bus.arlen",
+          "tb_top.gen_node[3].device_bus.arsize",
+          "tb_top.gen_node[3].device_bus.arid"
+        ],
+        "device_3_r": [
+          "tb_top.gen_node[3].device_bus.rdata",
+          "tb_top.gen_node[3].device_bus.rlast",
+          "tb_top.gen_node[3].device_bus.rid"
+        ],
+        "req_rx_3_0": [
+          "tb_top.i_router.rx_req_flit[3][0]"
+        ],
+        "req_tx_3_0": [
+          "tb_top.i_router.tx_req_flit[3][0]"
+        ],
+        "req_tx_3_1": [
+          "tb_top.i_router.tx_req_flit[3][1]"
+        ],
+        "req_tx_3_2": [
+          "tb_top.i_router.tx_req_flit[3][2]"
+        ],
+        "req_tx_3_3": [
+          "tb_top.i_router.tx_req_flit[3][3]"
+        ],
+        "req_tx_3_4": [
+          "tb_top.i_router.tx_req_flit[3][4]"
+        ],
+        "dat_rx_3_0": [
+          "tb_top.i_router.rx_dat_flit[3][0]"
+        ],
+        "dat_tx_3_0": [
+          "tb_top.i_router.tx_dat_flit[3][0]"
+        ],
+        "dat_tx_3_1": [
+          "tb_top.i_router.tx_dat_flit[3][1]"
+        ],
+        "dat_tx_3_2": [
+          "tb_top.i_router.tx_dat_flit[3][2]"
+        ],
+        "dat_tx_3_3": [
+          "tb_top.i_router.tx_dat_flit[3][3]"
+        ],
+        "dat_tx_3_4": [
+          "tb_top.i_router.tx_dat_flit[3][4]"
+        ],
+        "source_4_ar": [
+          "tb_top.gen_node[4].source_bus.araddr",
+          "tb_top.gen_node[4].source_bus.arlen",
+          "tb_top.gen_node[4].source_bus.arsize",
+          "tb_top.gen_node[4].source_bus.arid"
+        ],
+        "source_4_r": [
+          "tb_top.gen_node[4].source_bus.rdata",
+          "tb_top.gen_node[4].source_bus.rlast",
+          "tb_top.gen_node[4].source_bus.rid"
+        ],
+        "device_4_ar": [
+          "tb_top.gen_node[4].device_bus.araddr",
+          "tb_top.gen_node[4].device_bus.arlen",
+          "tb_top.gen_node[4].device_bus.arsize",
+          "tb_top.gen_node[4].device_bus.arid"
+        ],
+        "device_4_r": [
+          "tb_top.gen_node[4].device_bus.rdata",
+          "tb_top.gen_node[4].device_bus.rlast",
+          "tb_top.gen_node[4].device_bus.rid"
+        ],
+        "req_rx_4_0": [
+          "tb_top.i_router.rx_req_flit[4][0]"
+        ],
+        "req_tx_4_0": [
+          "tb_top.i_router.tx_req_flit[4][0]"
+        ],
+        "req_tx_4_1": [
+          "tb_top.i_router.tx_req_flit[4][1]"
+        ],
+        "req_tx_4_2": [
+          "tb_top.i_router.tx_req_flit[4][2]"
+        ],
+        "req_tx_4_3": [
+          "tb_top.i_router.tx_req_flit[4][3]"
+        ],
+        "req_tx_4_4": [
+          "tb_top.i_router.tx_req_flit[4][4]"
+        ],
+        "dat_rx_4_0": [
+          "tb_top.i_router.rx_dat_flit[4][0]"
+        ],
+        "dat_tx_4_0": [
+          "tb_top.i_router.tx_dat_flit[4][0]"
+        ],
+        "dat_tx_4_1": [
+          "tb_top.i_router.tx_dat_flit[4][1]"
+        ],
+        "dat_tx_4_2": [
+          "tb_top.i_router.tx_dat_flit[4][2]"
+        ],
+        "dat_tx_4_3": [
+          "tb_top.i_router.tx_dat_flit[4][3]"
+        ],
+        "dat_tx_4_4": [
+          "tb_top.i_router.tx_dat_flit[4][4]"
+        ],
+        "source_5_ar": [
+          "tb_top.gen_node[5].source_bus.araddr",
+          "tb_top.gen_node[5].source_bus.arlen",
+          "tb_top.gen_node[5].source_bus.arsize",
+          "tb_top.gen_node[5].source_bus.arid"
+        ],
+        "source_5_r": [
+          "tb_top.gen_node[5].source_bus.rdata",
+          "tb_top.gen_node[5].source_bus.rlast",
+          "tb_top.gen_node[5].source_bus.rid"
+        ],
+        "device_5_ar": [
+          "tb_top.gen_node[5].device_bus.araddr",
+          "tb_top.gen_node[5].device_bus.arlen",
+          "tb_top.gen_node[5].device_bus.arsize",
+          "tb_top.gen_node[5].device_bus.arid"
+        ],
+        "device_5_r": [
+          "tb_top.gen_node[5].device_bus.rdata",
+          "tb_top.gen_node[5].device_bus.rlast",
+          "tb_top.gen_node[5].device_bus.rid"
+        ],
+        "req_rx_5_0": [
+          "tb_top.i_router.rx_req_flit[5][0]"
+        ],
+        "req_tx_5_0": [
+          "tb_top.i_router.tx_req_flit[5][0]"
+        ],
+        "req_tx_5_1": [
+          "tb_top.i_router.tx_req_flit[5][1]"
+        ],
+        "req_tx_5_2": [
+          "tb_top.i_router.tx_req_flit[5][2]"
+        ],
+        "req_tx_5_3": [
+          "tb_top.i_router.tx_req_flit[5][3]"
+        ],
+        "req_tx_5_4": [
+          "tb_top.i_router.tx_req_flit[5][4]"
+        ],
+        "dat_rx_5_0": [
+          "tb_top.i_router.rx_dat_flit[5][0]"
+        ],
+        "dat_tx_5_0": [
+          "tb_top.i_router.tx_dat_flit[5][0]"
+        ],
+        "dat_tx_5_1": [
+          "tb_top.i_router.tx_dat_flit[5][1]"
+        ],
+        "dat_tx_5_2": [
+          "tb_top.i_router.tx_dat_flit[5][2]"
+        ],
+        "dat_tx_5_3": [
+          "tb_top.i_router.tx_dat_flit[5][3]"
+        ],
+        "dat_tx_5_4": [
+          "tb_top.i_router.tx_dat_flit[5][4]"
+        ],
+        "source_6_ar": [
+          "tb_top.gen_node[6].source_bus.araddr",
+          "tb_top.gen_node[6].source_bus.arlen",
+          "tb_top.gen_node[6].source_bus.arsize",
+          "tb_top.gen_node[6].source_bus.arid"
+        ],
+        "source_6_r": [
+          "tb_top.gen_node[6].source_bus.rdata",
+          "tb_top.gen_node[6].source_bus.rlast",
+          "tb_top.gen_node[6].source_bus.rid"
+        ],
+        "device_6_ar": [
+          "tb_top.gen_node[6].device_bus.araddr",
+          "tb_top.gen_node[6].device_bus.arlen",
+          "tb_top.gen_node[6].device_bus.arsize",
+          "tb_top.gen_node[6].device_bus.arid"
+        ],
+        "device_6_r": [
+          "tb_top.gen_node[6].device_bus.rdata",
+          "tb_top.gen_node[6].device_bus.rlast",
+          "tb_top.gen_node[6].device_bus.rid"
+        ],
+        "req_rx_6_0": [
+          "tb_top.i_router.rx_req_flit[6][0]"
+        ],
+        "req_tx_6_0": [
+          "tb_top.i_router.tx_req_flit[6][0]"
+        ],
+        "req_tx_6_1": [
+          "tb_top.i_router.tx_req_flit[6][1]"
+        ],
+        "req_tx_6_2": [
+          "tb_top.i_router.tx_req_flit[6][2]"
+        ],
+        "req_tx_6_3": [
+          "tb_top.i_router.tx_req_flit[6][3]"
+        ],
+        "req_tx_6_4": [
+          "tb_top.i_router.tx_req_flit[6][4]"
+        ],
+        "dat_rx_6_0": [
+          "tb_top.i_router.rx_dat_flit[6][0]"
+        ],
+        "dat_tx_6_0": [
+          "tb_top.i_router.tx_dat_flit[6][0]"
+        ],
+        "dat_tx_6_1": [
+          "tb_top.i_router.tx_dat_flit[6][1]"
+        ],
+        "dat_tx_6_2": [
+          "tb_top.i_router.tx_dat_flit[6][2]"
+        ],
+        "dat_tx_6_3": [
+          "tb_top.i_router.tx_dat_flit[6][3]"
+        ],
+        "dat_tx_6_4": [
+          "tb_top.i_router.tx_dat_flit[6][4]"
+        ],
+        "source_7_ar": [
+          "tb_top.gen_node[7].source_bus.araddr",
+          "tb_top.gen_node[7].source_bus.arlen",
+          "tb_top.gen_node[7].source_bus.arsize",
+          "tb_top.gen_node[7].source_bus.arid"
+        ],
+        "source_7_r": [
+          "tb_top.gen_node[7].source_bus.rdata",
+          "tb_top.gen_node[7].source_bus.rlast",
+          "tb_top.gen_node[7].source_bus.rid"
+        ],
+        "device_7_ar": [
+          "tb_top.gen_node[7].device_bus.araddr",
+          "tb_top.gen_node[7].device_bus.arlen",
+          "tb_top.gen_node[7].device_bus.arsize",
+          "tb_top.gen_node[7].device_bus.arid"
+        ],
+        "device_7_r": [
+          "tb_top.gen_node[7].device_bus.rdata",
+          "tb_top.gen_node[7].device_bus.rlast",
+          "tb_top.gen_node[7].device_bus.rid"
+        ],
+        "req_rx_7_0": [
+          "tb_top.i_router.rx_req_flit[7][0]"
+        ],
+        "req_tx_7_0": [
+          "tb_top.i_router.tx_req_flit[7][0]"
+        ],
+        "req_tx_7_1": [
+          "tb_top.i_router.tx_req_flit[7][1]"
+        ],
+        "req_tx_7_2": [
+          "tb_top.i_router.tx_req_flit[7][2]"
+        ],
+        "req_tx_7_3": [
+          "tb_top.i_router.tx_req_flit[7][3]"
+        ],
+        "req_tx_7_4": [
+          "tb_top.i_router.tx_req_flit[7][4]"
+        ],
+        "dat_rx_7_0": [
+          "tb_top.i_router.rx_dat_flit[7][0]"
+        ],
+        "dat_tx_7_0": [
+          "tb_top.i_router.tx_dat_flit[7][0]"
+        ],
+        "dat_tx_7_1": [
+          "tb_top.i_router.tx_dat_flit[7][1]"
+        ],
+        "dat_tx_7_2": [
+          "tb_top.i_router.tx_dat_flit[7][2]"
+        ],
+        "dat_tx_7_3": [
+          "tb_top.i_router.tx_dat_flit[7][3]"
+        ],
+        "dat_tx_7_4": [
+          "tb_top.i_router.tx_dat_flit[7][4]"
+        ],
+        "source_8_ar": [
+          "tb_top.gen_node[8].source_bus.araddr",
+          "tb_top.gen_node[8].source_bus.arlen",
+          "tb_top.gen_node[8].source_bus.arsize",
+          "tb_top.gen_node[8].source_bus.arid"
+        ],
+        "source_8_r": [
+          "tb_top.gen_node[8].source_bus.rdata",
+          "tb_top.gen_node[8].source_bus.rlast",
+          "tb_top.gen_node[8].source_bus.rid"
+        ],
+        "device_8_ar": [
+          "tb_top.gen_node[8].device_bus.araddr",
+          "tb_top.gen_node[8].device_bus.arlen",
+          "tb_top.gen_node[8].device_bus.arsize",
+          "tb_top.gen_node[8].device_bus.arid"
+        ],
+        "device_8_r": [
+          "tb_top.gen_node[8].device_bus.rdata",
+          "tb_top.gen_node[8].device_bus.rlast",
+          "tb_top.gen_node[8].device_bus.rid"
+        ],
+        "req_rx_8_0": [
+          "tb_top.i_router.rx_req_flit[8][0]"
+        ],
+        "req_tx_8_0": [
+          "tb_top.i_router.tx_req_flit[8][0]"
+        ],
+        "req_tx_8_1": [
+          "tb_top.i_router.tx_req_flit[8][1]"
+        ],
+        "req_tx_8_2": [
+          "tb_top.i_router.tx_req_flit[8][2]"
+        ],
+        "req_tx_8_3": [
+          "tb_top.i_router.tx_req_flit[8][3]"
+        ],
+        "req_tx_8_4": [
+          "tb_top.i_router.tx_req_flit[8][4]"
+        ],
+        "dat_rx_8_0": [
+          "tb_top.i_router.rx_dat_flit[8][0]"
+        ],
+        "dat_tx_8_0": [
+          "tb_top.i_router.tx_dat_flit[8][0]"
+        ],
+        "dat_tx_8_1": [
+          "tb_top.i_router.tx_dat_flit[8][1]"
+        ],
+        "dat_tx_8_2": [
+          "tb_top.i_router.tx_dat_flit[8][2]"
+        ],
+        "dat_tx_8_3": [
+          "tb_top.i_router.tx_dat_flit[8][3]"
+        ],
+        "dat_tx_8_4": [
+          "tb_top.i_router.tx_dat_flit[8][4]"
+        ],
+        "source_9_ar": [
+          "tb_top.gen_node[9].source_bus.araddr",
+          "tb_top.gen_node[9].source_bus.arlen",
+          "tb_top.gen_node[9].source_bus.arsize",
+          "tb_top.gen_node[9].source_bus.arid"
+        ],
+        "source_9_r": [
+          "tb_top.gen_node[9].source_bus.rdata",
+          "tb_top.gen_node[9].source_bus.rlast",
+          "tb_top.gen_node[9].source_bus.rid"
+        ],
+        "device_9_ar": [
+          "tb_top.gen_node[9].device_bus.araddr",
+          "tb_top.gen_node[9].device_bus.arlen",
+          "tb_top.gen_node[9].device_bus.arsize",
+          "tb_top.gen_node[9].device_bus.arid"
+        ],
+        "device_9_r": [
+          "tb_top.gen_node[9].device_bus.rdata",
+          "tb_top.gen_node[9].device_bus.rlast",
+          "tb_top.gen_node[9].device_bus.rid"
+        ],
+        "req_rx_9_0": [
+          "tb_top.i_router.rx_req_flit[9][0]"
+        ],
+        "req_tx_9_0": [
+          "tb_top.i_router.tx_req_flit[9][0]"
+        ],
+        "req_tx_9_1": [
+          "tb_top.i_router.tx_req_flit[9][1]"
+        ],
+        "req_tx_9_2": [
+          "tb_top.i_router.tx_req_flit[9][2]"
+        ],
+        "req_tx_9_3": [
+          "tb_top.i_router.tx_req_flit[9][3]"
+        ],
+        "req_tx_9_4": [
+          "tb_top.i_router.tx_req_flit[9][4]"
+        ],
+        "dat_rx_9_0": [
+          "tb_top.i_router.rx_dat_flit[9][0]"
+        ],
+        "dat_tx_9_0": [
+          "tb_top.i_router.tx_dat_flit[9][0]"
+        ],
+        "dat_tx_9_1": [
+          "tb_top.i_router.tx_dat_flit[9][1]"
+        ],
+        "dat_tx_9_2": [
+          "tb_top.i_router.tx_dat_flit[9][2]"
+        ],
+        "dat_tx_9_3": [
+          "tb_top.i_router.tx_dat_flit[9][3]"
+        ],
+        "dat_tx_9_4": [
+          "tb_top.i_router.tx_dat_flit[9][4]"
+        ],
+        "source_10_ar": [
+          "tb_top.gen_node[10].source_bus.araddr",
+          "tb_top.gen_node[10].source_bus.arlen",
+          "tb_top.gen_node[10].source_bus.arsize",
+          "tb_top.gen_node[10].source_bus.arid"
+        ],
+        "source_10_r": [
+          "tb_top.gen_node[10].source_bus.rdata",
+          "tb_top.gen_node[10].source_bus.rlast",
+          "tb_top.gen_node[10].source_bus.rid"
+        ],
+        "device_10_ar": [
+          "tb_top.gen_node[10].device_bus.araddr",
+          "tb_top.gen_node[10].device_bus.arlen",
+          "tb_top.gen_node[10].device_bus.arsize",
+          "tb_top.gen_node[10].device_bus.arid"
+        ],
+        "device_10_r": [
+          "tb_top.gen_node[10].device_bus.rdata",
+          "tb_top.gen_node[10].device_bus.rlast",
+          "tb_top.gen_node[10].device_bus.rid"
+        ],
+        "req_rx_10_0": [
+          "tb_top.i_router.rx_req_flit[10][0]"
+        ],
+        "req_tx_10_0": [
+          "tb_top.i_router.tx_req_flit[10][0]"
+        ],
+        "req_tx_10_1": [
+          "tb_top.i_router.tx_req_flit[10][1]"
+        ],
+        "req_tx_10_2": [
+          "tb_top.i_router.tx_req_flit[10][2]"
+        ],
+        "req_tx_10_3": [
+          "tb_top.i_router.tx_req_flit[10][3]"
+        ],
+        "req_tx_10_4": [
+          "tb_top.i_router.tx_req_flit[10][4]"
+        ],
+        "dat_rx_10_0": [
+          "tb_top.i_router.rx_dat_flit[10][0]"
+        ],
+        "dat_tx_10_0": [
+          "tb_top.i_router.tx_dat_flit[10][0]"
+        ],
+        "dat_tx_10_1": [
+          "tb_top.i_router.tx_dat_flit[10][1]"
+        ],
+        "dat_tx_10_2": [
+          "tb_top.i_router.tx_dat_flit[10][2]"
+        ],
+        "dat_tx_10_3": [
+          "tb_top.i_router.tx_dat_flit[10][3]"
+        ],
+        "dat_tx_10_4": [
+          "tb_top.i_router.tx_dat_flit[10][4]"
+        ],
+        "source_11_ar": [
+          "tb_top.gen_node[11].source_bus.araddr",
+          "tb_top.gen_node[11].source_bus.arlen",
+          "tb_top.gen_node[11].source_bus.arsize",
+          "tb_top.gen_node[11].source_bus.arid"
+        ],
+        "source_11_r": [
+          "tb_top.gen_node[11].source_bus.rdata",
+          "tb_top.gen_node[11].source_bus.rlast",
+          "tb_top.gen_node[11].source_bus.rid"
+        ],
+        "device_11_ar": [
+          "tb_top.gen_node[11].device_bus.araddr",
+          "tb_top.gen_node[11].device_bus.arlen",
+          "tb_top.gen_node[11].device_bus.arsize",
+          "tb_top.gen_node[11].device_bus.arid"
+        ],
+        "device_11_r": [
+          "tb_top.gen_node[11].device_bus.rdata",
+          "tb_top.gen_node[11].device_bus.rlast",
+          "tb_top.gen_node[11].device_bus.rid"
+        ],
+        "req_rx_11_0": [
+          "tb_top.i_router.rx_req_flit[11][0]"
+        ],
+        "req_tx_11_0": [
+          "tb_top.i_router.tx_req_flit[11][0]"
+        ],
+        "req_tx_11_1": [
+          "tb_top.i_router.tx_req_flit[11][1]"
+        ],
+        "req_tx_11_2": [
+          "tb_top.i_router.tx_req_flit[11][2]"
+        ],
+        "req_tx_11_3": [
+          "tb_top.i_router.tx_req_flit[11][3]"
+        ],
+        "req_tx_11_4": [
+          "tb_top.i_router.tx_req_flit[11][4]"
+        ],
+        "dat_rx_11_0": [
+          "tb_top.i_router.rx_dat_flit[11][0]"
+        ],
+        "dat_tx_11_0": [
+          "tb_top.i_router.tx_dat_flit[11][0]"
+        ],
+        "dat_tx_11_1": [
+          "tb_top.i_router.tx_dat_flit[11][1]"
+        ],
+        "dat_tx_11_2": [
+          "tb_top.i_router.tx_dat_flit[11][2]"
+        ],
+        "dat_tx_11_3": [
+          "tb_top.i_router.tx_dat_flit[11][3]"
+        ],
+        "dat_tx_11_4": [
+          "tb_top.i_router.tx_dat_flit[11][4]"
+        ],
+        "source_12_ar": [
+          "tb_top.gen_node[12].source_bus.araddr",
+          "tb_top.gen_node[12].source_bus.arlen",
+          "tb_top.gen_node[12].source_bus.arsize",
+          "tb_top.gen_node[12].source_bus.arid"
+        ],
+        "source_12_r": [
+          "tb_top.gen_node[12].source_bus.rdata",
+          "tb_top.gen_node[12].source_bus.rlast",
+          "tb_top.gen_node[12].source_bus.rid"
+        ],
+        "device_12_ar": [
+          "tb_top.gen_node[12].device_bus.araddr",
+          "tb_top.gen_node[12].device_bus.arlen",
+          "tb_top.gen_node[12].device_bus.arsize",
+          "tb_top.gen_node[12].device_bus.arid"
+        ],
+        "device_12_r": [
+          "tb_top.gen_node[12].device_bus.rdata",
+          "tb_top.gen_node[12].device_bus.rlast",
+          "tb_top.gen_node[12].device_bus.rid"
+        ],
+        "req_rx_12_0": [
+          "tb_top.i_router.rx_req_flit[12][0]"
+        ],
+        "req_tx_12_0": [
+          "tb_top.i_router.tx_req_flit[12][0]"
+        ],
+        "req_tx_12_1": [
+          "tb_top.i_router.tx_req_flit[12][1]"
+        ],
+        "req_tx_12_2": [
+          "tb_top.i_router.tx_req_flit[12][2]"
+        ],
+        "req_tx_12_3": [
+          "tb_top.i_router.tx_req_flit[12][3]"
+        ],
+        "req_tx_12_4": [
+          "tb_top.i_router.tx_req_flit[12][4]"
+        ],
+        "dat_rx_12_0": [
+          "tb_top.i_router.rx_dat_flit[12][0]"
+        ],
+        "dat_tx_12_0": [
+          "tb_top.i_router.tx_dat_flit[12][0]"
+        ],
+        "dat_tx_12_1": [
+          "tb_top.i_router.tx_dat_flit[12][1]"
+        ],
+        "dat_tx_12_2": [
+          "tb_top.i_router.tx_dat_flit[12][2]"
+        ],
+        "dat_tx_12_3": [
+          "tb_top.i_router.tx_dat_flit[12][3]"
+        ],
+        "dat_tx_12_4": [
+          "tb_top.i_router.tx_dat_flit[12][4]"
+        ],
+        "source_13_ar": [
+          "tb_top.gen_node[13].source_bus.araddr",
+          "tb_top.gen_node[13].source_bus.arlen",
+          "tb_top.gen_node[13].source_bus.arsize",
+          "tb_top.gen_node[13].source_bus.arid"
+        ],
+        "source_13_r": [
+          "tb_top.gen_node[13].source_bus.rdata",
+          "tb_top.gen_node[13].source_bus.rlast",
+          "tb_top.gen_node[13].source_bus.rid"
+        ],
+        "device_13_ar": [
+          "tb_top.gen_node[13].device_bus.araddr",
+          "tb_top.gen_node[13].device_bus.arlen",
+          "tb_top.gen_node[13].device_bus.arsize",
+          "tb_top.gen_node[13].device_bus.arid"
+        ],
+        "device_13_r": [
+          "tb_top.gen_node[13].device_bus.rdata",
+          "tb_top.gen_node[13].device_bus.rlast",
+          "tb_top.gen_node[13].device_bus.rid"
+        ],
+        "req_rx_13_0": [
+          "tb_top.i_router.rx_req_flit[13][0]"
+        ],
+        "req_tx_13_0": [
+          "tb_top.i_router.tx_req_flit[13][0]"
+        ],
+        "req_tx_13_1": [
+          "tb_top.i_router.tx_req_flit[13][1]"
+        ],
+        "req_tx_13_2": [
+          "tb_top.i_router.tx_req_flit[13][2]"
+        ],
+        "req_tx_13_3": [
+          "tb_top.i_router.tx_req_flit[13][3]"
+        ],
+        "req_tx_13_4": [
+          "tb_top.i_router.tx_req_flit[13][4]"
+        ],
+        "dat_rx_13_0": [
+          "tb_top.i_router.rx_dat_flit[13][0]"
+        ],
+        "dat_tx_13_0": [
+          "tb_top.i_router.tx_dat_flit[13][0]"
+        ],
+        "dat_tx_13_1": [
+          "tb_top.i_router.tx_dat_flit[13][1]"
+        ],
+        "dat_tx_13_2": [
+          "tb_top.i_router.tx_dat_flit[13][2]"
+        ],
+        "dat_tx_13_3": [
+          "tb_top.i_router.tx_dat_flit[13][3]"
+        ],
+        "dat_tx_13_4": [
+          "tb_top.i_router.tx_dat_flit[13][4]"
+        ],
+        "source_14_ar": [
+          "tb_top.gen_node[14].source_bus.araddr",
+          "tb_top.gen_node[14].source_bus.arlen",
+          "tb_top.gen_node[14].source_bus.arsize",
+          "tb_top.gen_node[14].source_bus.arid"
+        ],
+        "source_14_r": [
+          "tb_top.gen_node[14].source_bus.rdata",
+          "tb_top.gen_node[14].source_bus.rlast",
+          "tb_top.gen_node[14].source_bus.rid"
+        ],
+        "device_14_ar": [
+          "tb_top.gen_node[14].device_bus.araddr",
+          "tb_top.gen_node[14].device_bus.arlen",
+          "tb_top.gen_node[14].device_bus.arsize",
+          "tb_top.gen_node[14].device_bus.arid"
+        ],
+        "device_14_r": [
+          "tb_top.gen_node[14].device_bus.rdata",
+          "tb_top.gen_node[14].device_bus.rlast",
+          "tb_top.gen_node[14].device_bus.rid"
+        ],
+        "req_rx_14_0": [
+          "tb_top.i_router.rx_req_flit[14][0]"
+        ],
+        "req_tx_14_0": [
+          "tb_top.i_router.tx_req_flit[14][0]"
+        ],
+        "req_tx_14_1": [
+          "tb_top.i_router.tx_req_flit[14][1]"
+        ],
+        "req_tx_14_2": [
+          "tb_top.i_router.tx_req_flit[14][2]"
+        ],
+        "req_tx_14_3": [
+          "tb_top.i_router.tx_req_flit[14][3]"
+        ],
+        "req_tx_14_4": [
+          "tb_top.i_router.tx_req_flit[14][4]"
+        ],
+        "dat_rx_14_0": [
+          "tb_top.i_router.rx_dat_flit[14][0]"
+        ],
+        "dat_tx_14_0": [
+          "tb_top.i_router.tx_dat_flit[14][0]"
+        ],
+        "dat_tx_14_1": [
+          "tb_top.i_router.tx_dat_flit[14][1]"
+        ],
+        "dat_tx_14_2": [
+          "tb_top.i_router.tx_dat_flit[14][2]"
+        ],
+        "dat_tx_14_3": [
+          "tb_top.i_router.tx_dat_flit[14][3]"
+        ],
+        "dat_tx_14_4": [
+          "tb_top.i_router.tx_dat_flit[14][4]"
+        ],
+        "source_15_ar": [
+          "tb_top.gen_node[15].source_bus.araddr",
+          "tb_top.gen_node[15].source_bus.arlen",
+          "tb_top.gen_node[15].source_bus.arsize",
+          "tb_top.gen_node[15].source_bus.arid"
+        ],
+        "source_15_r": [
+          "tb_top.gen_node[15].source_bus.rdata",
+          "tb_top.gen_node[15].source_bus.rlast",
+          "tb_top.gen_node[15].source_bus.rid"
+        ],
+        "device_15_ar": [
+          "tb_top.gen_node[15].device_bus.araddr",
+          "tb_top.gen_node[15].device_bus.arlen",
+          "tb_top.gen_node[15].device_bus.arsize",
+          "tb_top.gen_node[15].device_bus.arid"
+        ],
+        "device_15_r": [
+          "tb_top.gen_node[15].device_bus.rdata",
+          "tb_top.gen_node[15].device_bus.rlast",
+          "tb_top.gen_node[15].device_bus.rid"
+        ],
+        "req_rx_15_0": [
+          "tb_top.i_router.rx_req_flit[15][0]"
+        ],
+        "req_tx_15_0": [
+          "tb_top.i_router.tx_req_flit[15][0]"
+        ],
+        "req_tx_15_1": [
+          "tb_top.i_router.tx_req_flit[15][1]"
+        ],
+        "req_tx_15_2": [
+          "tb_top.i_router.tx_req_flit[15][2]"
+        ],
+        "req_tx_15_3": [
+          "tb_top.i_router.tx_req_flit[15][3]"
+        ],
+        "req_tx_15_4": [
+          "tb_top.i_router.tx_req_flit[15][4]"
+        ],
+        "dat_rx_15_0": [
+          "tb_top.i_router.rx_dat_flit[15][0]"
+        ],
+        "dat_tx_15_0": [
+          "tb_top.i_router.tx_dat_flit[15][0]"
+        ],
+        "dat_tx_15_1": [
+          "tb_top.i_router.tx_dat_flit[15][1]"
+        ],
+        "dat_tx_15_2": [
+          "tb_top.i_router.tx_dat_flit[15][2]"
+        ],
+        "dat_tx_15_3": [
+          "tb_top.i_router.tx_dat_flit[15][3]"
+        ],
+        "dat_tx_15_4": [
+          "tb_top.i_router.tx_dat_flit[15][4]"
+        ]
+      },
+      "routes": {
+        "0": {
+          "request": [
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              3,
+              1
+            ],
+            [
+              7,
+              1
+            ],
+            [
+              11,
+              1
+            ],
+            [
+              15,
+              0
+            ]
+          ],
+          "response": [
+            [
+              15,
+              4
+            ],
+            [
+              14,
+              4
+            ],
+            [
+              13,
+              4
+            ],
+            [
+              12,
+              3
+            ],
+            [
+              8,
+              3
+            ],
+            [
+              4,
+              3
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "1": {
+          "request": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              6,
+              1
+            ],
+            [
+              10,
+              1
+            ],
+            [
+              14,
+              0
+            ]
+          ],
+          "response": [
+            [
+              14,
+              4
+            ],
+            [
+              13,
+              3
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              5,
+              3
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "2": {
+          "request": [
+            [
+              2,
+              4
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              9,
+              1
+            ],
+            [
+              13,
+              0
+            ]
+          ],
+          "response": [
+            [
+              13,
+              2
+            ],
+            [
+              14,
+              3
+            ],
+            [
+              10,
+              3
+            ],
+            [
+              6,
+              3
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        },
+        "3": {
+          "request": [
+            [
+              3,
+              4
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              1,
+              4
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              8,
+              1
+            ],
+            [
+              12,
+              0
+            ]
+          ],
+          "response": [
+            [
+              12,
+              2
+            ],
+            [
+              13,
+              2
+            ],
+            [
+              14,
+              2
+            ],
+            [
+              15,
+              3
+            ],
+            [
+              11,
+              3
+            ],
+            [
+              7,
+              3
+            ],
+            [
+              3,
+              0
+            ]
+          ]
+        },
+        "4": {
+          "request": [
+            [
+              4,
+              2
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              6,
+              2
+            ],
+            [
+              7,
+              1
+            ],
+            [
+              11,
+              0
+            ]
+          ],
+          "response": [
+            [
+              11,
+              4
+            ],
+            [
+              10,
+              4
+            ],
+            [
+              9,
+              4
+            ],
+            [
+              8,
+              3
+            ],
+            [
+              4,
+              0
+            ]
+          ]
+        },
+        "5": {
+          "request": [
+            [
+              5,
+              2
+            ],
+            [
+              6,
+              1
+            ],
+            [
+              10,
+              0
+            ]
+          ],
+          "response": [
+            [
+              10,
+              4
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              5,
+              0
+            ]
+          ]
+        },
+        "6": {
+          "request": [
+            [
+              6,
+              4
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              9,
+              0
+            ]
+          ],
+          "response": [
+            [
+              9,
+              2
+            ],
+            [
+              10,
+              3
+            ],
+            [
+              6,
+              0
+            ]
+          ]
+        },
+        "7": {
+          "request": [
+            [
+              7,
+              4
+            ],
+            [
+              6,
+              4
+            ],
+            [
+              5,
+              4
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              8,
+              0
+            ]
+          ],
+          "response": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              2
+            ],
+            [
+              10,
+              2
+            ],
+            [
+              11,
+              3
+            ],
+            [
+              7,
+              0
+            ]
+          ]
+        },
+        "8": {
+          "request": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              2
+            ],
+            [
+              10,
+              2
+            ],
+            [
+              11,
+              3
+            ],
+            [
+              7,
+              0
+            ]
+          ],
+          "response": [
+            [
+              7,
+              4
+            ],
+            [
+              6,
+              4
+            ],
+            [
+              5,
+              4
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              8,
+              0
+            ]
+          ]
+        },
+        "9": {
+          "request": [
+            [
+              9,
+              2
+            ],
+            [
+              10,
+              3
+            ],
+            [
+              6,
+              0
+            ]
+          ],
+          "response": [
+            [
+              6,
+              4
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              9,
+              0
+            ]
+          ]
+        },
+        "10": {
+          "request": [
+            [
+              10,
+              4
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              5,
+              0
+            ]
+          ],
+          "response": [
+            [
+              5,
+              2
+            ],
+            [
+              6,
+              1
+            ],
+            [
+              10,
+              0
+            ]
+          ]
+        },
+        "11": {
+          "request": [
+            [
+              11,
+              4
+            ],
+            [
+              10,
+              4
+            ],
+            [
+              9,
+              4
+            ],
+            [
+              8,
+              3
+            ],
+            [
+              4,
+              0
+            ]
+          ],
+          "response": [
+            [
+              4,
+              2
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              6,
+              2
+            ],
+            [
+              7,
+              1
+            ],
+            [
+              11,
+              0
+            ]
+          ]
+        },
+        "12": {
+          "request": [
+            [
+              12,
+              2
+            ],
+            [
+              13,
+              2
+            ],
+            [
+              14,
+              2
+            ],
+            [
+              15,
+              3
+            ],
+            [
+              11,
+              3
+            ],
+            [
+              7,
+              3
+            ],
+            [
+              3,
+              0
+            ]
+          ],
+          "response": [
+            [
+              3,
+              4
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              1,
+              4
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              8,
+              1
+            ],
+            [
+              12,
+              0
+            ]
+          ]
+        },
+        "13": {
+          "request": [
+            [
+              13,
+              2
+            ],
+            [
+              14,
+              3
+            ],
+            [
+              10,
+              3
+            ],
+            [
+              6,
+              3
+            ],
+            [
+              2,
+              0
+            ]
+          ],
+          "response": [
+            [
+              2,
+              4
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              9,
+              1
+            ],
+            [
+              13,
+              0
+            ]
+          ]
+        },
+        "14": {
+          "request": [
+            [
+              14,
+              4
+            ],
+            [
+              13,
+              3
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              5,
+              3
+            ],
+            [
+              1,
+              0
+            ]
+          ],
+          "response": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              6,
+              1
+            ],
+            [
+              10,
+              1
+            ],
+            [
+              14,
+              0
+            ]
+          ]
+        },
+        "15": {
+          "request": [
+            [
+              15,
+              4
+            ],
+            [
+              14,
+              4
+            ],
+            [
+              13,
+              4
+            ],
+            [
+              12,
+              3
+            ],
+            [
+              8,
+              3
+            ],
+            [
+              4,
+              3
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "response": [
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              3,
+              1
+            ],
+            [
+              7,
+              1
+            ],
+            [
+              11,
+              1
+            ],
+            [
+              15,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "pattern": "neighbor",
+      "result": "runs/32kib",
+      "case": "perf_neighbor_read_32kib",
+      "run_command": [
+        "/home/mingwei/noc_rtl/build/compile/4cdb8b044019/simv",
+        "+stim_dir=/home/mingwei/noc_rtl/performance/unicast/results/20261110T102511_410601482_perf_neighbor_read_32kib_s1/runs/perf_neighbor_read_32kib/inputs",
+        "+case_name=perf_neighbor_read_32kib",
+        "+source_mask=ffff",
+        "+reset_seed=1",
+        "+ntb_random_seed=1",
+        "+check_min_outstanding=1",
+        "+check_min_unique=1",
+        "+preload",
+        "-cm",
+        "line+cond+fsm+tgl+branch+assert",
+        "-cm_dir",
+        "/home/mingwei/noc_rtl/build/compile/4cdb8b044019/simv.vdb",
+        "-cm_name",
+        "perf_neighbor_read_32kib_auto_s1",
+        "+wave_file=/home/mingwei/noc_rtl/performance/unicast/results/20261110T102511_410601482_perf_neighbor_read_32kib_s1/runs/perf_neighbor_read_32kib/perf_neighbor_read_32kib.fsdb",
+        "+perf_file=/home/mingwei/noc_rtl/performance/unicast/results/20261110T102511_410601482_perf_neighbor_read_32kib_s1/runs/perf_neighbor_read_32kib/axi-events.csv"
+      ],
+      "clock": {
+        "axi_period_ps": 1000,
+        "noc_period_ps": 1000,
+        "noc_phase_ps": 0
+      },
+      "seed": 1,
+      "fsdb_sha256": "b838866b1746d0cad2a3bc4b199b88c0ab5d86a71164e6f56fb9e4a539c864c2",
+      "vcd_sha256": "6532e378304d25013271dfc523f728806e785eb01b88703bff3fff55933d47c0",
+      "vcd": "/home/mingwei/noc_rtl/build/perf-bw-analysis/perf_neighbor_read_32kib/interfaces.vcd",
+      "fsdb": "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/32kib/runs/perf_neighbor_read_32kib/perf_neighbor_read_32kib.fsdb",
+      "export_command": [
+        "fsdb2vcd",
+        "/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/32kib/runs/perf_neighbor_read_32kib/perf_neighbor_read_32kib.fsdb",
+        "-o",
+        "/home/mingwei/noc_rtl/build/perf-bw-analysis/perf_neighbor_read_32kib/interfaces.vcd",
+        "-s",
+        "/tb_top",
+        "-level",
+        "3"
+      ],
+      "run_record_sha256": "bf7853ebd67248dccdedc68f3a61c59c2a034d0bf5b8ddcb6a13cc24cbc75f4e",
+      "source_manifest_sha256": "339a2af7280238306653a86495ff541e5ea4762153b90de3f5832a5105c3ff60",
+      "binary_sha256": "1e3094f200165b7bfbe30d2b7f9fad63d56b913251350a3033c95eb9a3df2371",
+      "transaction_table_sha256": "9394dd619a9e48b509aa35c1883bd0491e1175634719a7836ebcfb21b4643e27",
+      "raw_axi_sha256": "8f4a39bf2d845d59ddb1d0c1d789344eda5b79cc50b6e9acac8797fc5fc85b4e",
+      "origin_ps": 7500,
+      "signal_bindings": {
+        "source_0_ar": [
+          "axi",
+          "tb_top.gen_node[0].source_bus.arvalid",
+          "tb_top.gen_node[0].source_bus.arready",
+          null
+        ],
+        "source_0_r": [
+          "axi",
+          "tb_top.gen_node[0].source_bus.rvalid",
+          "tb_top.gen_node[0].source_bus.rready",
+          null
+        ],
+        "device_0_ar": [
+          "axi",
+          "tb_top.gen_node[0].device_bus.arvalid",
+          "tb_top.gen_node[0].device_bus.arready",
+          null
+        ],
+        "device_0_r": [
+          "axi",
+          "tb_top.gen_node[0].device_bus.rvalid",
+          "tb_top.gen_node[0].device_bus.rready",
+          null
+        ],
+        "req_rx_0_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[0]",
+          "tb_top.i_router.rx_req_ready[0]",
+          0
+        ],
+        "req_tx_0_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          0
+        ],
+        "req_tx_0_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          1
+        ],
+        "req_tx_0_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          2
+        ],
+        "req_tx_0_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          3
+        ],
+        "req_tx_0_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[0]",
+          "tb_top.i_router.tx_req_ready[0]",
+          4
+        ],
+        "dat_rx_0_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[0][0]",
+          "tb_top.i_router.rx_dat_ready[0][0]",
+          1
+        ],
+        "dat_tx_0_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][0]",
+          "tb_top.i_router.tx_dat_ready[0][0]",
+          1
+        ],
+        "dat_tx_0_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][1]",
+          "tb_top.i_router.tx_dat_ready[0][1]",
+          1
+        ],
+        "dat_tx_0_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][2]",
+          "tb_top.i_router.tx_dat_ready[0][2]",
+          1
+        ],
+        "dat_tx_0_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][3]",
+          "tb_top.i_router.tx_dat_ready[0][3]",
+          1
+        ],
+        "dat_tx_0_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[0][4]",
+          "tb_top.i_router.tx_dat_ready[0][4]",
+          1
+        ],
+        "source_1_ar": [
+          "axi",
+          "tb_top.gen_node[1].source_bus.arvalid",
+          "tb_top.gen_node[1].source_bus.arready",
+          null
+        ],
+        "source_1_r": [
+          "axi",
+          "tb_top.gen_node[1].source_bus.rvalid",
+          "tb_top.gen_node[1].source_bus.rready",
+          null
+        ],
+        "device_1_ar": [
+          "axi",
+          "tb_top.gen_node[1].device_bus.arvalid",
+          "tb_top.gen_node[1].device_bus.arready",
+          null
+        ],
+        "device_1_r": [
+          "axi",
+          "tb_top.gen_node[1].device_bus.rvalid",
+          "tb_top.gen_node[1].device_bus.rready",
+          null
+        ],
+        "req_rx_1_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[1]",
+          "tb_top.i_router.rx_req_ready[1]",
+          0
+        ],
+        "req_tx_1_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          0
+        ],
+        "req_tx_1_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          1
+        ],
+        "req_tx_1_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          2
+        ],
+        "req_tx_1_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          3
+        ],
+        "req_tx_1_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[1]",
+          "tb_top.i_router.tx_req_ready[1]",
+          4
+        ],
+        "dat_rx_1_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[1][0]",
+          "tb_top.i_router.rx_dat_ready[1][0]",
+          1
+        ],
+        "dat_tx_1_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][0]",
+          "tb_top.i_router.tx_dat_ready[1][0]",
+          1
+        ],
+        "dat_tx_1_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][1]",
+          "tb_top.i_router.tx_dat_ready[1][1]",
+          1
+        ],
+        "dat_tx_1_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][2]",
+          "tb_top.i_router.tx_dat_ready[1][2]",
+          1
+        ],
+        "dat_tx_1_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][3]",
+          "tb_top.i_router.tx_dat_ready[1][3]",
+          1
+        ],
+        "dat_tx_1_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[1][4]",
+          "tb_top.i_router.tx_dat_ready[1][4]",
+          1
+        ],
+        "source_2_ar": [
+          "axi",
+          "tb_top.gen_node[2].source_bus.arvalid",
+          "tb_top.gen_node[2].source_bus.arready",
+          null
+        ],
+        "source_2_r": [
+          "axi",
+          "tb_top.gen_node[2].source_bus.rvalid",
+          "tb_top.gen_node[2].source_bus.rready",
+          null
+        ],
+        "device_2_ar": [
+          "axi",
+          "tb_top.gen_node[2].device_bus.arvalid",
+          "tb_top.gen_node[2].device_bus.arready",
+          null
+        ],
+        "device_2_r": [
+          "axi",
+          "tb_top.gen_node[2].device_bus.rvalid",
+          "tb_top.gen_node[2].device_bus.rready",
+          null
+        ],
+        "req_rx_2_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[2]",
+          "tb_top.i_router.rx_req_ready[2]",
+          0
+        ],
+        "req_tx_2_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          0
+        ],
+        "req_tx_2_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          1
+        ],
+        "req_tx_2_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          2
+        ],
+        "req_tx_2_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          3
+        ],
+        "req_tx_2_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[2]",
+          "tb_top.i_router.tx_req_ready[2]",
+          4
+        ],
+        "dat_rx_2_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[2][0]",
+          "tb_top.i_router.rx_dat_ready[2][0]",
+          1
+        ],
+        "dat_tx_2_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][0]",
+          "tb_top.i_router.tx_dat_ready[2][0]",
+          1
+        ],
+        "dat_tx_2_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][1]",
+          "tb_top.i_router.tx_dat_ready[2][1]",
+          1
+        ],
+        "dat_tx_2_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][2]",
+          "tb_top.i_router.tx_dat_ready[2][2]",
+          1
+        ],
+        "dat_tx_2_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][3]",
+          "tb_top.i_router.tx_dat_ready[2][3]",
+          1
+        ],
+        "dat_tx_2_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[2][4]",
+          "tb_top.i_router.tx_dat_ready[2][4]",
+          1
+        ],
+        "source_3_ar": [
+          "axi",
+          "tb_top.gen_node[3].source_bus.arvalid",
+          "tb_top.gen_node[3].source_bus.arready",
+          null
+        ],
+        "source_3_r": [
+          "axi",
+          "tb_top.gen_node[3].source_bus.rvalid",
+          "tb_top.gen_node[3].source_bus.rready",
+          null
+        ],
+        "device_3_ar": [
+          "axi",
+          "tb_top.gen_node[3].device_bus.arvalid",
+          "tb_top.gen_node[3].device_bus.arready",
+          null
+        ],
+        "device_3_r": [
+          "axi",
+          "tb_top.gen_node[3].device_bus.rvalid",
+          "tb_top.gen_node[3].device_bus.rready",
+          null
+        ],
+        "req_rx_3_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[3]",
+          "tb_top.i_router.rx_req_ready[3]",
+          0
+        ],
+        "req_tx_3_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          0
+        ],
+        "req_tx_3_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          1
+        ],
+        "req_tx_3_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          2
+        ],
+        "req_tx_3_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          3
+        ],
+        "req_tx_3_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[3]",
+          "tb_top.i_router.tx_req_ready[3]",
+          4
+        ],
+        "dat_rx_3_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[3][0]",
+          "tb_top.i_router.rx_dat_ready[3][0]",
+          1
+        ],
+        "dat_tx_3_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][0]",
+          "tb_top.i_router.tx_dat_ready[3][0]",
+          1
+        ],
+        "dat_tx_3_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][1]",
+          "tb_top.i_router.tx_dat_ready[3][1]",
+          1
+        ],
+        "dat_tx_3_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][2]",
+          "tb_top.i_router.tx_dat_ready[3][2]",
+          1
+        ],
+        "dat_tx_3_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][3]",
+          "tb_top.i_router.tx_dat_ready[3][3]",
+          1
+        ],
+        "dat_tx_3_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[3][4]",
+          "tb_top.i_router.tx_dat_ready[3][4]",
+          1
+        ],
+        "source_4_ar": [
+          "axi",
+          "tb_top.gen_node[4].source_bus.arvalid",
+          "tb_top.gen_node[4].source_bus.arready",
+          null
+        ],
+        "source_4_r": [
+          "axi",
+          "tb_top.gen_node[4].source_bus.rvalid",
+          "tb_top.gen_node[4].source_bus.rready",
+          null
+        ],
+        "device_4_ar": [
+          "axi",
+          "tb_top.gen_node[4].device_bus.arvalid",
+          "tb_top.gen_node[4].device_bus.arready",
+          null
+        ],
+        "device_4_r": [
+          "axi",
+          "tb_top.gen_node[4].device_bus.rvalid",
+          "tb_top.gen_node[4].device_bus.rready",
+          null
+        ],
+        "req_rx_4_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[4]",
+          "tb_top.i_router.rx_req_ready[4]",
+          0
+        ],
+        "req_tx_4_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          0
+        ],
+        "req_tx_4_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          1
+        ],
+        "req_tx_4_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          2
+        ],
+        "req_tx_4_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          3
+        ],
+        "req_tx_4_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[4]",
+          "tb_top.i_router.tx_req_ready[4]",
+          4
+        ],
+        "dat_rx_4_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[4][0]",
+          "tb_top.i_router.rx_dat_ready[4][0]",
+          1
+        ],
+        "dat_tx_4_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][0]",
+          "tb_top.i_router.tx_dat_ready[4][0]",
+          1
+        ],
+        "dat_tx_4_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][1]",
+          "tb_top.i_router.tx_dat_ready[4][1]",
+          1
+        ],
+        "dat_tx_4_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][2]",
+          "tb_top.i_router.tx_dat_ready[4][2]",
+          1
+        ],
+        "dat_tx_4_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][3]",
+          "tb_top.i_router.tx_dat_ready[4][3]",
+          1
+        ],
+        "dat_tx_4_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[4][4]",
+          "tb_top.i_router.tx_dat_ready[4][4]",
+          1
+        ],
+        "source_5_ar": [
+          "axi",
+          "tb_top.gen_node[5].source_bus.arvalid",
+          "tb_top.gen_node[5].source_bus.arready",
+          null
+        ],
+        "source_5_r": [
+          "axi",
+          "tb_top.gen_node[5].source_bus.rvalid",
+          "tb_top.gen_node[5].source_bus.rready",
+          null
+        ],
+        "device_5_ar": [
+          "axi",
+          "tb_top.gen_node[5].device_bus.arvalid",
+          "tb_top.gen_node[5].device_bus.arready",
+          null
+        ],
+        "device_5_r": [
+          "axi",
+          "tb_top.gen_node[5].device_bus.rvalid",
+          "tb_top.gen_node[5].device_bus.rready",
+          null
+        ],
+        "req_rx_5_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[5]",
+          "tb_top.i_router.rx_req_ready[5]",
+          0
+        ],
+        "req_tx_5_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          0
+        ],
+        "req_tx_5_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          1
+        ],
+        "req_tx_5_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          2
+        ],
+        "req_tx_5_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          3
+        ],
+        "req_tx_5_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[5]",
+          "tb_top.i_router.tx_req_ready[5]",
+          4
+        ],
+        "dat_rx_5_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[5][0]",
+          "tb_top.i_router.rx_dat_ready[5][0]",
+          1
+        ],
+        "dat_tx_5_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][0]",
+          "tb_top.i_router.tx_dat_ready[5][0]",
+          1
+        ],
+        "dat_tx_5_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][1]",
+          "tb_top.i_router.tx_dat_ready[5][1]",
+          1
+        ],
+        "dat_tx_5_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][2]",
+          "tb_top.i_router.tx_dat_ready[5][2]",
+          1
+        ],
+        "dat_tx_5_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][3]",
+          "tb_top.i_router.tx_dat_ready[5][3]",
+          1
+        ],
+        "dat_tx_5_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[5][4]",
+          "tb_top.i_router.tx_dat_ready[5][4]",
+          1
+        ],
+        "source_6_ar": [
+          "axi",
+          "tb_top.gen_node[6].source_bus.arvalid",
+          "tb_top.gen_node[6].source_bus.arready",
+          null
+        ],
+        "source_6_r": [
+          "axi",
+          "tb_top.gen_node[6].source_bus.rvalid",
+          "tb_top.gen_node[6].source_bus.rready",
+          null
+        ],
+        "device_6_ar": [
+          "axi",
+          "tb_top.gen_node[6].device_bus.arvalid",
+          "tb_top.gen_node[6].device_bus.arready",
+          null
+        ],
+        "device_6_r": [
+          "axi",
+          "tb_top.gen_node[6].device_bus.rvalid",
+          "tb_top.gen_node[6].device_bus.rready",
+          null
+        ],
+        "req_rx_6_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[6]",
+          "tb_top.i_router.rx_req_ready[6]",
+          0
+        ],
+        "req_tx_6_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          0
+        ],
+        "req_tx_6_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          1
+        ],
+        "req_tx_6_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          2
+        ],
+        "req_tx_6_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          3
+        ],
+        "req_tx_6_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[6]",
+          "tb_top.i_router.tx_req_ready[6]",
+          4
+        ],
+        "dat_rx_6_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[6][0]",
+          "tb_top.i_router.rx_dat_ready[6][0]",
+          1
+        ],
+        "dat_tx_6_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][0]",
+          "tb_top.i_router.tx_dat_ready[6][0]",
+          1
+        ],
+        "dat_tx_6_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][1]",
+          "tb_top.i_router.tx_dat_ready[6][1]",
+          1
+        ],
+        "dat_tx_6_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][2]",
+          "tb_top.i_router.tx_dat_ready[6][2]",
+          1
+        ],
+        "dat_tx_6_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][3]",
+          "tb_top.i_router.tx_dat_ready[6][3]",
+          1
+        ],
+        "dat_tx_6_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[6][4]",
+          "tb_top.i_router.tx_dat_ready[6][4]",
+          1
+        ],
+        "source_7_ar": [
+          "axi",
+          "tb_top.gen_node[7].source_bus.arvalid",
+          "tb_top.gen_node[7].source_bus.arready",
+          null
+        ],
+        "source_7_r": [
+          "axi",
+          "tb_top.gen_node[7].source_bus.rvalid",
+          "tb_top.gen_node[7].source_bus.rready",
+          null
+        ],
+        "device_7_ar": [
+          "axi",
+          "tb_top.gen_node[7].device_bus.arvalid",
+          "tb_top.gen_node[7].device_bus.arready",
+          null
+        ],
+        "device_7_r": [
+          "axi",
+          "tb_top.gen_node[7].device_bus.rvalid",
+          "tb_top.gen_node[7].device_bus.rready",
+          null
+        ],
+        "req_rx_7_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[7]",
+          "tb_top.i_router.rx_req_ready[7]",
+          0
+        ],
+        "req_tx_7_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          0
+        ],
+        "req_tx_7_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          1
+        ],
+        "req_tx_7_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          2
+        ],
+        "req_tx_7_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          3
+        ],
+        "req_tx_7_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[7]",
+          "tb_top.i_router.tx_req_ready[7]",
+          4
+        ],
+        "dat_rx_7_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[7][0]",
+          "tb_top.i_router.rx_dat_ready[7][0]",
+          1
+        ],
+        "dat_tx_7_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][0]",
+          "tb_top.i_router.tx_dat_ready[7][0]",
+          1
+        ],
+        "dat_tx_7_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][1]",
+          "tb_top.i_router.tx_dat_ready[7][1]",
+          1
+        ],
+        "dat_tx_7_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][2]",
+          "tb_top.i_router.tx_dat_ready[7][2]",
+          1
+        ],
+        "dat_tx_7_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][3]",
+          "tb_top.i_router.tx_dat_ready[7][3]",
+          1
+        ],
+        "dat_tx_7_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[7][4]",
+          "tb_top.i_router.tx_dat_ready[7][4]",
+          1
+        ],
+        "source_8_ar": [
+          "axi",
+          "tb_top.gen_node[8].source_bus.arvalid",
+          "tb_top.gen_node[8].source_bus.arready",
+          null
+        ],
+        "source_8_r": [
+          "axi",
+          "tb_top.gen_node[8].source_bus.rvalid",
+          "tb_top.gen_node[8].source_bus.rready",
+          null
+        ],
+        "device_8_ar": [
+          "axi",
+          "tb_top.gen_node[8].device_bus.arvalid",
+          "tb_top.gen_node[8].device_bus.arready",
+          null
+        ],
+        "device_8_r": [
+          "axi",
+          "tb_top.gen_node[8].device_bus.rvalid",
+          "tb_top.gen_node[8].device_bus.rready",
+          null
+        ],
+        "req_rx_8_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[8]",
+          "tb_top.i_router.rx_req_ready[8]",
+          0
+        ],
+        "req_tx_8_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          0
+        ],
+        "req_tx_8_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          1
+        ],
+        "req_tx_8_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          2
+        ],
+        "req_tx_8_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          3
+        ],
+        "req_tx_8_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[8]",
+          "tb_top.i_router.tx_req_ready[8]",
+          4
+        ],
+        "dat_rx_8_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[8][0]",
+          "tb_top.i_router.rx_dat_ready[8][0]",
+          1
+        ],
+        "dat_tx_8_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][0]",
+          "tb_top.i_router.tx_dat_ready[8][0]",
+          1
+        ],
+        "dat_tx_8_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][1]",
+          "tb_top.i_router.tx_dat_ready[8][1]",
+          1
+        ],
+        "dat_tx_8_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][2]",
+          "tb_top.i_router.tx_dat_ready[8][2]",
+          1
+        ],
+        "dat_tx_8_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][3]",
+          "tb_top.i_router.tx_dat_ready[8][3]",
+          1
+        ],
+        "dat_tx_8_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[8][4]",
+          "tb_top.i_router.tx_dat_ready[8][4]",
+          1
+        ],
+        "source_9_ar": [
+          "axi",
+          "tb_top.gen_node[9].source_bus.arvalid",
+          "tb_top.gen_node[9].source_bus.arready",
+          null
+        ],
+        "source_9_r": [
+          "axi",
+          "tb_top.gen_node[9].source_bus.rvalid",
+          "tb_top.gen_node[9].source_bus.rready",
+          null
+        ],
+        "device_9_ar": [
+          "axi",
+          "tb_top.gen_node[9].device_bus.arvalid",
+          "tb_top.gen_node[9].device_bus.arready",
+          null
+        ],
+        "device_9_r": [
+          "axi",
+          "tb_top.gen_node[9].device_bus.rvalid",
+          "tb_top.gen_node[9].device_bus.rready",
+          null
+        ],
+        "req_rx_9_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[9]",
+          "tb_top.i_router.rx_req_ready[9]",
+          0
+        ],
+        "req_tx_9_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          0
+        ],
+        "req_tx_9_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          1
+        ],
+        "req_tx_9_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          2
+        ],
+        "req_tx_9_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          3
+        ],
+        "req_tx_9_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[9]",
+          "tb_top.i_router.tx_req_ready[9]",
+          4
+        ],
+        "dat_rx_9_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[9][0]",
+          "tb_top.i_router.rx_dat_ready[9][0]",
+          1
+        ],
+        "dat_tx_9_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][0]",
+          "tb_top.i_router.tx_dat_ready[9][0]",
+          1
+        ],
+        "dat_tx_9_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][1]",
+          "tb_top.i_router.tx_dat_ready[9][1]",
+          1
+        ],
+        "dat_tx_9_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][2]",
+          "tb_top.i_router.tx_dat_ready[9][2]",
+          1
+        ],
+        "dat_tx_9_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][3]",
+          "tb_top.i_router.tx_dat_ready[9][3]",
+          1
+        ],
+        "dat_tx_9_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[9][4]",
+          "tb_top.i_router.tx_dat_ready[9][4]",
+          1
+        ],
+        "source_10_ar": [
+          "axi",
+          "tb_top.gen_node[10].source_bus.arvalid",
+          "tb_top.gen_node[10].source_bus.arready",
+          null
+        ],
+        "source_10_r": [
+          "axi",
+          "tb_top.gen_node[10].source_bus.rvalid",
+          "tb_top.gen_node[10].source_bus.rready",
+          null
+        ],
+        "device_10_ar": [
+          "axi",
+          "tb_top.gen_node[10].device_bus.arvalid",
+          "tb_top.gen_node[10].device_bus.arready",
+          null
+        ],
+        "device_10_r": [
+          "axi",
+          "tb_top.gen_node[10].device_bus.rvalid",
+          "tb_top.gen_node[10].device_bus.rready",
+          null
+        ],
+        "req_rx_10_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[10]",
+          "tb_top.i_router.rx_req_ready[10]",
+          0
+        ],
+        "req_tx_10_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          0
+        ],
+        "req_tx_10_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          1
+        ],
+        "req_tx_10_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          2
+        ],
+        "req_tx_10_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          3
+        ],
+        "req_tx_10_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[10]",
+          "tb_top.i_router.tx_req_ready[10]",
+          4
+        ],
+        "dat_rx_10_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[10][0]",
+          "tb_top.i_router.rx_dat_ready[10][0]",
+          1
+        ],
+        "dat_tx_10_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][0]",
+          "tb_top.i_router.tx_dat_ready[10][0]",
+          1
+        ],
+        "dat_tx_10_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][1]",
+          "tb_top.i_router.tx_dat_ready[10][1]",
+          1
+        ],
+        "dat_tx_10_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][2]",
+          "tb_top.i_router.tx_dat_ready[10][2]",
+          1
+        ],
+        "dat_tx_10_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][3]",
+          "tb_top.i_router.tx_dat_ready[10][3]",
+          1
+        ],
+        "dat_tx_10_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[10][4]",
+          "tb_top.i_router.tx_dat_ready[10][4]",
+          1
+        ],
+        "source_11_ar": [
+          "axi",
+          "tb_top.gen_node[11].source_bus.arvalid",
+          "tb_top.gen_node[11].source_bus.arready",
+          null
+        ],
+        "source_11_r": [
+          "axi",
+          "tb_top.gen_node[11].source_bus.rvalid",
+          "tb_top.gen_node[11].source_bus.rready",
+          null
+        ],
+        "device_11_ar": [
+          "axi",
+          "tb_top.gen_node[11].device_bus.arvalid",
+          "tb_top.gen_node[11].device_bus.arready",
+          null
+        ],
+        "device_11_r": [
+          "axi",
+          "tb_top.gen_node[11].device_bus.rvalid",
+          "tb_top.gen_node[11].device_bus.rready",
+          null
+        ],
+        "req_rx_11_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[11]",
+          "tb_top.i_router.rx_req_ready[11]",
+          0
+        ],
+        "req_tx_11_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          0
+        ],
+        "req_tx_11_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          1
+        ],
+        "req_tx_11_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          2
+        ],
+        "req_tx_11_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          3
+        ],
+        "req_tx_11_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[11]",
+          "tb_top.i_router.tx_req_ready[11]",
+          4
+        ],
+        "dat_rx_11_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[11][0]",
+          "tb_top.i_router.rx_dat_ready[11][0]",
+          1
+        ],
+        "dat_tx_11_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][0]",
+          "tb_top.i_router.tx_dat_ready[11][0]",
+          1
+        ],
+        "dat_tx_11_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][1]",
+          "tb_top.i_router.tx_dat_ready[11][1]",
+          1
+        ],
+        "dat_tx_11_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][2]",
+          "tb_top.i_router.tx_dat_ready[11][2]",
+          1
+        ],
+        "dat_tx_11_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][3]",
+          "tb_top.i_router.tx_dat_ready[11][3]",
+          1
+        ],
+        "dat_tx_11_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[11][4]",
+          "tb_top.i_router.tx_dat_ready[11][4]",
+          1
+        ],
+        "source_12_ar": [
+          "axi",
+          "tb_top.gen_node[12].source_bus.arvalid",
+          "tb_top.gen_node[12].source_bus.arready",
+          null
+        ],
+        "source_12_r": [
+          "axi",
+          "tb_top.gen_node[12].source_bus.rvalid",
+          "tb_top.gen_node[12].source_bus.rready",
+          null
+        ],
+        "device_12_ar": [
+          "axi",
+          "tb_top.gen_node[12].device_bus.arvalid",
+          "tb_top.gen_node[12].device_bus.arready",
+          null
+        ],
+        "device_12_r": [
+          "axi",
+          "tb_top.gen_node[12].device_bus.rvalid",
+          "tb_top.gen_node[12].device_bus.rready",
+          null
+        ],
+        "req_rx_12_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[12]",
+          "tb_top.i_router.rx_req_ready[12]",
+          0
+        ],
+        "req_tx_12_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          0
+        ],
+        "req_tx_12_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          1
+        ],
+        "req_tx_12_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          2
+        ],
+        "req_tx_12_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          3
+        ],
+        "req_tx_12_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[12]",
+          "tb_top.i_router.tx_req_ready[12]",
+          4
+        ],
+        "dat_rx_12_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[12][0]",
+          "tb_top.i_router.rx_dat_ready[12][0]",
+          1
+        ],
+        "dat_tx_12_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][0]",
+          "tb_top.i_router.tx_dat_ready[12][0]",
+          1
+        ],
+        "dat_tx_12_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][1]",
+          "tb_top.i_router.tx_dat_ready[12][1]",
+          1
+        ],
+        "dat_tx_12_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][2]",
+          "tb_top.i_router.tx_dat_ready[12][2]",
+          1
+        ],
+        "dat_tx_12_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][3]",
+          "tb_top.i_router.tx_dat_ready[12][3]",
+          1
+        ],
+        "dat_tx_12_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[12][4]",
+          "tb_top.i_router.tx_dat_ready[12][4]",
+          1
+        ],
+        "source_13_ar": [
+          "axi",
+          "tb_top.gen_node[13].source_bus.arvalid",
+          "tb_top.gen_node[13].source_bus.arready",
+          null
+        ],
+        "source_13_r": [
+          "axi",
+          "tb_top.gen_node[13].source_bus.rvalid",
+          "tb_top.gen_node[13].source_bus.rready",
+          null
+        ],
+        "device_13_ar": [
+          "axi",
+          "tb_top.gen_node[13].device_bus.arvalid",
+          "tb_top.gen_node[13].device_bus.arready",
+          null
+        ],
+        "device_13_r": [
+          "axi",
+          "tb_top.gen_node[13].device_bus.rvalid",
+          "tb_top.gen_node[13].device_bus.rready",
+          null
+        ],
+        "req_rx_13_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[13]",
+          "tb_top.i_router.rx_req_ready[13]",
+          0
+        ],
+        "req_tx_13_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          0
+        ],
+        "req_tx_13_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          1
+        ],
+        "req_tx_13_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          2
+        ],
+        "req_tx_13_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          3
+        ],
+        "req_tx_13_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[13]",
+          "tb_top.i_router.tx_req_ready[13]",
+          4
+        ],
+        "dat_rx_13_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[13][0]",
+          "tb_top.i_router.rx_dat_ready[13][0]",
+          1
+        ],
+        "dat_tx_13_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][0]",
+          "tb_top.i_router.tx_dat_ready[13][0]",
+          1
+        ],
+        "dat_tx_13_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][1]",
+          "tb_top.i_router.tx_dat_ready[13][1]",
+          1
+        ],
+        "dat_tx_13_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][2]",
+          "tb_top.i_router.tx_dat_ready[13][2]",
+          1
+        ],
+        "dat_tx_13_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][3]",
+          "tb_top.i_router.tx_dat_ready[13][3]",
+          1
+        ],
+        "dat_tx_13_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[13][4]",
+          "tb_top.i_router.tx_dat_ready[13][4]",
+          1
+        ],
+        "source_14_ar": [
+          "axi",
+          "tb_top.gen_node[14].source_bus.arvalid",
+          "tb_top.gen_node[14].source_bus.arready",
+          null
+        ],
+        "source_14_r": [
+          "axi",
+          "tb_top.gen_node[14].source_bus.rvalid",
+          "tb_top.gen_node[14].source_bus.rready",
+          null
+        ],
+        "device_14_ar": [
+          "axi",
+          "tb_top.gen_node[14].device_bus.arvalid",
+          "tb_top.gen_node[14].device_bus.arready",
+          null
+        ],
+        "device_14_r": [
+          "axi",
+          "tb_top.gen_node[14].device_bus.rvalid",
+          "tb_top.gen_node[14].device_bus.rready",
+          null
+        ],
+        "req_rx_14_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[14]",
+          "tb_top.i_router.rx_req_ready[14]",
+          0
+        ],
+        "req_tx_14_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          0
+        ],
+        "req_tx_14_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          1
+        ],
+        "req_tx_14_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          2
+        ],
+        "req_tx_14_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          3
+        ],
+        "req_tx_14_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[14]",
+          "tb_top.i_router.tx_req_ready[14]",
+          4
+        ],
+        "dat_rx_14_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[14][0]",
+          "tb_top.i_router.rx_dat_ready[14][0]",
+          1
+        ],
+        "dat_tx_14_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][0]",
+          "tb_top.i_router.tx_dat_ready[14][0]",
+          1
+        ],
+        "dat_tx_14_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][1]",
+          "tb_top.i_router.tx_dat_ready[14][1]",
+          1
+        ],
+        "dat_tx_14_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][2]",
+          "tb_top.i_router.tx_dat_ready[14][2]",
+          1
+        ],
+        "dat_tx_14_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][3]",
+          "tb_top.i_router.tx_dat_ready[14][3]",
+          1
+        ],
+        "dat_tx_14_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[14][4]",
+          "tb_top.i_router.tx_dat_ready[14][4]",
+          1
+        ],
+        "source_15_ar": [
+          "axi",
+          "tb_top.gen_node[15].source_bus.arvalid",
+          "tb_top.gen_node[15].source_bus.arready",
+          null
+        ],
+        "source_15_r": [
+          "axi",
+          "tb_top.gen_node[15].source_bus.rvalid",
+          "tb_top.gen_node[15].source_bus.rready",
+          null
+        ],
+        "device_15_ar": [
+          "axi",
+          "tb_top.gen_node[15].device_bus.arvalid",
+          "tb_top.gen_node[15].device_bus.arready",
+          null
+        ],
+        "device_15_r": [
+          "axi",
+          "tb_top.gen_node[15].device_bus.rvalid",
+          "tb_top.gen_node[15].device_bus.rready",
+          null
+        ],
+        "req_rx_15_0": [
+          "noc",
+          "tb_top.i_router.rx_req_valid[15]",
+          "tb_top.i_router.rx_req_ready[15]",
+          0
+        ],
+        "req_tx_15_0": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          0
+        ],
+        "req_tx_15_1": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          1
+        ],
+        "req_tx_15_2": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          2
+        ],
+        "req_tx_15_3": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          3
+        ],
+        "req_tx_15_4": [
+          "noc",
+          "tb_top.i_router.tx_req_valid[15]",
+          "tb_top.i_router.tx_req_ready[15]",
+          4
+        ],
+        "dat_rx_15_0": [
+          "noc",
+          "tb_top.i_router.rx_dat_valid[15][0]",
+          "tb_top.i_router.rx_dat_ready[15][0]",
+          1
+        ],
+        "dat_tx_15_0": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][0]",
+          "tb_top.i_router.tx_dat_ready[15][0]",
+          1
+        ],
+        "dat_tx_15_1": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][1]",
+          "tb_top.i_router.tx_dat_ready[15][1]",
+          1
+        ],
+        "dat_tx_15_2": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][2]",
+          "tb_top.i_router.tx_dat_ready[15][2]",
+          1
+        ],
+        "dat_tx_15_3": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][3]",
+          "tb_top.i_router.tx_dat_ready[15][3]",
+          1
+        ],
+        "dat_tx_15_4": [
+          "noc",
+          "tb_top.i_router.tx_dat_valid[15][4]",
+          "tb_top.i_router.tx_dat_ready[15][4]",
+          1
+        ]
+      },
+      "signal_payloads": {
+        "source_0_ar": [
+          "tb_top.gen_node[0].source_bus.araddr",
+          "tb_top.gen_node[0].source_bus.arlen",
+          "tb_top.gen_node[0].source_bus.arsize",
+          "tb_top.gen_node[0].source_bus.arid"
+        ],
+        "source_0_r": [
+          "tb_top.gen_node[0].source_bus.rdata",
+          "tb_top.gen_node[0].source_bus.rlast",
+          "tb_top.gen_node[0].source_bus.rid"
+        ],
+        "device_0_ar": [
+          "tb_top.gen_node[0].device_bus.araddr",
+          "tb_top.gen_node[0].device_bus.arlen",
+          "tb_top.gen_node[0].device_bus.arsize",
+          "tb_top.gen_node[0].device_bus.arid"
+        ],
+        "device_0_r": [
+          "tb_top.gen_node[0].device_bus.rdata",
+          "tb_top.gen_node[0].device_bus.rlast",
+          "tb_top.gen_node[0].device_bus.rid"
+        ],
+        "req_rx_0_0": [
+          "tb_top.i_router.rx_req_flit[0][0]"
+        ],
+        "req_tx_0_0": [
+          "tb_top.i_router.tx_req_flit[0][0]"
+        ],
+        "req_tx_0_1": [
+          "tb_top.i_router.tx_req_flit[0][1]"
+        ],
+        "req_tx_0_2": [
+          "tb_top.i_router.tx_req_flit[0][2]"
+        ],
+        "req_tx_0_3": [
+          "tb_top.i_router.tx_req_flit[0][3]"
+        ],
+        "req_tx_0_4": [
+          "tb_top.i_router.tx_req_flit[0][4]"
+        ],
+        "dat_rx_0_0": [
+          "tb_top.i_router.rx_dat_flit[0][0]"
+        ],
+        "dat_tx_0_0": [
+          "tb_top.i_router.tx_dat_flit[0][0]"
+        ],
+        "dat_tx_0_1": [
+          "tb_top.i_router.tx_dat_flit[0][1]"
+        ],
+        "dat_tx_0_2": [
+          "tb_top.i_router.tx_dat_flit[0][2]"
+        ],
+        "dat_tx_0_3": [
+          "tb_top.i_router.tx_dat_flit[0][3]"
+        ],
+        "dat_tx_0_4": [
+          "tb_top.i_router.tx_dat_flit[0][4]"
+        ],
+        "source_1_ar": [
+          "tb_top.gen_node[1].source_bus.araddr",
+          "tb_top.gen_node[1].source_bus.arlen",
+          "tb_top.gen_node[1].source_bus.arsize",
+          "tb_top.gen_node[1].source_bus.arid"
+        ],
+        "source_1_r": [
+          "tb_top.gen_node[1].source_bus.rdata",
+          "tb_top.gen_node[1].source_bus.rlast",
+          "tb_top.gen_node[1].source_bus.rid"
+        ],
+        "device_1_ar": [
+          "tb_top.gen_node[1].device_bus.araddr",
+          "tb_top.gen_node[1].device_bus.arlen",
+          "tb_top.gen_node[1].device_bus.arsize",
+          "tb_top.gen_node[1].device_bus.arid"
+        ],
+        "device_1_r": [
+          "tb_top.gen_node[1].device_bus.rdata",
+          "tb_top.gen_node[1].device_bus.rlast",
+          "tb_top.gen_node[1].device_bus.rid"
+        ],
+        "req_rx_1_0": [
+          "tb_top.i_router.rx_req_flit[1][0]"
+        ],
+        "req_tx_1_0": [
+          "tb_top.i_router.tx_req_flit[1][0]"
+        ],
+        "req_tx_1_1": [
+          "tb_top.i_router.tx_req_flit[1][1]"
+        ],
+        "req_tx_1_2": [
+          "tb_top.i_router.tx_req_flit[1][2]"
+        ],
+        "req_tx_1_3": [
+          "tb_top.i_router.tx_req_flit[1][3]"
+        ],
+        "req_tx_1_4": [
+          "tb_top.i_router.tx_req_flit[1][4]"
+        ],
+        "dat_rx_1_0": [
+          "tb_top.i_router.rx_dat_flit[1][0]"
+        ],
+        "dat_tx_1_0": [
+          "tb_top.i_router.tx_dat_flit[1][0]"
+        ],
+        "dat_tx_1_1": [
+          "tb_top.i_router.tx_dat_flit[1][1]"
+        ],
+        "dat_tx_1_2": [
+          "tb_top.i_router.tx_dat_flit[1][2]"
+        ],
+        "dat_tx_1_3": [
+          "tb_top.i_router.tx_dat_flit[1][3]"
+        ],
+        "dat_tx_1_4": [
+          "tb_top.i_router.tx_dat_flit[1][4]"
+        ],
+        "source_2_ar": [
+          "tb_top.gen_node[2].source_bus.araddr",
+          "tb_top.gen_node[2].source_bus.arlen",
+          "tb_top.gen_node[2].source_bus.arsize",
+          "tb_top.gen_node[2].source_bus.arid"
+        ],
+        "source_2_r": [
+          "tb_top.gen_node[2].source_bus.rdata",
+          "tb_top.gen_node[2].source_bus.rlast",
+          "tb_top.gen_node[2].source_bus.rid"
+        ],
+        "device_2_ar": [
+          "tb_top.gen_node[2].device_bus.araddr",
+          "tb_top.gen_node[2].device_bus.arlen",
+          "tb_top.gen_node[2].device_bus.arsize",
+          "tb_top.gen_node[2].device_bus.arid"
+        ],
+        "device_2_r": [
+          "tb_top.gen_node[2].device_bus.rdata",
+          "tb_top.gen_node[2].device_bus.rlast",
+          "tb_top.gen_node[2].device_bus.rid"
+        ],
+        "req_rx_2_0": [
+          "tb_top.i_router.rx_req_flit[2][0]"
+        ],
+        "req_tx_2_0": [
+          "tb_top.i_router.tx_req_flit[2][0]"
+        ],
+        "req_tx_2_1": [
+          "tb_top.i_router.tx_req_flit[2][1]"
+        ],
+        "req_tx_2_2": [
+          "tb_top.i_router.tx_req_flit[2][2]"
+        ],
+        "req_tx_2_3": [
+          "tb_top.i_router.tx_req_flit[2][3]"
+        ],
+        "req_tx_2_4": [
+          "tb_top.i_router.tx_req_flit[2][4]"
+        ],
+        "dat_rx_2_0": [
+          "tb_top.i_router.rx_dat_flit[2][0]"
+        ],
+        "dat_tx_2_0": [
+          "tb_top.i_router.tx_dat_flit[2][0]"
+        ],
+        "dat_tx_2_1": [
+          "tb_top.i_router.tx_dat_flit[2][1]"
+        ],
+        "dat_tx_2_2": [
+          "tb_top.i_router.tx_dat_flit[2][2]"
+        ],
+        "dat_tx_2_3": [
+          "tb_top.i_router.tx_dat_flit[2][3]"
+        ],
+        "dat_tx_2_4": [
+          "tb_top.i_router.tx_dat_flit[2][4]"
+        ],
+        "source_3_ar": [
+          "tb_top.gen_node[3].source_bus.araddr",
+          "tb_top.gen_node[3].source_bus.arlen",
+          "tb_top.gen_node[3].source_bus.arsize",
+          "tb_top.gen_node[3].source_bus.arid"
+        ],
+        "source_3_r": [
+          "tb_top.gen_node[3].source_bus.rdata",
+          "tb_top.gen_node[3].source_bus.rlast",
+          "tb_top.gen_node[3].source_bus.rid"
+        ],
+        "device_3_ar": [
+          "tb_top.gen_node[3].device_bus.araddr",
+          "tb_top.gen_node[3].device_bus.arlen",
+          "tb_top.gen_node[3].device_bus.arsize",
+          "tb_top.gen_node[3].device_bus.arid"
+        ],
+        "device_3_r": [
+          "tb_top.gen_node[3].device_bus.rdata",
+          "tb_top.gen_node[3].device_bus.rlast",
+          "tb_top.gen_node[3].device_bus.rid"
+        ],
+        "req_rx_3_0": [
+          "tb_top.i_router.rx_req_flit[3][0]"
+        ],
+        "req_tx_3_0": [
+          "tb_top.i_router.tx_req_flit[3][0]"
+        ],
+        "req_tx_3_1": [
+          "tb_top.i_router.tx_req_flit[3][1]"
+        ],
+        "req_tx_3_2": [
+          "tb_top.i_router.tx_req_flit[3][2]"
+        ],
+        "req_tx_3_3": [
+          "tb_top.i_router.tx_req_flit[3][3]"
+        ],
+        "req_tx_3_4": [
+          "tb_top.i_router.tx_req_flit[3][4]"
+        ],
+        "dat_rx_3_0": [
+          "tb_top.i_router.rx_dat_flit[3][0]"
+        ],
+        "dat_tx_3_0": [
+          "tb_top.i_router.tx_dat_flit[3][0]"
+        ],
+        "dat_tx_3_1": [
+          "tb_top.i_router.tx_dat_flit[3][1]"
+        ],
+        "dat_tx_3_2": [
+          "tb_top.i_router.tx_dat_flit[3][2]"
+        ],
+        "dat_tx_3_3": [
+          "tb_top.i_router.tx_dat_flit[3][3]"
+        ],
+        "dat_tx_3_4": [
+          "tb_top.i_router.tx_dat_flit[3][4]"
+        ],
+        "source_4_ar": [
+          "tb_top.gen_node[4].source_bus.araddr",
+          "tb_top.gen_node[4].source_bus.arlen",
+          "tb_top.gen_node[4].source_bus.arsize",
+          "tb_top.gen_node[4].source_bus.arid"
+        ],
+        "source_4_r": [
+          "tb_top.gen_node[4].source_bus.rdata",
+          "tb_top.gen_node[4].source_bus.rlast",
+          "tb_top.gen_node[4].source_bus.rid"
+        ],
+        "device_4_ar": [
+          "tb_top.gen_node[4].device_bus.araddr",
+          "tb_top.gen_node[4].device_bus.arlen",
+          "tb_top.gen_node[4].device_bus.arsize",
+          "tb_top.gen_node[4].device_bus.arid"
+        ],
+        "device_4_r": [
+          "tb_top.gen_node[4].device_bus.rdata",
+          "tb_top.gen_node[4].device_bus.rlast",
+          "tb_top.gen_node[4].device_bus.rid"
+        ],
+        "req_rx_4_0": [
+          "tb_top.i_router.rx_req_flit[4][0]"
+        ],
+        "req_tx_4_0": [
+          "tb_top.i_router.tx_req_flit[4][0]"
+        ],
+        "req_tx_4_1": [
+          "tb_top.i_router.tx_req_flit[4][1]"
+        ],
+        "req_tx_4_2": [
+          "tb_top.i_router.tx_req_flit[4][2]"
+        ],
+        "req_tx_4_3": [
+          "tb_top.i_router.tx_req_flit[4][3]"
+        ],
+        "req_tx_4_4": [
+          "tb_top.i_router.tx_req_flit[4][4]"
+        ],
+        "dat_rx_4_0": [
+          "tb_top.i_router.rx_dat_flit[4][0]"
+        ],
+        "dat_tx_4_0": [
+          "tb_top.i_router.tx_dat_flit[4][0]"
+        ],
+        "dat_tx_4_1": [
+          "tb_top.i_router.tx_dat_flit[4][1]"
+        ],
+        "dat_tx_4_2": [
+          "tb_top.i_router.tx_dat_flit[4][2]"
+        ],
+        "dat_tx_4_3": [
+          "tb_top.i_router.tx_dat_flit[4][3]"
+        ],
+        "dat_tx_4_4": [
+          "tb_top.i_router.tx_dat_flit[4][4]"
+        ],
+        "source_5_ar": [
+          "tb_top.gen_node[5].source_bus.araddr",
+          "tb_top.gen_node[5].source_bus.arlen",
+          "tb_top.gen_node[5].source_bus.arsize",
+          "tb_top.gen_node[5].source_bus.arid"
+        ],
+        "source_5_r": [
+          "tb_top.gen_node[5].source_bus.rdata",
+          "tb_top.gen_node[5].source_bus.rlast",
+          "tb_top.gen_node[5].source_bus.rid"
+        ],
+        "device_5_ar": [
+          "tb_top.gen_node[5].device_bus.araddr",
+          "tb_top.gen_node[5].device_bus.arlen",
+          "tb_top.gen_node[5].device_bus.arsize",
+          "tb_top.gen_node[5].device_bus.arid"
+        ],
+        "device_5_r": [
+          "tb_top.gen_node[5].device_bus.rdata",
+          "tb_top.gen_node[5].device_bus.rlast",
+          "tb_top.gen_node[5].device_bus.rid"
+        ],
+        "req_rx_5_0": [
+          "tb_top.i_router.rx_req_flit[5][0]"
+        ],
+        "req_tx_5_0": [
+          "tb_top.i_router.tx_req_flit[5][0]"
+        ],
+        "req_tx_5_1": [
+          "tb_top.i_router.tx_req_flit[5][1]"
+        ],
+        "req_tx_5_2": [
+          "tb_top.i_router.tx_req_flit[5][2]"
+        ],
+        "req_tx_5_3": [
+          "tb_top.i_router.tx_req_flit[5][3]"
+        ],
+        "req_tx_5_4": [
+          "tb_top.i_router.tx_req_flit[5][4]"
+        ],
+        "dat_rx_5_0": [
+          "tb_top.i_router.rx_dat_flit[5][0]"
+        ],
+        "dat_tx_5_0": [
+          "tb_top.i_router.tx_dat_flit[5][0]"
+        ],
+        "dat_tx_5_1": [
+          "tb_top.i_router.tx_dat_flit[5][1]"
+        ],
+        "dat_tx_5_2": [
+          "tb_top.i_router.tx_dat_flit[5][2]"
+        ],
+        "dat_tx_5_3": [
+          "tb_top.i_router.tx_dat_flit[5][3]"
+        ],
+        "dat_tx_5_4": [
+          "tb_top.i_router.tx_dat_flit[5][4]"
+        ],
+        "source_6_ar": [
+          "tb_top.gen_node[6].source_bus.araddr",
+          "tb_top.gen_node[6].source_bus.arlen",
+          "tb_top.gen_node[6].source_bus.arsize",
+          "tb_top.gen_node[6].source_bus.arid"
+        ],
+        "source_6_r": [
+          "tb_top.gen_node[6].source_bus.rdata",
+          "tb_top.gen_node[6].source_bus.rlast",
+          "tb_top.gen_node[6].source_bus.rid"
+        ],
+        "device_6_ar": [
+          "tb_top.gen_node[6].device_bus.araddr",
+          "tb_top.gen_node[6].device_bus.arlen",
+          "tb_top.gen_node[6].device_bus.arsize",
+          "tb_top.gen_node[6].device_bus.arid"
+        ],
+        "device_6_r": [
+          "tb_top.gen_node[6].device_bus.rdata",
+          "tb_top.gen_node[6].device_bus.rlast",
+          "tb_top.gen_node[6].device_bus.rid"
+        ],
+        "req_rx_6_0": [
+          "tb_top.i_router.rx_req_flit[6][0]"
+        ],
+        "req_tx_6_0": [
+          "tb_top.i_router.tx_req_flit[6][0]"
+        ],
+        "req_tx_6_1": [
+          "tb_top.i_router.tx_req_flit[6][1]"
+        ],
+        "req_tx_6_2": [
+          "tb_top.i_router.tx_req_flit[6][2]"
+        ],
+        "req_tx_6_3": [
+          "tb_top.i_router.tx_req_flit[6][3]"
+        ],
+        "req_tx_6_4": [
+          "tb_top.i_router.tx_req_flit[6][4]"
+        ],
+        "dat_rx_6_0": [
+          "tb_top.i_router.rx_dat_flit[6][0]"
+        ],
+        "dat_tx_6_0": [
+          "tb_top.i_router.tx_dat_flit[6][0]"
+        ],
+        "dat_tx_6_1": [
+          "tb_top.i_router.tx_dat_flit[6][1]"
+        ],
+        "dat_tx_6_2": [
+          "tb_top.i_router.tx_dat_flit[6][2]"
+        ],
+        "dat_tx_6_3": [
+          "tb_top.i_router.tx_dat_flit[6][3]"
+        ],
+        "dat_tx_6_4": [
+          "tb_top.i_router.tx_dat_flit[6][4]"
+        ],
+        "source_7_ar": [
+          "tb_top.gen_node[7].source_bus.araddr",
+          "tb_top.gen_node[7].source_bus.arlen",
+          "tb_top.gen_node[7].source_bus.arsize",
+          "tb_top.gen_node[7].source_bus.arid"
+        ],
+        "source_7_r": [
+          "tb_top.gen_node[7].source_bus.rdata",
+          "tb_top.gen_node[7].source_bus.rlast",
+          "tb_top.gen_node[7].source_bus.rid"
+        ],
+        "device_7_ar": [
+          "tb_top.gen_node[7].device_bus.araddr",
+          "tb_top.gen_node[7].device_bus.arlen",
+          "tb_top.gen_node[7].device_bus.arsize",
+          "tb_top.gen_node[7].device_bus.arid"
+        ],
+        "device_7_r": [
+          "tb_top.gen_node[7].device_bus.rdata",
+          "tb_top.gen_node[7].device_bus.rlast",
+          "tb_top.gen_node[7].device_bus.rid"
+        ],
+        "req_rx_7_0": [
+          "tb_top.i_router.rx_req_flit[7][0]"
+        ],
+        "req_tx_7_0": [
+          "tb_top.i_router.tx_req_flit[7][0]"
+        ],
+        "req_tx_7_1": [
+          "tb_top.i_router.tx_req_flit[7][1]"
+        ],
+        "req_tx_7_2": [
+          "tb_top.i_router.tx_req_flit[7][2]"
+        ],
+        "req_tx_7_3": [
+          "tb_top.i_router.tx_req_flit[7][3]"
+        ],
+        "req_tx_7_4": [
+          "tb_top.i_router.tx_req_flit[7][4]"
+        ],
+        "dat_rx_7_0": [
+          "tb_top.i_router.rx_dat_flit[7][0]"
+        ],
+        "dat_tx_7_0": [
+          "tb_top.i_router.tx_dat_flit[7][0]"
+        ],
+        "dat_tx_7_1": [
+          "tb_top.i_router.tx_dat_flit[7][1]"
+        ],
+        "dat_tx_7_2": [
+          "tb_top.i_router.tx_dat_flit[7][2]"
+        ],
+        "dat_tx_7_3": [
+          "tb_top.i_router.tx_dat_flit[7][3]"
+        ],
+        "dat_tx_7_4": [
+          "tb_top.i_router.tx_dat_flit[7][4]"
+        ],
+        "source_8_ar": [
+          "tb_top.gen_node[8].source_bus.araddr",
+          "tb_top.gen_node[8].source_bus.arlen",
+          "tb_top.gen_node[8].source_bus.arsize",
+          "tb_top.gen_node[8].source_bus.arid"
+        ],
+        "source_8_r": [
+          "tb_top.gen_node[8].source_bus.rdata",
+          "tb_top.gen_node[8].source_bus.rlast",
+          "tb_top.gen_node[8].source_bus.rid"
+        ],
+        "device_8_ar": [
+          "tb_top.gen_node[8].device_bus.araddr",
+          "tb_top.gen_node[8].device_bus.arlen",
+          "tb_top.gen_node[8].device_bus.arsize",
+          "tb_top.gen_node[8].device_bus.arid"
+        ],
+        "device_8_r": [
+          "tb_top.gen_node[8].device_bus.rdata",
+          "tb_top.gen_node[8].device_bus.rlast",
+          "tb_top.gen_node[8].device_bus.rid"
+        ],
+        "req_rx_8_0": [
+          "tb_top.i_router.rx_req_flit[8][0]"
+        ],
+        "req_tx_8_0": [
+          "tb_top.i_router.tx_req_flit[8][0]"
+        ],
+        "req_tx_8_1": [
+          "tb_top.i_router.tx_req_flit[8][1]"
+        ],
+        "req_tx_8_2": [
+          "tb_top.i_router.tx_req_flit[8][2]"
+        ],
+        "req_tx_8_3": [
+          "tb_top.i_router.tx_req_flit[8][3]"
+        ],
+        "req_tx_8_4": [
+          "tb_top.i_router.tx_req_flit[8][4]"
+        ],
+        "dat_rx_8_0": [
+          "tb_top.i_router.rx_dat_flit[8][0]"
+        ],
+        "dat_tx_8_0": [
+          "tb_top.i_router.tx_dat_flit[8][0]"
+        ],
+        "dat_tx_8_1": [
+          "tb_top.i_router.tx_dat_flit[8][1]"
+        ],
+        "dat_tx_8_2": [
+          "tb_top.i_router.tx_dat_flit[8][2]"
+        ],
+        "dat_tx_8_3": [
+          "tb_top.i_router.tx_dat_flit[8][3]"
+        ],
+        "dat_tx_8_4": [
+          "tb_top.i_router.tx_dat_flit[8][4]"
+        ],
+        "source_9_ar": [
+          "tb_top.gen_node[9].source_bus.araddr",
+          "tb_top.gen_node[9].source_bus.arlen",
+          "tb_top.gen_node[9].source_bus.arsize",
+          "tb_top.gen_node[9].source_bus.arid"
+        ],
+        "source_9_r": [
+          "tb_top.gen_node[9].source_bus.rdata",
+          "tb_top.gen_node[9].source_bus.rlast",
+          "tb_top.gen_node[9].source_bus.rid"
+        ],
+        "device_9_ar": [
+          "tb_top.gen_node[9].device_bus.araddr",
+          "tb_top.gen_node[9].device_bus.arlen",
+          "tb_top.gen_node[9].device_bus.arsize",
+          "tb_top.gen_node[9].device_bus.arid"
+        ],
+        "device_9_r": [
+          "tb_top.gen_node[9].device_bus.rdata",
+          "tb_top.gen_node[9].device_bus.rlast",
+          "tb_top.gen_node[9].device_bus.rid"
+        ],
+        "req_rx_9_0": [
+          "tb_top.i_router.rx_req_flit[9][0]"
+        ],
+        "req_tx_9_0": [
+          "tb_top.i_router.tx_req_flit[9][0]"
+        ],
+        "req_tx_9_1": [
+          "tb_top.i_router.tx_req_flit[9][1]"
+        ],
+        "req_tx_9_2": [
+          "tb_top.i_router.tx_req_flit[9][2]"
+        ],
+        "req_tx_9_3": [
+          "tb_top.i_router.tx_req_flit[9][3]"
+        ],
+        "req_tx_9_4": [
+          "tb_top.i_router.tx_req_flit[9][4]"
+        ],
+        "dat_rx_9_0": [
+          "tb_top.i_router.rx_dat_flit[9][0]"
+        ],
+        "dat_tx_9_0": [
+          "tb_top.i_router.tx_dat_flit[9][0]"
+        ],
+        "dat_tx_9_1": [
+          "tb_top.i_router.tx_dat_flit[9][1]"
+        ],
+        "dat_tx_9_2": [
+          "tb_top.i_router.tx_dat_flit[9][2]"
+        ],
+        "dat_tx_9_3": [
+          "tb_top.i_router.tx_dat_flit[9][3]"
+        ],
+        "dat_tx_9_4": [
+          "tb_top.i_router.tx_dat_flit[9][4]"
+        ],
+        "source_10_ar": [
+          "tb_top.gen_node[10].source_bus.araddr",
+          "tb_top.gen_node[10].source_bus.arlen",
+          "tb_top.gen_node[10].source_bus.arsize",
+          "tb_top.gen_node[10].source_bus.arid"
+        ],
+        "source_10_r": [
+          "tb_top.gen_node[10].source_bus.rdata",
+          "tb_top.gen_node[10].source_bus.rlast",
+          "tb_top.gen_node[10].source_bus.rid"
+        ],
+        "device_10_ar": [
+          "tb_top.gen_node[10].device_bus.araddr",
+          "tb_top.gen_node[10].device_bus.arlen",
+          "tb_top.gen_node[10].device_bus.arsize",
+          "tb_top.gen_node[10].device_bus.arid"
+        ],
+        "device_10_r": [
+          "tb_top.gen_node[10].device_bus.rdata",
+          "tb_top.gen_node[10].device_bus.rlast",
+          "tb_top.gen_node[10].device_bus.rid"
+        ],
+        "req_rx_10_0": [
+          "tb_top.i_router.rx_req_flit[10][0]"
+        ],
+        "req_tx_10_0": [
+          "tb_top.i_router.tx_req_flit[10][0]"
+        ],
+        "req_tx_10_1": [
+          "tb_top.i_router.tx_req_flit[10][1]"
+        ],
+        "req_tx_10_2": [
+          "tb_top.i_router.tx_req_flit[10][2]"
+        ],
+        "req_tx_10_3": [
+          "tb_top.i_router.tx_req_flit[10][3]"
+        ],
+        "req_tx_10_4": [
+          "tb_top.i_router.tx_req_flit[10][4]"
+        ],
+        "dat_rx_10_0": [
+          "tb_top.i_router.rx_dat_flit[10][0]"
+        ],
+        "dat_tx_10_0": [
+          "tb_top.i_router.tx_dat_flit[10][0]"
+        ],
+        "dat_tx_10_1": [
+          "tb_top.i_router.tx_dat_flit[10][1]"
+        ],
+        "dat_tx_10_2": [
+          "tb_top.i_router.tx_dat_flit[10][2]"
+        ],
+        "dat_tx_10_3": [
+          "tb_top.i_router.tx_dat_flit[10][3]"
+        ],
+        "dat_tx_10_4": [
+          "tb_top.i_router.tx_dat_flit[10][4]"
+        ],
+        "source_11_ar": [
+          "tb_top.gen_node[11].source_bus.araddr",
+          "tb_top.gen_node[11].source_bus.arlen",
+          "tb_top.gen_node[11].source_bus.arsize",
+          "tb_top.gen_node[11].source_bus.arid"
+        ],
+        "source_11_r": [
+          "tb_top.gen_node[11].source_bus.rdata",
+          "tb_top.gen_node[11].source_bus.rlast",
+          "tb_top.gen_node[11].source_bus.rid"
+        ],
+        "device_11_ar": [
+          "tb_top.gen_node[11].device_bus.araddr",
+          "tb_top.gen_node[11].device_bus.arlen",
+          "tb_top.gen_node[11].device_bus.arsize",
+          "tb_top.gen_node[11].device_bus.arid"
+        ],
+        "device_11_r": [
+          "tb_top.gen_node[11].device_bus.rdata",
+          "tb_top.gen_node[11].device_bus.rlast",
+          "tb_top.gen_node[11].device_bus.rid"
+        ],
+        "req_rx_11_0": [
+          "tb_top.i_router.rx_req_flit[11][0]"
+        ],
+        "req_tx_11_0": [
+          "tb_top.i_router.tx_req_flit[11][0]"
+        ],
+        "req_tx_11_1": [
+          "tb_top.i_router.tx_req_flit[11][1]"
+        ],
+        "req_tx_11_2": [
+          "tb_top.i_router.tx_req_flit[11][2]"
+        ],
+        "req_tx_11_3": [
+          "tb_top.i_router.tx_req_flit[11][3]"
+        ],
+        "req_tx_11_4": [
+          "tb_top.i_router.tx_req_flit[11][4]"
+        ],
+        "dat_rx_11_0": [
+          "tb_top.i_router.rx_dat_flit[11][0]"
+        ],
+        "dat_tx_11_0": [
+          "tb_top.i_router.tx_dat_flit[11][0]"
+        ],
+        "dat_tx_11_1": [
+          "tb_top.i_router.tx_dat_flit[11][1]"
+        ],
+        "dat_tx_11_2": [
+          "tb_top.i_router.tx_dat_flit[11][2]"
+        ],
+        "dat_tx_11_3": [
+          "tb_top.i_router.tx_dat_flit[11][3]"
+        ],
+        "dat_tx_11_4": [
+          "tb_top.i_router.tx_dat_flit[11][4]"
+        ],
+        "source_12_ar": [
+          "tb_top.gen_node[12].source_bus.araddr",
+          "tb_top.gen_node[12].source_bus.arlen",
+          "tb_top.gen_node[12].source_bus.arsize",
+          "tb_top.gen_node[12].source_bus.arid"
+        ],
+        "source_12_r": [
+          "tb_top.gen_node[12].source_bus.rdata",
+          "tb_top.gen_node[12].source_bus.rlast",
+          "tb_top.gen_node[12].source_bus.rid"
+        ],
+        "device_12_ar": [
+          "tb_top.gen_node[12].device_bus.araddr",
+          "tb_top.gen_node[12].device_bus.arlen",
+          "tb_top.gen_node[12].device_bus.arsize",
+          "tb_top.gen_node[12].device_bus.arid"
+        ],
+        "device_12_r": [
+          "tb_top.gen_node[12].device_bus.rdata",
+          "tb_top.gen_node[12].device_bus.rlast",
+          "tb_top.gen_node[12].device_bus.rid"
+        ],
+        "req_rx_12_0": [
+          "tb_top.i_router.rx_req_flit[12][0]"
+        ],
+        "req_tx_12_0": [
+          "tb_top.i_router.tx_req_flit[12][0]"
+        ],
+        "req_tx_12_1": [
+          "tb_top.i_router.tx_req_flit[12][1]"
+        ],
+        "req_tx_12_2": [
+          "tb_top.i_router.tx_req_flit[12][2]"
+        ],
+        "req_tx_12_3": [
+          "tb_top.i_router.tx_req_flit[12][3]"
+        ],
+        "req_tx_12_4": [
+          "tb_top.i_router.tx_req_flit[12][4]"
+        ],
+        "dat_rx_12_0": [
+          "tb_top.i_router.rx_dat_flit[12][0]"
+        ],
+        "dat_tx_12_0": [
+          "tb_top.i_router.tx_dat_flit[12][0]"
+        ],
+        "dat_tx_12_1": [
+          "tb_top.i_router.tx_dat_flit[12][1]"
+        ],
+        "dat_tx_12_2": [
+          "tb_top.i_router.tx_dat_flit[12][2]"
+        ],
+        "dat_tx_12_3": [
+          "tb_top.i_router.tx_dat_flit[12][3]"
+        ],
+        "dat_tx_12_4": [
+          "tb_top.i_router.tx_dat_flit[12][4]"
+        ],
+        "source_13_ar": [
+          "tb_top.gen_node[13].source_bus.araddr",
+          "tb_top.gen_node[13].source_bus.arlen",
+          "tb_top.gen_node[13].source_bus.arsize",
+          "tb_top.gen_node[13].source_bus.arid"
+        ],
+        "source_13_r": [
+          "tb_top.gen_node[13].source_bus.rdata",
+          "tb_top.gen_node[13].source_bus.rlast",
+          "tb_top.gen_node[13].source_bus.rid"
+        ],
+        "device_13_ar": [
+          "tb_top.gen_node[13].device_bus.araddr",
+          "tb_top.gen_node[13].device_bus.arlen",
+          "tb_top.gen_node[13].device_bus.arsize",
+          "tb_top.gen_node[13].device_bus.arid"
+        ],
+        "device_13_r": [
+          "tb_top.gen_node[13].device_bus.rdata",
+          "tb_top.gen_node[13].device_bus.rlast",
+          "tb_top.gen_node[13].device_bus.rid"
+        ],
+        "req_rx_13_0": [
+          "tb_top.i_router.rx_req_flit[13][0]"
+        ],
+        "req_tx_13_0": [
+          "tb_top.i_router.tx_req_flit[13][0]"
+        ],
+        "req_tx_13_1": [
+          "tb_top.i_router.tx_req_flit[13][1]"
+        ],
+        "req_tx_13_2": [
+          "tb_top.i_router.tx_req_flit[13][2]"
+        ],
+        "req_tx_13_3": [
+          "tb_top.i_router.tx_req_flit[13][3]"
+        ],
+        "req_tx_13_4": [
+          "tb_top.i_router.tx_req_flit[13][4]"
+        ],
+        "dat_rx_13_0": [
+          "tb_top.i_router.rx_dat_flit[13][0]"
+        ],
+        "dat_tx_13_0": [
+          "tb_top.i_router.tx_dat_flit[13][0]"
+        ],
+        "dat_tx_13_1": [
+          "tb_top.i_router.tx_dat_flit[13][1]"
+        ],
+        "dat_tx_13_2": [
+          "tb_top.i_router.tx_dat_flit[13][2]"
+        ],
+        "dat_tx_13_3": [
+          "tb_top.i_router.tx_dat_flit[13][3]"
+        ],
+        "dat_tx_13_4": [
+          "tb_top.i_router.tx_dat_flit[13][4]"
+        ],
+        "source_14_ar": [
+          "tb_top.gen_node[14].source_bus.araddr",
+          "tb_top.gen_node[14].source_bus.arlen",
+          "tb_top.gen_node[14].source_bus.arsize",
+          "tb_top.gen_node[14].source_bus.arid"
+        ],
+        "source_14_r": [
+          "tb_top.gen_node[14].source_bus.rdata",
+          "tb_top.gen_node[14].source_bus.rlast",
+          "tb_top.gen_node[14].source_bus.rid"
+        ],
+        "device_14_ar": [
+          "tb_top.gen_node[14].device_bus.araddr",
+          "tb_top.gen_node[14].device_bus.arlen",
+          "tb_top.gen_node[14].device_bus.arsize",
+          "tb_top.gen_node[14].device_bus.arid"
+        ],
+        "device_14_r": [
+          "tb_top.gen_node[14].device_bus.rdata",
+          "tb_top.gen_node[14].device_bus.rlast",
+          "tb_top.gen_node[14].device_bus.rid"
+        ],
+        "req_rx_14_0": [
+          "tb_top.i_router.rx_req_flit[14][0]"
+        ],
+        "req_tx_14_0": [
+          "tb_top.i_router.tx_req_flit[14][0]"
+        ],
+        "req_tx_14_1": [
+          "tb_top.i_router.tx_req_flit[14][1]"
+        ],
+        "req_tx_14_2": [
+          "tb_top.i_router.tx_req_flit[14][2]"
+        ],
+        "req_tx_14_3": [
+          "tb_top.i_router.tx_req_flit[14][3]"
+        ],
+        "req_tx_14_4": [
+          "tb_top.i_router.tx_req_flit[14][4]"
+        ],
+        "dat_rx_14_0": [
+          "tb_top.i_router.rx_dat_flit[14][0]"
+        ],
+        "dat_tx_14_0": [
+          "tb_top.i_router.tx_dat_flit[14][0]"
+        ],
+        "dat_tx_14_1": [
+          "tb_top.i_router.tx_dat_flit[14][1]"
+        ],
+        "dat_tx_14_2": [
+          "tb_top.i_router.tx_dat_flit[14][2]"
+        ],
+        "dat_tx_14_3": [
+          "tb_top.i_router.tx_dat_flit[14][3]"
+        ],
+        "dat_tx_14_4": [
+          "tb_top.i_router.tx_dat_flit[14][4]"
+        ],
+        "source_15_ar": [
+          "tb_top.gen_node[15].source_bus.araddr",
+          "tb_top.gen_node[15].source_bus.arlen",
+          "tb_top.gen_node[15].source_bus.arsize",
+          "tb_top.gen_node[15].source_bus.arid"
+        ],
+        "source_15_r": [
+          "tb_top.gen_node[15].source_bus.rdata",
+          "tb_top.gen_node[15].source_bus.rlast",
+          "tb_top.gen_node[15].source_bus.rid"
+        ],
+        "device_15_ar": [
+          "tb_top.gen_node[15].device_bus.araddr",
+          "tb_top.gen_node[15].device_bus.arlen",
+          "tb_top.gen_node[15].device_bus.arsize",
+          "tb_top.gen_node[15].device_bus.arid"
+        ],
+        "device_15_r": [
+          "tb_top.gen_node[15].device_bus.rdata",
+          "tb_top.gen_node[15].device_bus.rlast",
+          "tb_top.gen_node[15].device_bus.rid"
+        ],
+        "req_rx_15_0": [
+          "tb_top.i_router.rx_req_flit[15][0]"
+        ],
+        "req_tx_15_0": [
+          "tb_top.i_router.tx_req_flit[15][0]"
+        ],
+        "req_tx_15_1": [
+          "tb_top.i_router.tx_req_flit[15][1]"
+        ],
+        "req_tx_15_2": [
+          "tb_top.i_router.tx_req_flit[15][2]"
+        ],
+        "req_tx_15_3": [
+          "tb_top.i_router.tx_req_flit[15][3]"
+        ],
+        "req_tx_15_4": [
+          "tb_top.i_router.tx_req_flit[15][4]"
+        ],
+        "dat_rx_15_0": [
+          "tb_top.i_router.rx_dat_flit[15][0]"
+        ],
+        "dat_tx_15_0": [
+          "tb_top.i_router.tx_dat_flit[15][0]"
+        ],
+        "dat_tx_15_1": [
+          "tb_top.i_router.tx_dat_flit[15][1]"
+        ],
+        "dat_tx_15_2": [
+          "tb_top.i_router.tx_dat_flit[15][2]"
+        ],
+        "dat_tx_15_3": [
+          "tb_top.i_router.tx_dat_flit[15][3]"
+        ],
+        "dat_tx_15_4": [
+          "tb_top.i_router.tx_dat_flit[15][4]"
+        ]
+      },
+      "routes": {
+        "0": {
+          "request": [
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              0
+            ]
+          ],
+          "response": [
+            [
+              1,
+              4
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "1": {
+          "request": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              0
+            ]
+          ],
+          "response": [
+            [
+              2,
+              4
+            ],
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "2": {
+          "request": [
+            [
+              2,
+              2
+            ],
+            [
+              3,
+              0
+            ]
+          ],
+          "response": [
+            [
+              3,
+              4
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        },
+        "3": {
+          "request": [
+            [
+              3,
+              4
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              1,
+              4
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "response": [
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              3,
+              0
+            ]
+          ]
+        },
+        "4": {
+          "request": [
+            [
+              4,
+              2
+            ],
+            [
+              5,
+              0
+            ]
+          ],
+          "response": [
+            [
+              5,
+              4
+            ],
+            [
+              4,
+              0
+            ]
+          ]
+        },
+        "5": {
+          "request": [
+            [
+              5,
+              2
+            ],
+            [
+              6,
+              0
+            ]
+          ],
+          "response": [
+            [
+              6,
+              4
+            ],
+            [
+              5,
+              0
+            ]
+          ]
+        },
+        "6": {
+          "request": [
+            [
+              6,
+              2
+            ],
+            [
+              7,
+              0
+            ]
+          ],
+          "response": [
+            [
+              7,
+              4
+            ],
+            [
+              6,
+              0
+            ]
+          ]
+        },
+        "7": {
+          "request": [
+            [
+              7,
+              4
+            ],
+            [
+              6,
+              4
+            ],
+            [
+              5,
+              4
+            ],
+            [
+              4,
+              0
+            ]
+          ],
+          "response": [
+            [
+              4,
+              2
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              6,
+              2
+            ],
+            [
+              7,
+              0
+            ]
+          ]
+        },
+        "8": {
+          "request": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              0
+            ]
+          ],
+          "response": [
+            [
+              9,
+              4
+            ],
+            [
+              8,
+              0
+            ]
+          ]
+        },
+        "9": {
+          "request": [
+            [
+              9,
+              2
+            ],
+            [
+              10,
+              0
+            ]
+          ],
+          "response": [
+            [
+              10,
+              4
+            ],
+            [
+              9,
+              0
+            ]
+          ]
+        },
+        "10": {
+          "request": [
+            [
+              10,
+              2
+            ],
+            [
+              11,
+              0
+            ]
+          ],
+          "response": [
+            [
+              11,
+              4
+            ],
+            [
+              10,
+              0
+            ]
+          ]
+        },
+        "11": {
+          "request": [
+            [
+              11,
+              4
+            ],
+            [
+              10,
+              4
+            ],
+            [
+              9,
+              4
+            ],
+            [
+              8,
+              0
+            ]
+          ],
+          "response": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              2
+            ],
+            [
+              10,
+              2
+            ],
+            [
+              11,
+              0
+            ]
+          ]
+        },
+        "12": {
+          "request": [
+            [
+              12,
+              2
+            ],
+            [
+              13,
+              0
+            ]
+          ],
+          "response": [
+            [
+              13,
+              4
+            ],
+            [
+              12,
+              0
+            ]
+          ]
+        },
+        "13": {
+          "request": [
+            [
+              13,
+              2
+            ],
+            [
+              14,
+              0
+            ]
+          ],
+          "response": [
+            [
+              14,
+              4
+            ],
+            [
+              13,
+              0
+            ]
+          ]
+        },
+        "14": {
+          "request": [
+            [
+              14,
+              2
+            ],
+            [
+              15,
+              0
+            ]
+          ],
+          "response": [
+            [
+              15,
+              4
+            ],
+            [
+              14,
+              0
+            ]
+          ]
+        },
+        "15": {
+          "request": [
+            [
+              15,
+              4
+            ],
+            [
+              14,
+              4
+            ],
+            [
+              13,
+              4
+            ],
+            [
+              12,
+              0
+            ]
+          ],
+          "response": [
+            [
+              12,
+              2
+            ],
+            [
+              13,
+              2
+            ],
+            [
+              14,
+              2
+            ],
+            [
+              15,
+              0
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "source_transactions": 256,
+  "source_accepted_r_beats": 16384,
+  "stage_rows": 3200,
+  "sampling": "Stable pre-edge VALID & READY at rising AXI/NoC edge, 1 ps VCD",
+  "boundary": "Common ENABLE origin; durations are timestamp differences, not inclusive BW windows",
+  "stages": "All 128 bursts/case: accepted source AR to first accepted R; target AR-to-first-R includes waiting",
+  "figure_selection": "node-stages: arithmetic mean of all eight bursts/node, durations aligned at source AR; node-timeline: all bursts at common ENABLE; node-first: transaction 0 at common ENABLE",
+  "mean_formula": "Each component: sum of its stage durations across all eight bursts / 8; four components sum to mean(source first R - source AR) / clock period",
+  "limits": "Boundary residence intervals include pipeline/waiting; no arbitration/FIFO causal attribution",
+  "checks": "AXI payload/timestamps vs raw collector and transaction tables; one-to-one device pairing; REQ address/tag per hop; DAT RDATA/RLAST/tag/beat-order per hop; each beat chronological; stages sum to original first-R latency",
+  "outputs": {
+    "figures/node-timeline.png": "1db82b23238b14d6985163ec574504d960c70d501d8de2615f6b107c08f81556",
+    "figures/node-timeline.svg": "ba0692b064263d7c977890573fe7369eabe1549c1649bc9c64d1e8591f43bea2",
+    "figures/node-first.png": "469e01b44ea9b0c5cbc6be9857a1ebf75cd08873bb54213910af4eb2713b49df",
+    "figures/node-first.svg": "f6ddc436300adceac47c56d537417eec3e16ff0e91be08aefc054799765f8dc1",
+    "figures/node-stages.png": "0d272b47b4678efe94c917fd6120c2542af90e43721b2c974ca57c62f0ce69db",
+    "figures/node-stages.svg": "61e664134e664b18793ae5940f0d7e679c1c42c10ad670d5085bd06c7ff67d13",
+    "tables/node-timeline-transactions.csv": "cf8ce11fe3931e0cf8d742f9a44c3fbde4be94ab1bc3b11bb324f5888d0a7b78",
+    "tables/node-timeline-stages.csv": "0b0b948981fb5a6b542d1e0f473d07428806ee7beefaf8e91bba489913b51c24",
+    "tables/node-timeline-beats.csv": "488cd6a27bd598068a272a6a880e78e06e2b6313b789036baef7904e18c78ef8",
+    "tables/node-timeline-mean.csv": "2fa7d8e9715ea00c0cc151af3b0d6fe30e55543b1fdb41745818c470efb6bc5f",
+    "provenance/node-timeline-performance.py": "67f59c9b805989d5c911e64979617b8bd38efe2196ea5c88fb1a61eb4aa3ef34"
+  }
+}

@@ -1,0 +1,2004 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-c",
+    "from pathlib import Path; from performance import bandwidth_comparison; bandwidth_comparison(Path('performance/unicast/mesh-traffic'))"
+  ],
+  "script_sha256": "b02862c30d10775c296a9676bce80be60d1672509a4a59dda936002f3587459b",
+  "reference_figure": "https://chatgpt.com/s/w_6afc1d796fb88191b6fbf6ae2af9fb20",
+  "input_table_sha256": "4a929f58354cde20b2affdcd6226143b530192f4f751a00494783ba417fcbdde",
+  "reference_formula": "100 / max channel flow count; independent device-to-source XY paths; one 64 B flit/cycle on each inter-router and local NI injection/ejection channel",
+  "reference_assumption": "Every source has the same persistent achieved rate; excludes pipeline/queuing costs",
+  "measured_formula": "mean_i(100*32768/(64*inclusive_ENABLE_to_SOURCE_DONE_cycles_i)), all 16 sources",
+  "interpretation": "Equal-rate reference is not an upper bound on the measured finite-batch mean of per-source own-window rates. Values above the reference do not violate channel capacity.",
+  "cases": [
+    {
+      "pattern": "neighbor",
+      "result": "runs/32kib",
+      "case": "perf_neighbor_read_32kib",
+      "command": [
+        "/home/mingwei/noc_rtl/build/compile/4cdb8b044019/simv",
+        "+stim_dir=/home/mingwei/noc_rtl/performance/unicast/results/20261110T102511_410601482_perf_neighbor_read_32kib_s1/runs/perf_neighbor_read_32kib/inputs",
+        "+case_name=perf_neighbor_read_32kib",
+        "+source_mask=ffff",
+        "+reset_seed=1",
+        "+ntb_random_seed=1",
+        "+check_min_outstanding=1",
+        "+check_min_unique=1",
+        "+preload",
+        "-cm",
+        "line+cond+fsm+tgl+branch+assert",
+        "-cm_dir",
+        "/home/mingwei/noc_rtl/build/compile/4cdb8b044019/simv.vdb",
+        "-cm_name",
+        "perf_neighbor_read_32kib_auto_s1",
+        "+wave_file=/home/mingwei/noc_rtl/performance/unicast/results/20261110T102511_410601482_perf_neighbor_read_32kib_s1/runs/perf_neighbor_read_32kib/perf_neighbor_read_32kib.fsdb",
+        "+perf_file=/home/mingwei/noc_rtl/performance/unicast/results/20261110T102511_410601482_perf_neighbor_read_32kib_s1/runs/perf_neighbor_read_32kib/axi-events.csv"
+      ],
+      "clock": {
+        "axi_period_ps": 1000,
+        "noc_period_ps": 1000,
+        "noc_phase_ps": 0
+      },
+      "seed": 1,
+      "run_record_sha256": "bf7853ebd67248dccdedc68f3a61c59c2a034d0bf5b8ddcb6a13cc24cbc75f4e",
+      "summary_sha256": "35e304606c8cd64352bb6feb522351280115dc15e8b6904f111654fe50feb35b",
+      "fsdb_sha256": "b838866b1746d0cad2a3bc4b199b88c0ab5d86a71164e6f56fb9e4a539c864c2",
+      "source_manifest_sha256": "339a2af7280238306653a86495ff541e5ea4762153b90de3f5832a5105c3ff60",
+      "binary_sha256": "1e3094f200165b7bfbe30d2b7f9fad63d56b913251350a3033c95eb9a3df2371",
+      "config_sha256": "4459bf7d463393172bb5062da14a7d721a2cb9b97a9cd644ed2688422da5f228",
+      "mapping": [
+        1,
+        2,
+        3,
+        0,
+        5,
+        6,
+        7,
+        4,
+        9,
+        10,
+        11,
+        8,
+        13,
+        14,
+        15,
+        12
+      ],
+      "dat_paths": [
+        {
+          "source": 0,
+          "target": 1,
+          "dat_nodes": [
+            1,
+            0
+          ]
+        },
+        {
+          "source": 1,
+          "target": 2,
+          "dat_nodes": [
+            2,
+            1
+          ]
+        },
+        {
+          "source": 2,
+          "target": 3,
+          "dat_nodes": [
+            3,
+            2
+          ]
+        },
+        {
+          "source": 3,
+          "target": 0,
+          "dat_nodes": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "source": 4,
+          "target": 5,
+          "dat_nodes": [
+            5,
+            4
+          ]
+        },
+        {
+          "source": 5,
+          "target": 6,
+          "dat_nodes": [
+            6,
+            5
+          ]
+        },
+        {
+          "source": 6,
+          "target": 7,
+          "dat_nodes": [
+            7,
+            6
+          ]
+        },
+        {
+          "source": 7,
+          "target": 4,
+          "dat_nodes": [
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "source": 8,
+          "target": 9,
+          "dat_nodes": [
+            9,
+            8
+          ]
+        },
+        {
+          "source": 9,
+          "target": 10,
+          "dat_nodes": [
+            10,
+            9
+          ]
+        },
+        {
+          "source": 10,
+          "target": 11,
+          "dat_nodes": [
+            11,
+            10
+          ]
+        },
+        {
+          "source": 11,
+          "target": 8,
+          "dat_nodes": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "source": 12,
+          "target": 13,
+          "dat_nodes": [
+            13,
+            12
+          ]
+        },
+        {
+          "source": 13,
+          "target": 14,
+          "dat_nodes": [
+            14,
+            13
+          ]
+        },
+        {
+          "source": 14,
+          "target": 15,
+          "dat_nodes": [
+            15,
+            14
+          ]
+        },
+        {
+          "source": 15,
+          "target": 12,
+          "dat_nodes": [
+            12,
+            13,
+            14,
+            15
+          ]
+        }
+      ],
+      "inter_router_loads": [
+        {
+          "start": 0,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 1,
+          "end": 0,
+          "flows": 1
+        },
+        {
+          "start": 1,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 3,
+          "flows": 1
+        },
+        {
+          "start": 3,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 5,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 4,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 5,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 7,
+          "flows": 1
+        },
+        {
+          "start": 7,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 8,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 8,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 11,
+          "flows": 1
+        },
+        {
+          "start": 11,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 12,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 12,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 14,
+          "flows": 1
+        },
+        {
+          "start": 14,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 14,
+          "end": 15,
+          "flows": 1
+        },
+        {
+          "start": 15,
+          "end": 14,
+          "flows": 1
+        }
+      ],
+      "ni_injection_loads": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "0": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "4": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "8": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1,
+        "12": 1
+      },
+      "ni_ejection_loads": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1
+      }
+    },
+    {
+      "pattern": "bit_complement",
+      "result": "runs/bit-complement-32kib",
+      "case": "bit_complement_32kib",
+      "command": [
+        "/home/mingwei/noc_rtl/build/compile/fdfe3d0fee6f/simv",
+        "+stim_dir=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/inputs",
+        "+case_name=bit_complement_32kib",
+        "+source_mask=ffff",
+        "+reset_seed=1",
+        "+ntb_random_seed=1",
+        "+check_min_outstanding=1",
+        "+check_min_unique=1",
+        "+preload",
+        "-cm",
+        "line+cond+fsm+tgl+branch+assert",
+        "-cm_dir",
+        "/home/mingwei/noc_rtl/build/compile/fdfe3d0fee6f/simv.vdb",
+        "-cm_name",
+        "bit_complement_32kib_auto_s1",
+        "+wave_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/bit_complement_32kib.fsdb",
+        "+perf_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/bit-complement-32kib/runs/bit_complement_32kib/axi-events.csv"
+      ],
+      "clock": {
+        "axi_period_ps": 1000,
+        "noc_period_ps": 1000,
+        "noc_phase_ps": 0
+      },
+      "seed": 1,
+      "run_record_sha256": "efb9ba20b5db83b4d99b4bcb9927543bd877d321ed4e8592e31af0650959cf6d",
+      "summary_sha256": "e4e60d9cebdb94bb31c492552de91c58b21876199db45993ced6032ec20199ca",
+      "fsdb_sha256": "8702bdfc5ed8a1db3c8be7eff1b80b25770e63668ca3cae0970c5e1976b2fe52",
+      "source_manifest_sha256": "ec44b093751ca0fa7948c9812b045799a0ec51d5406f87eae409817d93a9e700",
+      "binary_sha256": "ea21915549c31d673d36b9c94763c52b044b1a600d163ff5329114a0c1f4bac1",
+      "config_sha256": "4499cb63d121d27c7f5e8c55d80e2e4de42e291928db792a0b193af9d0a0af51",
+      "mapping": [
+        15,
+        14,
+        13,
+        12,
+        11,
+        10,
+        9,
+        8,
+        7,
+        6,
+        5,
+        4,
+        3,
+        2,
+        1,
+        0
+      ],
+      "dat_paths": [
+        {
+          "source": 0,
+          "target": 15,
+          "dat_nodes": [
+            15,
+            14,
+            13,
+            12,
+            8,
+            4,
+            0
+          ]
+        },
+        {
+          "source": 1,
+          "target": 14,
+          "dat_nodes": [
+            14,
+            13,
+            9,
+            5,
+            1
+          ]
+        },
+        {
+          "source": 2,
+          "target": 13,
+          "dat_nodes": [
+            13,
+            14,
+            10,
+            6,
+            2
+          ]
+        },
+        {
+          "source": 3,
+          "target": 12,
+          "dat_nodes": [
+            12,
+            13,
+            14,
+            15,
+            11,
+            7,
+            3
+          ]
+        },
+        {
+          "source": 4,
+          "target": 11,
+          "dat_nodes": [
+            11,
+            10,
+            9,
+            8,
+            4
+          ]
+        },
+        {
+          "source": 5,
+          "target": 10,
+          "dat_nodes": [
+            10,
+            9,
+            5
+          ]
+        },
+        {
+          "source": 6,
+          "target": 9,
+          "dat_nodes": [
+            9,
+            10,
+            6
+          ]
+        },
+        {
+          "source": 7,
+          "target": 8,
+          "dat_nodes": [
+            8,
+            9,
+            10,
+            11,
+            7
+          ]
+        },
+        {
+          "source": 8,
+          "target": 7,
+          "dat_nodes": [
+            7,
+            6,
+            5,
+            4,
+            8
+          ]
+        },
+        {
+          "source": 9,
+          "target": 6,
+          "dat_nodes": [
+            6,
+            5,
+            9
+          ]
+        },
+        {
+          "source": 10,
+          "target": 5,
+          "dat_nodes": [
+            5,
+            6,
+            10
+          ]
+        },
+        {
+          "source": 11,
+          "target": 4,
+          "dat_nodes": [
+            4,
+            5,
+            6,
+            7,
+            11
+          ]
+        },
+        {
+          "source": 12,
+          "target": 3,
+          "dat_nodes": [
+            3,
+            2,
+            1,
+            0,
+            4,
+            8,
+            12
+          ]
+        },
+        {
+          "source": 13,
+          "target": 2,
+          "dat_nodes": [
+            2,
+            1,
+            5,
+            9,
+            13
+          ]
+        },
+        {
+          "source": 14,
+          "target": 1,
+          "dat_nodes": [
+            1,
+            2,
+            6,
+            10,
+            14
+          ]
+        },
+        {
+          "source": 15,
+          "target": 0,
+          "dat_nodes": [
+            0,
+            1,
+            2,
+            3,
+            7,
+            11,
+            15
+          ]
+        }
+      ],
+      "inter_router_loads": [
+        {
+          "start": 0,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 0,
+          "end": 4,
+          "flows": 1
+        },
+        {
+          "start": 1,
+          "end": 0,
+          "flows": 1
+        },
+        {
+          "start": 1,
+          "end": 2,
+          "flows": 2
+        },
+        {
+          "start": 1,
+          "end": 5,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 1,
+          "flows": 2
+        },
+        {
+          "start": 2,
+          "end": 3,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 3,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 3,
+          "end": 7,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 0,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 5,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 8,
+          "flows": 2
+        },
+        {
+          "start": 5,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 4,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 6,
+          "flows": 2
+        },
+        {
+          "start": 5,
+          "end": 9,
+          "flows": 2
+        },
+        {
+          "start": 6,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 5,
+          "flows": 2
+        },
+        {
+          "start": 6,
+          "end": 7,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 10,
+          "flows": 2
+        },
+        {
+          "start": 7,
+          "end": 3,
+          "flows": 1
+        },
+        {
+          "start": 7,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 7,
+          "end": 11,
+          "flows": 2
+        },
+        {
+          "start": 8,
+          "end": 4,
+          "flows": 2
+        },
+        {
+          "start": 8,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 8,
+          "end": 12,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 5,
+          "flows": 2
+        },
+        {
+          "start": 9,
+          "end": 8,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 10,
+          "flows": 2
+        },
+        {
+          "start": 9,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 6,
+          "flows": 2
+        },
+        {
+          "start": 10,
+          "end": 9,
+          "flows": 2
+        },
+        {
+          "start": 10,
+          "end": 11,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 14,
+          "flows": 1
+        },
+        {
+          "start": 11,
+          "end": 7,
+          "flows": 2
+        },
+        {
+          "start": 11,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 11,
+          "end": 15,
+          "flows": 1
+        },
+        {
+          "start": 12,
+          "end": 8,
+          "flows": 1
+        },
+        {
+          "start": 12,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 12,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 14,
+          "flows": 2
+        },
+        {
+          "start": 14,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 14,
+          "end": 13,
+          "flows": 2
+        },
+        {
+          "start": 14,
+          "end": 15,
+          "flows": 1
+        },
+        {
+          "start": 15,
+          "end": 11,
+          "flows": 1
+        },
+        {
+          "start": 15,
+          "end": 14,
+          "flows": 1
+        }
+      ],
+      "ni_injection_loads": {
+        "15": 1,
+        "14": 1,
+        "13": 1,
+        "12": 1,
+        "11": 1,
+        "10": 1,
+        "9": 1,
+        "8": 1,
+        "7": 1,
+        "6": 1,
+        "5": 1,
+        "4": 1,
+        "3": 1,
+        "2": 1,
+        "1": 1,
+        "0": 1
+      },
+      "ni_ejection_loads": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1
+      }
+    },
+    {
+      "pattern": "transpose",
+      "result": "runs/transpose-32kib",
+      "case": "transpose_32kib",
+      "command": [
+        "/home/mingwei/noc_rtl/build/compile/fdfe3d0fee6f/simv",
+        "+stim_dir=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/transpose-32kib/runs/transpose_32kib/inputs",
+        "+case_name=transpose_32kib",
+        "+source_mask=ffff",
+        "+reset_seed=1",
+        "+ntb_random_seed=1",
+        "+check_min_outstanding=1",
+        "+check_min_unique=1",
+        "+preload",
+        "-cm",
+        "line+cond+fsm+tgl+branch+assert",
+        "-cm_dir",
+        "/home/mingwei/noc_rtl/build/compile/fdfe3d0fee6f/simv.vdb",
+        "-cm_name",
+        "transpose_32kib_auto_s1",
+        "+wave_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/transpose-32kib/runs/transpose_32kib/transpose_32kib.fsdb",
+        "+perf_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/transpose-32kib/runs/transpose_32kib/axi-events.csv"
+      ],
+      "clock": {
+        "axi_period_ps": 1000,
+        "noc_period_ps": 1000,
+        "noc_phase_ps": 0
+      },
+      "seed": 1,
+      "run_record_sha256": "1dbd3e81e31d76fb35e52dc42836a83f4a8d8c0542d07aa9b11a5866eba6014a",
+      "summary_sha256": "2361e7276d511be5033700966f9eb381ae82350ed3ee9ec847f9020fee6b9568",
+      "fsdb_sha256": "84ad49cd0932eed8a03a8abf08f430a90f230e1f0c09606756ce970a61c7d1a3",
+      "source_manifest_sha256": "ec44b093751ca0fa7948c9812b045799a0ec51d5406f87eae409817d93a9e700",
+      "binary_sha256": "ea21915549c31d673d36b9c94763c52b044b1a600d163ff5329114a0c1f4bac1",
+      "config_sha256": "4499cb63d121d27c7f5e8c55d80e2e4de42e291928db792a0b193af9d0a0af51",
+      "mapping": [
+        0,
+        4,
+        8,
+        12,
+        1,
+        5,
+        9,
+        13,
+        2,
+        6,
+        10,
+        14,
+        3,
+        7,
+        11,
+        15
+      ],
+      "dat_paths": [
+        {
+          "source": 0,
+          "target": 0,
+          "dat_nodes": [
+            0
+          ]
+        },
+        {
+          "source": 1,
+          "target": 4,
+          "dat_nodes": [
+            4,
+            5,
+            1
+          ]
+        },
+        {
+          "source": 2,
+          "target": 8,
+          "dat_nodes": [
+            8,
+            9,
+            10,
+            6,
+            2
+          ]
+        },
+        {
+          "source": 3,
+          "target": 12,
+          "dat_nodes": [
+            12,
+            13,
+            14,
+            15,
+            11,
+            7,
+            3
+          ]
+        },
+        {
+          "source": 4,
+          "target": 1,
+          "dat_nodes": [
+            1,
+            0,
+            4
+          ]
+        },
+        {
+          "source": 5,
+          "target": 5,
+          "dat_nodes": [
+            5
+          ]
+        },
+        {
+          "source": 6,
+          "target": 9,
+          "dat_nodes": [
+            9,
+            10,
+            6
+          ]
+        },
+        {
+          "source": 7,
+          "target": 13,
+          "dat_nodes": [
+            13,
+            14,
+            15,
+            11,
+            7
+          ]
+        },
+        {
+          "source": 8,
+          "target": 2,
+          "dat_nodes": [
+            2,
+            1,
+            0,
+            4,
+            8
+          ]
+        },
+        {
+          "source": 9,
+          "target": 6,
+          "dat_nodes": [
+            6,
+            5,
+            9
+          ]
+        },
+        {
+          "source": 10,
+          "target": 10,
+          "dat_nodes": [
+            10
+          ]
+        },
+        {
+          "source": 11,
+          "target": 14,
+          "dat_nodes": [
+            14,
+            15,
+            11
+          ]
+        },
+        {
+          "source": 12,
+          "target": 3,
+          "dat_nodes": [
+            3,
+            2,
+            1,
+            0,
+            4,
+            8,
+            12
+          ]
+        },
+        {
+          "source": 13,
+          "target": 7,
+          "dat_nodes": [
+            7,
+            6,
+            5,
+            9,
+            13
+          ]
+        },
+        {
+          "source": 14,
+          "target": 11,
+          "dat_nodes": [
+            11,
+            10,
+            14
+          ]
+        },
+        {
+          "source": 15,
+          "target": 15,
+          "dat_nodes": [
+            15
+          ]
+        }
+      ],
+      "inter_router_loads": [
+        {
+          "start": 0,
+          "end": 4,
+          "flows": 3
+        },
+        {
+          "start": 1,
+          "end": 0,
+          "flows": 3
+        },
+        {
+          "start": 2,
+          "end": 1,
+          "flows": 2
+        },
+        {
+          "start": 3,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 5,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 8,
+          "flows": 2
+        },
+        {
+          "start": 5,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 9,
+          "flows": 2
+        },
+        {
+          "start": 6,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 5,
+          "flows": 2
+        },
+        {
+          "start": 7,
+          "end": 3,
+          "flows": 1
+        },
+        {
+          "start": 7,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 8,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 8,
+          "end": 12,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 10,
+          "flows": 2
+        },
+        {
+          "start": 9,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 6,
+          "flows": 2
+        },
+        {
+          "start": 10,
+          "end": 14,
+          "flows": 1
+        },
+        {
+          "start": 11,
+          "end": 7,
+          "flows": 2
+        },
+        {
+          "start": 11,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 12,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 14,
+          "flows": 2
+        },
+        {
+          "start": 14,
+          "end": 15,
+          "flows": 3
+        },
+        {
+          "start": 15,
+          "end": 11,
+          "flows": 3
+        }
+      ],
+      "ni_injection_loads": {
+        "0": 1,
+        "4": 1,
+        "8": 1,
+        "12": 1,
+        "1": 1,
+        "5": 1,
+        "9": 1,
+        "13": 1,
+        "2": 1,
+        "6": 1,
+        "10": 1,
+        "14": 1,
+        "3": 1,
+        "7": 1,
+        "11": 1,
+        "15": 1
+      },
+      "ni_ejection_loads": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1
+      }
+    },
+    {
+      "pattern": "uniform",
+      "result": "runs/uniform-32kib",
+      "case": "uniform_32kib",
+      "command": [
+        "/home/mingwei/noc_rtl/build/compile/7524d1e44a75/simv",
+        "+stim_dir=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/uniform-32kib/runs/uniform_32kib/inputs",
+        "+case_name=uniform_32kib",
+        "+source_mask=ffff",
+        "+reset_seed=1",
+        "+ntb_random_seed=1",
+        "+check_min_outstanding=1",
+        "+check_min_unique=1",
+        "+preload",
+        "-cm",
+        "line+cond+fsm+tgl+branch+assert",
+        "-cm_dir",
+        "/home/mingwei/noc_rtl/build/compile/7524d1e44a75/simv.vdb",
+        "-cm_name",
+        "uniform_32kib_auto_s1",
+        "+wave_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/uniform-32kib/runs/uniform_32kib/uniform_32kib.fsdb",
+        "+perf_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/uniform-32kib/runs/uniform_32kib/axi-events.csv"
+      ],
+      "clock": {
+        "axi_period_ps": 1000,
+        "noc_period_ps": 1000,
+        "noc_phase_ps": 0
+      },
+      "seed": 1,
+      "run_record_sha256": "a48db4de35d57a2b8c85124975f7dfd03d0cdcff6cb7bd53f916b4b93907806f",
+      "summary_sha256": "d85b508c12cae10d207e1c10936640c8d20e93011aa3bc2d846c2cc832b03442",
+      "fsdb_sha256": "4238d0ee6b73db8844f4047444f056816a7db6d9917c73d95224da1887796fb7",
+      "source_manifest_sha256": "757397761cd07e3e14ece7ba9ae5c9ada6596d56dbc59a5fa98bb21f145ce03a",
+      "binary_sha256": "229503dc3db0f9fc823ea741a3bd8cc5bab8e1c8c7f84f37205e5fca0275bcf3",
+      "config_sha256": "3b7bd6cc41b4819410cfeb27a454fedde32ccd0b642694d71382d6627c5542f8",
+      "mapping": [
+        6,
+        0,
+        4,
+        0,
+        5,
+        4,
+        11,
+        3,
+        0,
+        7,
+        6,
+        10,
+        3,
+        11,
+        9,
+        2
+      ],
+      "dat_paths": [
+        {
+          "source": 0,
+          "target": 6,
+          "dat_nodes": [
+            6,
+            5,
+            4,
+            0
+          ]
+        },
+        {
+          "source": 1,
+          "target": 0,
+          "dat_nodes": [
+            0,
+            1
+          ]
+        },
+        {
+          "source": 2,
+          "target": 4,
+          "dat_nodes": [
+            4,
+            5,
+            6,
+            2
+          ]
+        },
+        {
+          "source": 3,
+          "target": 0,
+          "dat_nodes": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "source": 4,
+          "target": 5,
+          "dat_nodes": [
+            5,
+            4
+          ]
+        },
+        {
+          "source": 5,
+          "target": 4,
+          "dat_nodes": [
+            4,
+            5
+          ]
+        },
+        {
+          "source": 6,
+          "target": 11,
+          "dat_nodes": [
+            11,
+            10,
+            6
+          ]
+        },
+        {
+          "source": 7,
+          "target": 3,
+          "dat_nodes": [
+            3,
+            7
+          ]
+        },
+        {
+          "source": 8,
+          "target": 0,
+          "dat_nodes": [
+            0,
+            4,
+            8
+          ]
+        },
+        {
+          "source": 9,
+          "target": 7,
+          "dat_nodes": [
+            7,
+            6,
+            5,
+            9
+          ]
+        },
+        {
+          "source": 10,
+          "target": 6,
+          "dat_nodes": [
+            6,
+            10
+          ]
+        },
+        {
+          "source": 11,
+          "target": 10,
+          "dat_nodes": [
+            10,
+            11
+          ]
+        },
+        {
+          "source": 12,
+          "target": 3,
+          "dat_nodes": [
+            3,
+            2,
+            1,
+            0,
+            4,
+            8,
+            12
+          ]
+        },
+        {
+          "source": 13,
+          "target": 11,
+          "dat_nodes": [
+            11,
+            10,
+            9,
+            13
+          ]
+        },
+        {
+          "source": 14,
+          "target": 9,
+          "dat_nodes": [
+            9,
+            10,
+            14
+          ]
+        },
+        {
+          "source": 15,
+          "target": 2,
+          "dat_nodes": [
+            2,
+            3,
+            7,
+            11,
+            15
+          ]
+        }
+      ],
+      "inter_router_loads": [
+        {
+          "start": 0,
+          "end": 1,
+          "flows": 2
+        },
+        {
+          "start": 0,
+          "end": 4,
+          "flows": 2
+        },
+        {
+          "start": 1,
+          "end": 0,
+          "flows": 1
+        },
+        {
+          "start": 1,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 3,
+          "flows": 2
+        },
+        {
+          "start": 3,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 3,
+          "end": 7,
+          "flows": 2
+        },
+        {
+          "start": 4,
+          "end": 0,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 5,
+          "flows": 2
+        },
+        {
+          "start": 4,
+          "end": 8,
+          "flows": 2
+        },
+        {
+          "start": 5,
+          "end": 4,
+          "flows": 2
+        },
+        {
+          "start": 5,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 5,
+          "flows": 2
+        },
+        {
+          "start": 6,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 7,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 7,
+          "end": 11,
+          "flows": 1
+        },
+        {
+          "start": 8,
+          "end": 12,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 11,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 14,
+          "flows": 1
+        },
+        {
+          "start": 11,
+          "end": 10,
+          "flows": 2
+        },
+        {
+          "start": 11,
+          "end": 15,
+          "flows": 1
+        }
+      ],
+      "ni_injection_loads": {
+        "6": 2,
+        "0": 3,
+        "4": 2,
+        "5": 1,
+        "11": 2,
+        "3": 2,
+        "7": 1,
+        "10": 1,
+        "9": 1,
+        "2": 1
+      },
+      "ni_ejection_loads": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1
+      }
+    },
+    {
+      "pattern": "shuffle",
+      "result": "runs/shuffle-32kib",
+      "case": "shuffle_32kib",
+      "command": [
+        "/home/mingwei/noc_rtl/build/compile/7524d1e44a75/simv",
+        "+stim_dir=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/shuffle-32kib/runs/shuffle_32kib/inputs",
+        "+case_name=shuffle_32kib",
+        "+source_mask=ffff",
+        "+reset_seed=1",
+        "+ntb_random_seed=1",
+        "+check_min_outstanding=1",
+        "+check_min_unique=1",
+        "+preload",
+        "-cm",
+        "line+cond+fsm+tgl+branch+assert",
+        "-cm_dir",
+        "/home/mingwei/noc_rtl/build/compile/7524d1e44a75/simv.vdb",
+        "-cm_name",
+        "shuffle_32kib_auto_s1",
+        "+wave_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/shuffle-32kib/runs/shuffle_32kib/shuffle_32kib.fsdb",
+        "+perf_file=/home/mingwei/noc_rtl/performance/unicast/mesh-traffic/runs/shuffle-32kib/runs/shuffle_32kib/axi-events.csv"
+      ],
+      "clock": {
+        "axi_period_ps": 1000,
+        "noc_period_ps": 1000,
+        "noc_phase_ps": 0
+      },
+      "seed": 1,
+      "run_record_sha256": "c24597d00b6b931411058947a42388dff4530483fc9d7df8892df00d443ee5fc",
+      "summary_sha256": "7e6f4407181383052ec5205abd39a5d3e731440c3f84721ff5e3cca5700b3493",
+      "fsdb_sha256": "e486ce3bcc828ab6bdf2a775684e5f94633780f303e7a2bbb709466a66d9264c",
+      "source_manifest_sha256": "757397761cd07e3e14ece7ba9ae5c9ada6596d56dbc59a5fa98bb21f145ce03a",
+      "binary_sha256": "229503dc3db0f9fc823ea741a3bd8cc5bab8e1c8c7f84f37205e5fca0275bcf3",
+      "config_sha256": "3b7bd6cc41b4819410cfeb27a454fedde32ccd0b642694d71382d6627c5542f8",
+      "mapping": [
+        0,
+        8,
+        1,
+        9,
+        2,
+        10,
+        3,
+        11,
+        4,
+        12,
+        5,
+        13,
+        6,
+        14,
+        7,
+        15
+      ],
+      "dat_paths": [
+        {
+          "source": 0,
+          "target": 0,
+          "dat_nodes": [
+            0
+          ]
+        },
+        {
+          "source": 1,
+          "target": 8,
+          "dat_nodes": [
+            8,
+            9,
+            5,
+            1
+          ]
+        },
+        {
+          "source": 2,
+          "target": 1,
+          "dat_nodes": [
+            1,
+            2
+          ]
+        },
+        {
+          "source": 3,
+          "target": 9,
+          "dat_nodes": [
+            9,
+            10,
+            11,
+            7,
+            3
+          ]
+        },
+        {
+          "source": 4,
+          "target": 2,
+          "dat_nodes": [
+            2,
+            1,
+            0,
+            4
+          ]
+        },
+        {
+          "source": 5,
+          "target": 10,
+          "dat_nodes": [
+            10,
+            9,
+            5
+          ]
+        },
+        {
+          "source": 6,
+          "target": 3,
+          "dat_nodes": [
+            3,
+            2,
+            6
+          ]
+        },
+        {
+          "source": 7,
+          "target": 11,
+          "dat_nodes": [
+            11,
+            7
+          ]
+        },
+        {
+          "source": 8,
+          "target": 4,
+          "dat_nodes": [
+            4,
+            8
+          ]
+        },
+        {
+          "source": 9,
+          "target": 12,
+          "dat_nodes": [
+            12,
+            13,
+            9
+          ]
+        },
+        {
+          "source": 10,
+          "target": 5,
+          "dat_nodes": [
+            5,
+            6,
+            10
+          ]
+        },
+        {
+          "source": 11,
+          "target": 13,
+          "dat_nodes": [
+            13,
+            14,
+            15,
+            11
+          ]
+        },
+        {
+          "source": 12,
+          "target": 6,
+          "dat_nodes": [
+            6,
+            5,
+            4,
+            8,
+            12
+          ]
+        },
+        {
+          "source": 13,
+          "target": 14,
+          "dat_nodes": [
+            14,
+            13
+          ]
+        },
+        {
+          "source": 14,
+          "target": 7,
+          "dat_nodes": [
+            7,
+            6,
+            10,
+            14
+          ]
+        },
+        {
+          "source": 15,
+          "target": 15,
+          "dat_nodes": [
+            15
+          ]
+        }
+      ],
+      "inter_router_loads": [
+        {
+          "start": 0,
+          "end": 4,
+          "flows": 1
+        },
+        {
+          "start": 1,
+          "end": 0,
+          "flows": 1
+        },
+        {
+          "start": 1,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 2,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 3,
+          "end": 2,
+          "flows": 1
+        },
+        {
+          "start": 4,
+          "end": 8,
+          "flows": 2
+        },
+        {
+          "start": 5,
+          "end": 1,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 4,
+          "flows": 1
+        },
+        {
+          "start": 5,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 5,
+          "flows": 1
+        },
+        {
+          "start": 6,
+          "end": 10,
+          "flows": 2
+        },
+        {
+          "start": 7,
+          "end": 3,
+          "flows": 1
+        },
+        {
+          "start": 7,
+          "end": 6,
+          "flows": 1
+        },
+        {
+          "start": 8,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 8,
+          "end": 12,
+          "flows": 1
+        },
+        {
+          "start": 9,
+          "end": 5,
+          "flows": 2
+        },
+        {
+          "start": 9,
+          "end": 10,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 11,
+          "flows": 1
+        },
+        {
+          "start": 10,
+          "end": 14,
+          "flows": 1
+        },
+        {
+          "start": 11,
+          "end": 7,
+          "flows": 2
+        },
+        {
+          "start": 12,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 9,
+          "flows": 1
+        },
+        {
+          "start": 13,
+          "end": 14,
+          "flows": 1
+        },
+        {
+          "start": 14,
+          "end": 13,
+          "flows": 1
+        },
+        {
+          "start": 14,
+          "end": 15,
+          "flows": 1
+        },
+        {
+          "start": 15,
+          "end": 11,
+          "flows": 1
+        }
+      ],
+      "ni_injection_loads": {
+        "0": 1,
+        "8": 1,
+        "1": 1,
+        "9": 1,
+        "2": 1,
+        "10": 1,
+        "3": 1,
+        "11": 1,
+        "4": 1,
+        "12": 1,
+        "5": 1,
+        "13": 1,
+        "6": 1,
+        "14": 1,
+        "7": 1,
+        "15": 1
+      },
+      "ni_ejection_loads": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1
+      }
+    }
+  ],
+  "outputs": {
+    "figures/bandwidth-comparison.png": "19e14e05572e120bd031ccde685abbeead0a36373776083f182997d087f0480a",
+    "figures/bandwidth-comparison.svg": "8cf0588b0979dda764013d4bef3ad315250e4644276d18ebfbbfb093be167f0d",
+    "tables/bandwidth-comparison.csv": "f6335865f02912e65a259976834566ffb087347c20d5fc2e66238a0adce9b584",
+    "provenance/bandwidth-comparison-performance.py": "b02862c30d10775c296a9676bce80be60d1672509a4a59dda936002f3587459b"
+  }
+}

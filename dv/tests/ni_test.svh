@@ -33,6 +33,10 @@ class ni_test extends uvm_test;
             path = i == primary_source ? directory : $sformatf("%s/source%0d", directory, i);
             requests[i] = ni_pattern_sequence::type_id::create($sformatf("requests%0d", i));
             requests[i].load_files(path);
+            if ($value$plusargs("row_copies=%d", requests[i].row_copies)) begin
+                if (source_mask != 'h1111 || !(requests[i].row_copies inside {1, 4}))
+                    `uvm_fatal("ROW_FEED", "Expected four row sources and one or four AXI writes")
+            end
             requests[i].zero_load = $test$plusargs("zero_load");
             injection_enabled = $value$plusargs("injection_ratio=%f", requests[i].injection_ratio);
             if (injection_enabled && (!(requests[i].injection_ratio > 0 &&

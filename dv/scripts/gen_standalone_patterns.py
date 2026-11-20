@@ -34,6 +34,48 @@ def load_cases(catalog=CATALOG):
     return json.loads(Path(catalog).read_text())["cases"]
 
 
+def generate_row_feed(out, entries, case, id_width, seed):
+    """Four memory fetches followed by full-row writes including the source."""
+    from gen_tb_top import _collective_selectors
+    tiles = {(e["x"], e["y"]): e for e in entries if e["space"] == "memory" and e["en_collective"]}
+    memories = {e["y"]: e for e in entries if e["space"] == "memory" and e["port"] == 1}
+    if len(tiles) != 16 or set(memories) != set(range(4)):
+        raise ValueError("Row feed requires the 4x4 west-memory topology")
+    size, batches = case["message_bytes"], case["batches"]
+    method = case["row_distribution"]
+    if method not in ("unicast", "multicast") or size != 2048 or batches < 3:
+        raise ValueError("Expected direct unicast or multicast with 2 KiB batches")
+    copies = 4 if method == "unicast" else 1
+    x_shift, x_width = _collective_selectors(entries, 4, 4)["memory"][0]
+    user = 0 if copies == 4 else (1 << 8) | (((1 << x_width)-1) << (10+x_shift))
+    target = out / case["name"]
+    preload = []
+    for y in range(4):
+        directory = target if y == 0 else target / ("source"+str(4*y))
+        directory.mkdir(parents=True, exist_ok=True)
+        reads, writes = [], []
+        for k in range(batches):
+            address = memories[y]["base"] + k*size
+            payload = bytes((j*17 + j//256 + 37*y + 53*k) % 256 for j in range(size))
+            preload.extend(("@{:x}".format(address), " ".join("{:02x}".format(b) for b in payload)))
+            reads.extend(_ax_fields(0, address, size//64-1, 6, False))
+            for x in range(copies):
+                dest = tiles[x,y]["base"] + 0x4000 + (k%2)*size
+                writes.extend(_ax_fields(0, dest, size//64-1, 6, True, user=user))
+                for j in range(0, size, 64):
+                    word = int.from_bytes(payload[j:j+64], "little")
+                    writes.append("0x{:0128x} 0xffffffffffffffff 0".format(word))
+        for filename, lines in (("read.txt", reads), ("write.txt", writes)):
+            (directory/filename).write_text("\n".join(lines)+"\n")
+        manifest = dict(case=case["name"], profile="cosim", mode="data", seed=seed, id_width=id_width,
+                        coverage=dict(data_read=batches, data_write=batches*copies),
+                        acceptance=dict(min_outstanding=1, min_unique=1), files=["preload.mem"])
+        (directory/"manifest.json").write_text(json.dumps(manifest,indent=2)+"\n")
+    (target/"preload.mem").write_text("\n".join(preload)+"\n")
+    (target/"schedule.txt").write_text("+case_name={}\n+source_mask=1111\n+row_copies={}\n+memory_read_delay={}\n".format(
+        case["name"], copies, case["memory_read_delay"]))
+
+
 def generate_multicast(out, entries, topology, case, id_width, mode, seed, profile):
     """One-row protocol-level seq/tree/hw workload using existing AXI files."""
     import yaml
@@ -171,6 +213,12 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         if not cases:
             raise ValueError("unknown CASE: " + case_name)
     for case in cases:
+        if "row_distribution" in case:
+            if profile != "cosim" or mode not in ("auto", "data"):
+                raise ValueError("Row feed requires full-width cosim")
+            generate_row_feed(out, entries, case, id_width, seed)
+            names.append(case["name"])
+            continue
         if "multicast_method" in case:
             generate_multicast(out, entries, topology, case, id_width, mode, seed, profile)
             names.append(case["name"])
