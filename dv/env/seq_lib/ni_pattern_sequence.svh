@@ -5,6 +5,8 @@ class ni_pattern_sequence extends tvip_axi_master_sequence_base;
     completion_queue dependencies[int];
     tvip_axi_address forward_address[int];
     tvip_axi_memory forwarding_memory;
+    int row_copies;
+    static uvm_barrier row_start = new("row_start", 4);
     bit concurrent_rw;
     int first_response_delay = 0;
     int read_outstanding_limit = 0;
@@ -141,7 +143,29 @@ class ni_pattern_sequence extends tvip_axi_master_sequence_base;
     endtask
 
     task body();
-        if (concurrent_rw) begin
+        if (row_copies > 0) begin
+            if (writes.size() != reads.size()*row_copies)
+                `uvm_fatal("ROW_FEED", "Read/write batch count mismatch")
+            foreach (reads[k]) begin
+                tvip_axi_master_item fetch[$], copies[$];
+                row_start.wait_for();
+                $display("ROW_PREFETCH batch=%0d source=%s time_ps=%0t", k, get_name(), $time);
+                fetch.push_back(reads[k]);
+                send_requests(fetch);
+                for (int x = 0; x < row_copies; x++) begin
+                    tvip_axi_master_item w = writes[k*row_copies+x];
+                    if (w.data.size() != reads[k].data.size())
+                        `uvm_fatal("ROW_FEED", "Read response length mismatch")
+                    foreach (w.data[b]) begin
+                        if (reads[k].response[b] != TVIP_AXI_OKAY || reads[k].data[b] !== w.data[b])
+                            `uvm_fatal("ROW_FEED", "Read response data or status mismatch")
+                    end
+                    w.data = reads[k].data;
+                    copies.push_back(w);
+                end
+                send_requests(copies);
+            end
+        end else if (concurrent_rw) begin
             ni_pattern_sequence wr = new("writes");
             ni_pattern_sequence rd = new("reads");
             wr.writes = writes;

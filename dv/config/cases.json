@@ -7575,6 +7575,22 @@
         }
       }
     ],
+    "performance_row_feed": [
+      {
+        "name": "feed_unicast",
+        "row_distribution": "unicast",
+        "message_bytes": 2048,
+        "batches": 4,
+        "memory_read_delay": 28
+      },
+      {
+        "name": "feed_multicast",
+        "row_distribution": "multicast",
+        "message_bytes": 2048,
+        "batches": 4,
+        "memory_read_delay": 28
+      }
+    ],
     "performance_multicast": [
       {
         "name": "row_seq_2kib_b1k",

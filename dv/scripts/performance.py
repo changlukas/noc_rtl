@@ -2544,22 +2544,26 @@ def multicast_plots(output):
     figures.mkdir(exist_ok=True)
     colors = dict(seq="#4477AA", tree="#CC6677", hw="#228833")
     plt.rcParams.update({"font.size": 11, "svg.fonttype": "none"})
-    series = (("seq", "Sequential", "o"), ("tree", "Binary tree", "s"), ("hw", "Hardware multicast", "^"))
-    x = [size//1024 for size in sizes]
+    series = (("seq", "Pipelined sequential", "o"), ("tree", "Binary tree", "s"), ("hw", "Hardware multicast", "^"))
     for name, ylabel in (("runtime", "Runtime [cycles]"), ("speedup", "Speedup [×]")):
         fig, ax = plt.subplots(figsize=(6.7, 4.0))
         if name == "runtime":
+            x = sizes
             for method, label, marker in series:
                 ax.plot(x, [measured[s][method] for s in sizes], marker=marker,
-                        color=colors[method], label=label)
+                        color=colors[method], label=label, linestyle="none")
             ax.legend(frameon=False)
+            ax.set_xticks([1024,4096,8192,16384,32768])
+            ax.set_xlabel("Size [B]")
         else:
+            x = [size//1024 for size in sizes]
             ax.plot(x, [min(measured[s]["seq"], measured[s]["tree"])/measured[s]["hw"] for s in sizes],
                     marker="o", color=colors["hw"])
-        ax.set_xscale("log", base=2)
-        ax.set_xticks(x)
-        ax.set_xticklabels(x)
-        ax.set(xlabel="Message size [KiB]", ylabel=ylabel, ylim=(0,None))
+            ax.set_xscale("log", base=2)
+            ax.set_xticks(x)
+            ax.set_xticklabels(x)
+            ax.set_xlabel("Message size [KiB]")
+        ax.set(ylabel=ylabel, ylim=(0,None))
         ax.grid(axis="y", linestyle="--", alpha=.25)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
@@ -2572,7 +2576,7 @@ def multicast_plots(output):
     positions = {12: (0, 0), 0: (0, 1.8), 1: (1.5, 1.8),
                  2: (3, 1.8), 3: (4.5, 1.8)}
     for ax, method, title in zip(axes, ("seq", "tree", "hw"),
-                                ("Sequential", "Binary tree", "Hardware multicast")):
+                                ("Pipelined sequential", "Binary tree", "Hardware multicast")):
         config = configs[method]
         color = colors[method]
         for node, (x, y) in positions.items():
@@ -2644,12 +2648,250 @@ def multicast_plots(output):
         command=[sys.executable]+sys.argv, script_sha256=digest(snapshot),
         input_csv_sha256=digest(points_path), message_bytes=sizes, cases=records,
         geometry="Measured single-row distribution from NI12 to NI0..NI3. Branches show logical fanout.",
-        memory_data_flow="Planned scenario only: four west memories, four recipients per row including the distributing node. No measured accelerator utilization.",
+        memory_data_flow="Four west memories, four recipients per row including the distributing node.",
         software_edges="Unique source/destination pairs from each saved input manifest",
         runtime_boundary="root AWVALID assertion to last required source B handshake, in cycles",
         outputs={str(p.relative_to(output)): digest(p) for p in files}), indent=2)+"\n")
     print("Saved multicast runtime and logical dataflow figures under", figures)
 
+
+
+def row_feed_report(roots, output):
+    from collections import defaultdict
+    from axi_file_parser import _parse_write
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    thresholds = {}
+    readiness = {}
+    rows = []
+    for root in roots:
+        run, = (root/"runs").iterdir()
+        method = run.name.split("_")[-1]
+        copies = {"unicast": 4, "multicast": 1}[method]
+        record = json.loads((run/(run.name+".run.json")).read_text())
+        wave = run/(run.name+".fsdb")
+        if not record["passed"] or digest(wave) != record["waveform"]["sha256"]:
+            raise ValueError("Missing valid simulation or waveform")
+        clk = record["clock"]["axi_period_ps"]
+        starts = defaultdict(dict)
+        for batch, source, stamp in re.findall(r"^ROW_PREFETCH batch=(\d+) source=requests(\d+) time_ps=(\d+)$",
+                (run/(run.name+".log")).read_text(), re.M):
+            starts[int(batch)][int(source)] = int(stamp)
+        if sorted(starts) != list(range(4)) or any(set(v) != {0,4,8,12} or len(set(v.values())) != 1 for v in starts.values()):
+            raise ValueError("Missing common prefetch start")
+        vcd = run/"interfaces.vcd"
+        command = ["fsdb2vcd", str(wave.resolve()), "-o", str(vcd.resolve()), "-s", "/tb_top", "-level", "3"]
+        with (run/"interfaces-export.log").open("w") as log:
+            subprocess.check_call(command, stdout=log, stderr=subprocess.STDOUT)
+        bindings, payload = {}, {}
+        for y in range(4):
+            for role, node, ch in ([("device",16+y,"ar"), ("device",16+y,"r"), ("source",4*y,"r"),
+                                    ("source",4*y,"aw"), ("source",4*y,"w")] +
+                                   [("device",4*y+x,c) for x in range(4) for c in ("aw","w")]):
+                base = "tb_top.gen_node[{}].{}_bus.{}".format(node,role,ch)
+                key = (role,node,ch)
+                bindings[key] = ("axi",base+"valid",base+"ready",None)
+                if ch in ("r","w"):
+                    payload[key] = [base+"data", base+("strb" if ch=="w" else "resp"),base+"last"]
+                else:
+                    payload[key] = [base+"addr",base+"len",base+"size"]
+                if role == "device" and ch == "r":
+                    bindings[role,node,"rvalid"] = ("axi",base+"valid",base+"valid",None)
+        events = sampled_handshakes(vcd,bindings,payload)
+        raw = defaultdict(list)
+        with (run/"axi-events.csv").open() as stream:
+            for r in csv.DictReader(stream):
+                raw[r["role"],int(r["endpoint"]),r["channel"].lower()].append(int(r["time_ps"]))
+        for key in payload:
+            if [e["time_ps"] for e in events[key]] != raw[key]:
+                raise ValueError("FSDB/collector disagreement at "+str(key))
+        batches = sorted(starts)
+        ready = {}
+        for y in range(4):
+            source, mem = 4*y, 16+y
+            inputs = run/"inputs" if y==0 else run/"inputs"/("source"+str(source))
+            expected = _parse_write(inputs/"write.txt")
+            def trace(role, node, channel):
+                return events[role,node,channel]
+            src_w = trace("source",source,"w")
+            if len(src_w)!=len(batches)*32*copies or len(expected)!=len(batches)*copies:
+                raise ValueError("Source burst count mismatch")
+            for k in batches:
+                offset = k*32
+                words = [int(line.split()[0],16) for line in expected[k*copies]["beats"]]
+                rbeats = [[word,0,int(j==31)] for j,word in enumerate(words)]
+                wbeats = [[word,(1<<64)-1,int(j==31)] for j,word in enumerate(words)]
+                for role,node in (("source",source),("device",mem)):
+                    r = trace(role,node,"r")
+                    if len(r)!=len(batches)*32 or [e["payload"] for e in r[offset:offset+32]]!=rbeats:
+                        raise ValueError("DDR payload mismatch")
+                ar = trace("device",mem,"ar")
+                r = trace("device",mem,"r")
+                valid = trace("device",mem,"rvalid")
+                if (len(ar)!=len(batches) or len(valid)!=len(r) or valid[offset]["time_ps"]!=r[offset]["time_ps"] or
+                        r[offset]["time_ps"]-ar[k]["time_ps"]!=29*clk or
+                        any(r[j+1]["time_ps"]-r[j]["time_ps"]!=clk for j in range(offset,offset+31)) or
+                        ar[k]["payload"]!=[0x1000000000+y*0x100000+k*2048,31,6]):
+                    raise ValueError("DDR address, first-beat delay or burst service mismatch")
+                aw = trace("source",source,"aw")
+                if (len(aw)!=len(batches)*copies or
+                        aw[k*copies]["time_ps"] < trace("source",source,"r")[offset+31]["time_ps"]):
+                    raise ValueError("Write preceded memory fetch completion")
+                section = src_w[offset*copies:(offset+32)*copies]
+                if [e["payload"] for e in section] != wbeats*copies:
+                    raise ValueError("Forwarded source payload mismatch")
+                for x in range(4):
+                    node=source+x
+                    writes=trace("device",node,"w")
+                    addresses=trace("device",node,"aw")
+                    if (len(addresses)!=len(batches) or addresses[k]["payload"] != [node*0x100000000+0x4000+(k%2)*2048,31,6] or
+                            len(writes)!=len(batches)*32 or [e["payload"] for e in writes[offset:offset+32]]!=wbeats):
+                        raise ValueError("Incorrect recipient, address or payload at NI"+str(node))
+                    end = writes[offset+31]["time_ps"]
+                    begin = starts[k][source]
+                    if end<=begin or (end-begin)%clk:
+                        raise ValueError("Invalid recipient timing window")
+                    ready[k,node]=(end-begin)//clk
+                    rows.append([method,k,node,begin,end,ready[k,node]])
+        # Batch 0 fills the first buffer. Batch 3 ends the run.
+        steady = batches[1:-1]
+        readiness[method] = [max(ready[k,n] for n in range(16)) for k in steady]
+        thresholds[method] = []
+        for k in steady:
+            start, following = starts[k][0], starts[k+1][0]
+            last_b = max(t for n in (0,4,8,12) for t in raw["source",n,"b"] if start < t <= following)
+            if following != last_b or (following-start)%clk:
+                raise ValueError("Prefetch barrier does not match last B")
+            thresholds[method].append((following-start)//clk)
+        validation = dict(case=run.name, seed=record["simulation_seed"], clock_ps=clk,
+            binary_sha256=record["binary_sha256"],source_manifest_sha256=record["source_manifest_sha256"],
+            fsdb_sha256=digest(wave),vcd_sha256=digest(vcd),export_command=command,
+            measured_ddr_first_beat_cycles=29, measured_ddr_beat_interval_cycles=1,
+            checked_batches=len(batches), recipients_per_batch=16, checked_bytes_per_recipient=2048,
+            steady_batches=steady, first_fill_cycles=max(ready[0,n] for n in range(16)),
+            threshold_by_node=[max(ready[k,n] for k in steady) for n in range(16)],
+            all_data_ready_cycles=max(readiness[method]),
+            sustained_threshold_cycles=max(thresholds[method]), prefetch_intervals_cycles=thresholds[method])
+        validation.update(checker_passed=record["passed"],
+                          drain="AXI_ORDERING_CHECK_DRAINED" in (run/(run.name+".log")).read_text(),
+                          performance_error=record["performance_error"],
+                          offline_calibration_comparison="FSDB matched accepted events, data and timing",
+                          scope="Four-row 2 KiB supply model with a shared batch barrier")
+        (root/"validation.json").write_text(json.dumps(validation,indent=2)+"\n")
+        campaign_path=root/"campaign.json"
+        campaign=json.loads(campaign_path.read_text())
+        campaign.update(purpose="four-row memory distribution", publication_result=True)
+        campaign_path.write_text(json.dumps(campaign,indent=2)+"\n")
+    if set(thresholds)!= {"unicast","multicast"}:
+        raise ValueError("Both distribution modes are required")
+    with (output/"tables/row-feed.csv").open("w", newline="") as stream:
+        writer=csv.writer(stream,lineterminator="\n")
+        writer.writerow(["method","batch","node","prefetch_start_ps","last_accepted_w_ps","ready_cycles"])
+        writer.writerows(rows)
+    limit=max(max(ds) for ds in thresholds.values())
+    with (output/"tables/utilization.csv").open("w",newline="") as stream:
+        writer=csv.writer(stream,lineterminator="\n")
+        writer.writerow(["method","compute_cycles","data_ready_model_percent","sustained_percent"])
+        for method,ds in thresholds.items():
+            for c in range(limit+26):
+                writer.writerow([method,c]+[100*len(q)*c/sum(max(c,d) for d in q) for q in (readiness[method],ds)])
+    row_feed_curve(output)
+
+
+def row_feed_curve(output):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    with (output/"tables/utilization.csv").open() as stream:
+        points = list(csv.DictReader(stream))
+    fig, ax = plt.subplots(figsize=(6.3,3.5))
+    for method,color in (("unicast","#1665a8"),("multicast","#b45818")):
+        series = [r for r in points if r["method"] == method]
+        x = [int(r["compute_cycles"]) for r in series]
+        y = [float(r["sustained_percent"]) for r in series]
+        threshold = min(c for c,u in zip(x,y) if u >= 100)
+        ax.plot(x,y,label=method.capitalize(),color=color)
+        ax.plot(threshold,100,"o",color=color)
+        ax.annotate(str(threshold),(threshold,100),xytext=(0,5),textcoords="offset points",ha="center")
+    ax.set(xlabel="Compute time per batch [cycles]",ylabel="Estimated steady-state\ncompute utilization [%]",ylim=(0,113),xlim=(0,max(x)))
+    ax.grid(alpha=.22)
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    for ext in ("png","svg"):
+        fig.savefig(str(output/"figures"/("utilization."+ext)),dpi=200)
+    plt.close(fig)
+
+
+def row_feed_heatmap(output):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import Normalize
+    from collections import defaultdict
+
+    arrivals = defaultdict(dict)
+    for row in csv.DictReader((output/"tables/row-feed.csv").open()):
+        key = row["method"], int(row["node"])
+        batch = int(row["batch"])
+        if batch in arrivals[key]:
+            raise ValueError("Duplicate node delivery")
+        arrivals[key][batch] = int(row["last_accepted_w_ps"]), int(row["ready_cycles"])
+    methods = ("unicast", "multicast")
+    periods = {}
+    delays = {}
+    for method in methods:
+        check = json.loads((output/"results"/("feed-"+method+"-ddr")/"validation.json").read_text())
+        clk = check["clock_ps"]
+        for node in range(16):
+            key = method,node
+            times = arrivals[key]
+            steady = check["steady_batches"]
+            spans = [times[k+1][0]-times[k][0] for k in steady]
+            if any(p<=0 or p%clk for p in spans):
+                raise ValueError("Invalid interval between complete batches")
+            periods[key] = [p//clk for p in spans]
+            delays[key] = [times[k][1] for k in steady]
+    compute = max(periods["multicast",3])
+    values = []
+    fig, axes = plt.subplots(2,2,figsize=(7.8,6.9))
+    fig.subplots_adjust(left=.04,right=.84,bottom=.04,top=.94,hspace=.14,wspace=.06)
+    maximum_delay = max(max(d) for d in delays.values())
+    for row in range(2):
+        norm = Normalize(0,100 if row == 0 else maximum_delay)
+        for col,method in enumerate(methods):
+            ax = axes[row,col]
+            numbers = []
+            for node in range(16):
+                intervals = periods[method,node]
+                percent = 100*len(intervals)*compute/sum(max(compute,x) for x in intervals)
+                steady_delays = set(delays[method,node])
+                if len(steady_delays) != 1:
+                    raise ValueError("Expected repeatable delivery time for the two measured batches")
+                delay = steady_delays.pop()
+                if row == 0:
+                    values.append([method,node,compute,percent,delay])
+                numbers.append(percent if row == 0 else delay)
+            matrix = [numbers[i:i+4] for i in range(0,16,4)]
+            im = ax.imshow(matrix,origin="lower",cmap="Blues" if row == 0 else "Oranges",norm=norm)
+            for n,v in enumerate(numbers):
+                label = "{:.1f}%".format(v) if row == 0 else str(v)
+                ax.text(n%4,n//4,"NI{}\n{}".format(n,label),ha="center",va="center",
+                        fontsize=9,color="white" if norm(v)>.65 else "black")
+            ax.set(xticks=[],yticks=[])
+            if row == 0:
+                ax.set_title(("Direct unicast","Hardware multicast")[col])
+        bar = fig.colorbar(im,cax=fig.add_axes([.86,.57 if row==0 else .10,.022,.28]))
+        bar.set_label(("Estimated steady-state\ncompute utilization [%]\n({} cycles/batch)".format(compute),
+                       "Time to receive one batch [cycles]")[row],fontsize=9)
+    for ext in ("png","svg"):
+        fig.savefig(str(output/"figures"/("node-utilization."+ext)),dpi=200,bbox_inches="tight")
+    plt.close(fig)
+    with (output/"tables/node-utilization.csv").open("w",newline="") as stream:
+        w=csv.writer(stream,lineterminator="\n")
+        w.writerow(["method","node","compute_cycles","estimated_steady_state_compute_utilization_percent","time_to_receive_one_batch_cycles"])
+        w.writerows(values)
 
 
 if __name__ == "__main__":
@@ -2662,10 +2904,19 @@ if __name__ == "__main__":
     group.add_argument("--cross-results", nargs="+", type=Path)
     group.add_argument("--boundary-results", nargs="+", type=Path)
     group.add_argument("--multicast-results", nargs="+", type=Path)
+    group.add_argument("--row-feed-heatmap", type=Path)
+    group.add_argument("--row-feed", nargs=2, type=Path)
     group.add_argument("--multicast-plot", type=Path)
     parser.add_argument("--output", type=Path, help="Directory for the combined traffic plots")
     args = parser.parse_args()
-    if args.multicast_plot:
+    if args.row_feed_heatmap:
+        row_feed_heatmap(args.row_feed_heatmap)
+        row_feed_curve(args.row_feed_heatmap)
+    elif args.row_feed:
+        if args.output is None:
+            parser.error("--row-feed requires --output")
+        row_feed_report(args.row_feed,args.output)
+    elif args.multicast_plot:
         multicast_plots(args.multicast_plot)
     elif args.multicast_results:
         if args.output is None:
