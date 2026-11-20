@@ -1,0 +1,6 @@
+pattern,transfer_bytes,max_inter_router_flows,max_ni_injection_flows,max_ni_ejection_flows,max_channel_load,local_accesses,equal_rate_reference_percent,measured_percent
+neighbor,32768,1,1,1,1,0,100.0,96.24465175001752
+bit_complement,32768,2,1,1,2,0,50.0,48.55644794929666
+transpose,32768,3,1,1,3,4,33.333333333333336,62.95598907356295
+uniform,32768,2,3,1,3,0,33.333333333333336,56.94273677360669
+shuffle,32768,2,1,1,2,2,50.0,72.66491545145968

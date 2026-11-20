@@ -68,7 +68,7 @@ ifneq ($(filter _compile _sim _print,$(MAKECMDGOALS)),)
 SIM := $(shell python3 -B "$(SCRIPTS)/build_key.py" --recipe "$(RECIPE)" --flags="$(VCS) $(VCS_FLAGS) $(WAVE_FLAGS)" --coverage)
 endif
 CAMPAIGN = $(shell python3 -c 'import json; print("$(ROOT)/"+json.load(open("$(ROOT)/build/regression/latest.json"))["campaign"])')
-.PHONY: perf_multicast_report perf_boundary_plot perf_cross_plot perf_interference_plot help perf perf_plot perf_latency_plot perf_tile_plot prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report
+.PHONY: perf_multicast_plot perf_multicast_report perf_boundary_plot perf_cross_plot perf_interference_plot help perf perf_plot perf_latency_plot perf_tile_plot prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report
 help:
 	@printf '%s\n' 'make perf CASE=<case>         Measure an existing case; always save FSDB and a new permanent result' 'make prepare                  Generate inputs and a new coverage campaign' 'make run CASE=<case>           Compile and simulate' 'make run_wave view CASE=<case> Run with FSDB and open nWave' 'make verification JOBS=3       Run the prepared coverage matrix' 'make report                   Generate native URG coverage' 'make list                     List existing cases' 'make clean                    Remove new compile/regression outputs'
 perf:
@@ -76,7 +76,15 @@ perf:
 	@result="$(abspath $(or $(RESULT),$(PERF_RESULT)))"; \
 	test ! -e "$$result" || { echo "Result already exists: $$result. Set RESULT to a new directory." >&2; exit 1; }; \
 	$(MAKE) --no-print-directory -f "$(ROOT)/sim/Makefile" run PERF=1 WAVE=1 REPORT="$$result/runs/$(CASE)"
-perf_multicast_report: RESULTS = $(addprefix $(ROOT)/performance/multicast/results/,row-seq-2kib-b1k row-seq-2kib-b2k row-tree-2kib row-hw-2kib-retry)
+perf_multicast_plot:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --multicast-plot "$(or $(RESULT),$(ROOT)/performance/multicast)"
+perf_multicast_report: RESULTS = $(addprefix $(ROOT)/performance/multicast/results/, \
+	row-seq-1kib-b1k row-tree-1kib row-hw-1kib \
+	row-seq-2kib-b1k row-seq-2kib-b2k row-tree-2kib row-hw-2kib-retry \
+	row-seq-4kib-b1k row-seq-4kib-b2k row-seq-4kib-b4k row-tree-4kib row-hw-4kib \
+	row-seq-8kib-b1k row-seq-8kib-b2k row-seq-8kib-b4k row-seq-8kib-b8k row-tree-8kib row-hw-8kib \
+	row-seq-16kib-b1k row-seq-16kib-b2k row-seq-16kib-b4k row-seq-16kib-b8k row-seq-16kib-b16k row-tree-16kib row-hw-16kib \
+	row-seq-32kib-b1k row-seq-32kib-b2k row-seq-32kib-b4k row-seq-32kib-b8k row-seq-32kib-b16k row-seq-32kib-b32k row-tree-32kib row-hw-32kib)
 perf_multicast_report:
 	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" python3 -B "$(SCRIPTS)/performance.py" --multicast-results $(foreach directory,$(RESULTS),"$(directory)") --output "$(ROOT)/performance/multicast"
 perf_tile_plot:
@@ -96,7 +104,7 @@ perf_latency_plot: RESULTS = $(foreach pattern,neighbor bit-complement transpose
 perf_latency_plot:
 	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --latency-results $(foreach directory,$(RESULTS),"$(directory)") --output "$(or $(RESULT),$(MESH_RESULT))"
 prepare:
-	python3 -B "$(SCRIPTS)/prepare.py" --out "$(SINGLE)" --profile "$(PROFILE)" $(if $(filter 1,$(DIRECT_LINK)),--direct,)
+	python3 -B "$(SCRIPTS)/prepare.py" --out "$(SINGLE)" --profile "$(PROFILE)" $(if $(filter 1,$(DIRECT_LINK)),--direct,) $(if $(filter multicast,$(SCENARIO)),--extra-catalog performance_multicast,)
 	$(if $(filter 1,$(DIRECT_LINK)),@true,python3 -B "$(SCRIPTS)/prepare_ni_verification.py" --out "$(ROOT)/build/regression/$$(date -u +%Y%m%dT%H%M%S_%N)" --profile "$(PROFILE)")
 sync:
 	python3 -B "$(SCRIPTS)/sync_nmu_workstation.py" --source "$(ROOT)" --remote-dir "$(REMOTE_ROOT)"

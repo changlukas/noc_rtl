@@ -7597,6 +7597,170 @@
         "name": "row_hw_2kib",
         "multicast_method": "hw",
         "message_bytes": 2048
+      },
+      {
+        "name": "row_seq_1kib_b1k",
+        "multicast_method": "seq",
+        "message_bytes": 1024,
+        "batch_bytes": 1024
+      },
+      {
+        "name": "row_tree_1kib",
+        "multicast_method": "tree",
+        "message_bytes": 1024
+      },
+      {
+        "name": "row_hw_1kib",
+        "multicast_method": "hw",
+        "message_bytes": 1024
+      },
+      {
+        "name": "row_seq_4kib_b1k",
+        "multicast_method": "seq",
+        "message_bytes": 4096,
+        "batch_bytes": 1024
+      },
+      {
+        "name": "row_seq_4kib_b2k",
+        "multicast_method": "seq",
+        "message_bytes": 4096,
+        "batch_bytes": 2048
+      },
+      {
+        "name": "row_seq_4kib_b4k",
+        "multicast_method": "seq",
+        "message_bytes": 4096,
+        "batch_bytes": 4096
+      },
+      {
+        "name": "row_tree_4kib",
+        "multicast_method": "tree",
+        "message_bytes": 4096
+      },
+      {
+        "name": "row_hw_4kib",
+        "multicast_method": "hw",
+        "message_bytes": 4096
+      },
+      {
+        "name": "row_seq_8kib_b1k",
+        "multicast_method": "seq",
+        "message_bytes": 8192,
+        "batch_bytes": 1024
+      },
+      {
+        "name": "row_seq_8kib_b2k",
+        "multicast_method": "seq",
+        "message_bytes": 8192,
+        "batch_bytes": 2048
+      },
+      {
+        "name": "row_seq_8kib_b4k",
+        "multicast_method": "seq",
+        "message_bytes": 8192,
+        "batch_bytes": 4096
+      },
+      {
+        "name": "row_seq_8kib_b8k",
+        "multicast_method": "seq",
+        "message_bytes": 8192,
+        "batch_bytes": 8192
+      },
+      {
+        "name": "row_tree_8kib",
+        "multicast_method": "tree",
+        "message_bytes": 8192
+      },
+      {
+        "name": "row_hw_8kib",
+        "multicast_method": "hw",
+        "message_bytes": 8192
+      },
+      {
+        "name": "row_seq_16kib_b1k",
+        "multicast_method": "seq",
+        "message_bytes": 16384,
+        "batch_bytes": 1024
+      },
+      {
+        "name": "row_seq_16kib_b2k",
+        "multicast_method": "seq",
+        "message_bytes": 16384,
+        "batch_bytes": 2048
+      },
+      {
+        "name": "row_seq_16kib_b4k",
+        "multicast_method": "seq",
+        "message_bytes": 16384,
+        "batch_bytes": 4096
+      },
+      {
+        "name": "row_seq_16kib_b8k",
+        "multicast_method": "seq",
+        "message_bytes": 16384,
+        "batch_bytes": 8192
+      },
+      {
+        "name": "row_seq_16kib_b16k",
+        "multicast_method": "seq",
+        "message_bytes": 16384,
+        "batch_bytes": 16384
+      },
+      {
+        "name": "row_tree_16kib",
+        "multicast_method": "tree",
+        "message_bytes": 16384
+      },
+      {
+        "name": "row_hw_16kib",
+        "multicast_method": "hw",
+        "message_bytes": 16384
+      },
+      {
+        "name": "row_seq_32kib_b1k",
+        "multicast_method": "seq",
+        "message_bytes": 32768,
+        "batch_bytes": 1024
+      },
+      {
+        "name": "row_seq_32kib_b2k",
+        "multicast_method": "seq",
+        "message_bytes": 32768,
+        "batch_bytes": 2048
+      },
+      {
+        "name": "row_seq_32kib_b4k",
+        "multicast_method": "seq",
+        "message_bytes": 32768,
+        "batch_bytes": 4096
+      },
+      {
+        "name": "row_seq_32kib_b8k",
+        "multicast_method": "seq",
+        "message_bytes": 32768,
+        "batch_bytes": 8192
+      },
+      {
+        "name": "row_seq_32kib_b16k",
+        "multicast_method": "seq",
+        "message_bytes": 32768,
+        "batch_bytes": 16384
+      },
+      {
+        "name": "row_seq_32kib_b32k",
+        "multicast_method": "seq",
+        "message_bytes": 32768,
+        "batch_bytes": 32768
+      },
+      {
+        "name": "row_tree_32kib",
+        "multicast_method": "tree",
+        "message_bytes": 32768
+      },
+      {
+        "name": "row_hw_32kib",
+        "multicast_method": "hw",
+        "message_bytes": 32768
       }
     ]
   }
