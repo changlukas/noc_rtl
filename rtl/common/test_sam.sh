@@ -17,11 +17,19 @@ assert any(entry.get("name") == "common_cells-v2.0.0-beta.3" and
     "common_cells revision does not match deps/revisions.json"
 PY
 
+task_action=${1:-test}
+if (( $# )); then shift; fi
+: "${VCS_BUILD_DIR:?Set VCS_BUILD_DIR to the workstation build directory}"
+task_build_dir=$(realpath -m "$VCS_BUILD_DIR")
+mkdir -p "$task_build_dir"
+python3 -B "$task_root/dv/scripts/prepare.py" --emit-sam "$task_build_dir/topology_pkg.sv" "$@"
+
 task_sources=(
     "$task_root/define/noc_header_pkg.sv"
     "$task_root/define/noc_payload_pkg.sv"
     "$task_root/define/noc_unit_params_pkg.sv"
     "$task_root/define/noc_sam_pkg.sv"
+    "$task_build_dir/topology_pkg.sv"
     "$task_root/rtl/common/ni_signals_pkg.sv"
     "$task_root/rtl/common/ni_types_pkg.sv"
     "$task_common_cells/src/cc_pkg.sv"
@@ -31,11 +39,6 @@ task_sources=(
     "$task_root/rtl/common/tests/tb_ni_sam.sv"
 )
 
-# Build outputs must be directed to an explicitly selected workstation directory.
-: "${VCS_BUILD_DIR:?Set VCS_BUILD_DIR to the approved workstation build directory}"
-task_build_dir=$(realpath -m "$VCS_BUILD_DIR")
-mkdir -p "$task_build_dir"
-
 task_vcs=(
     "${VCS:-vcs}" -full64 -sverilog -assert svaext -timescale=1ns/1ps
     +incdir+"$task_common_cells/include" -top tb_ni_sam
@@ -43,7 +46,7 @@ task_vcs=(
     -l "$task_build_dir/compile.log"
 )
 
-case "${1:-test}" in
+case "$task_action" in
     compile|lint)
         cd "$task_build_dir"
         "${task_vcs[@]}" "${task_sources[@]}"

@@ -92,7 +92,7 @@ def generate_multicast(out, entries, topology, case, id_width, mode, seed, profi
             batch & (batch-1) or size % batch or
             (method != "seq" and batch != size)):
         raise ValueError("Multicast requires native 4x4 cosim, seq/tree/hw and legal message/batch sizes")
-    routes = [e for e in entries if e["space"] == "memory"]
+    routes = [e for e in entries if e["space"] == "memory" and e.get("port", 0) == 0]
     if len(routes) != 16 or any(not r.get("en_collective") for r in routes):
         raise ValueError("Multicast requires 16 collective-enabled tile memories")
     root, members, offset = 12, list(range(4)), 0x4000
@@ -195,12 +195,14 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         import yaml
         from address_map import pack_config
         _, entries = pack_config(yaml.safe_load(topology.read_text()))
-    base_routes = {m: [e for e in entries if e["space"] == space]
+    all_routes = {m: [e for e in entries if e["space"] == space]
               for m, space in (("control", "config"), ("data", "memory"))}
+    tile_routes = {mode: [r for r in routes if r.get("port", 0) == 0]
+                   for mode, routes in all_routes.items()}
     if profile not in ("standalone", "cosim"):
         raise ValueError("unknown verification profile")
     required_destinations = 2 if profile == "standalone" else 1
-    if any(len(v) < required_destinations for v in base_routes.values()):
+    if any(len(v) < required_destinations for v in all_routes.values()):
         raise ValueError("standalone suite needs two control/data destinations")
     if not 1 <= id_width <= 8 or mode not in ("auto", "control", "data", "rand"):
         raise ValueError("invalid ID width or MODE")
@@ -213,6 +215,9 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
         if not cases:
             raise ValueError("unknown CASE: " + case_name)
     for case in cases:
+        # Boundary traffic can explicitly enumerate all mapped destinations.
+        selection = case.get("source_destination_map") or case.get("destination_order") or []
+        base_routes = all_routes if len(selection) > len(tile_routes["data"]) else tile_routes
         if "row_distribution" in case:
             if profile != "cosim" or mode not in ("auto", "data"):
                 raise ValueError("Row feed requires full-width cosim")
@@ -270,7 +275,7 @@ def generate(out, topology, id_width=8, catalog=CATALOG, mode="auto", seed=1, ca
             sources = case["sources"]
             if profile != "cosim" or not sources or sources != sorted(set(sources)):
                 raise ValueError("sources must be sorted, unique and use cosim")
-            if any(source < 0 or source >= len(base_routes["data"]) for source in sources):
+            if any(source < 0 or source >= len(tile_routes["data"]) for source in sources):
                 raise ValueError("source outside topology")
             if case.get("multicast_masks") and len(sources) > 1 and multicast_source is None:
                 raise ValueError("multi-source multicast requires one multicast_source")

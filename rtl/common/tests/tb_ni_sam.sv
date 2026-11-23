@@ -4,34 +4,13 @@
 
 module tb_ni_sam;
 
-    import noc_sam_pkg::*;
-
-    localparam sam_result_t OVERLAP_BROAD_IDX = '{
-        dst_id: '{port_id: 2'd0, y: 4'd0, x: 4'd1},
-        is_data: 1'b1,
-        mask_x: '0,
-        mask_y: '0
-    };
-    localparam sam_result_t OVERLAP_NARROW_IDX = '{
-        dst_id: '{port_id: 2'd0, y: 4'd0, x: 4'd2},
-        is_data: 1'b0,
-        mask_x: '0,
-        mask_y: '0
-    };
-    localparam sam_rule_t [1:0] OVERLAP_SAM = '{
-        1: '{idx: OVERLAP_BROAD_IDX, start_addr: 48'h000, end_addr: 48'h100},
-        0: '{idx: OVERLAP_NARROW_IDX, start_addr: 48'h080, end_addr: 48'h0C0}
-    };
+    import topology_pkg::*;
 
     sam_addr_t   addr;
     logic        lookup_en;
     sam_result_t sam_idx;
     logic        lookup_valid;
     logic        lookup_error;
-
-    sam_result_t overlap_idx;
-    logic        overlap_valid;
-    logic        overlap_error;
 
     ni_sam #(
         .SAM_NUM_RULES  (SAM_NUM_RULES ),
@@ -48,53 +27,46 @@ module tb_ni_sam;
         .lookup_error_o (lookup_error)
     );
 
-    ni_sam #(
-        .SAM_NUM_RULES  (2             ),
-        .addr_t         (sam_addr_t    ),
-        .sam_mask_sel_t (sam_mask_sel_t),
-        .sam_result_t   (sam_result_t  ),
-        .sam_rule_t     (sam_rule_t    ),
-        .SAM            (OVERLAP_SAM   )
-    ) i_overlap_ni_sam (
-        .addr_i         (addr         ),
-        .lookup_en_i    (lookup_en    ),
-        .sam_idx_o      (overlap_idx  ),
-        .lookup_valid_o (overlap_valid),
-        .lookup_error_o (overlap_error)
-    );
+    // Evaluate rules in descending priority, including at adjacent window boundaries.
+    task automatic check_lookup(input sam_addr_t probe);
+        integer winner;
+        winner = -1;
+        for (int r = SAM_NUM_RULES-1; r >= 0; r--) begin
+            if (probe >= SAM[r].start_addr && (SAM[r].end_addr == '0 || probe < SAM[r].end_addr)) begin
+                winner = r;
+                break;
+            end
+        end
+        addr = probe;
+        #1ps;
+        if (winner >= 0) begin
+            assert (lookup_valid && !lookup_error && sam_idx == SAM[winner].idx)
+                else $fatal(1, "Incorrect SAM hit at %h, expected rule %0d", probe, winner);
+        end else begin
+            assert (!lookup_valid && lookup_error && sam_idx == '0)
+                else $fatal(1, "Incorrect SAM miss at %h", probe);
+        end
+    endtask
 
     initial begin
-        addr      = 48'h0000_0000_0000;
+        addr = '0;
         lookup_en = 1'b0;
         #1ps;
         assert (sam_idx == '0 && !lookup_valid && !lookup_error)
             else $fatal(1, "Disabled lookup exposed a decoder result");
 
         lookup_en = 1'b1;
-        #1ps;
-        assert (lookup_valid && !lookup_error && sam_idx == SAM[SAM_NUM_RULES-1].idx)
-            else $fatal(1, "Memory lookup did not preserve sam_result_t");
-
-        addr = 48'h0000_0010_0000;
-        #1ps;
-        assert (lookup_valid && !lookup_error && !sam_idx.is_data &&
-                sam_idx.dst_id == noc_header_pkg::endpoint_id_t'('0))
-            else $fatal(1, "Configuration lookup returned incorrect typed metadata");
-
-        addr = 48'h0000_0000_0080;
-        #1ps;
-        assert (overlap_valid && !overlap_error && overlap_idx == OVERLAP_BROAD_IDX)
-            else $fatal(1, "Overlap did not select the highest SAM array index");
-
-        addr = 48'h0000_FFFF_F000;
-        #1ps;
-        assert (!lookup_valid && lookup_error && sam_idx == '0)
-            else $fatal(1, "SAM miss did not report the required error result");
-
-        $display("PASS: ni_sam pure-combinational lookup");
+        for (int r = 0; r < SAM_NUM_RULES; r++) begin
+            check_lookup(SAM[r].start_addr);
+            check_lookup(SAM[r].end_addr - 1'b1);
+            check_lookup(SAM[r].end_addr);
+        end
+        check_lookup(48'h0004_0000_0100);
+        $display("SAM probe %h: valid=%b dst=(%0d,%0d)", addr, lookup_valid,
+                 sam_idx.dst_id.x, sam_idx.dst_id.y);
+        $display("PASS: ni_sam checked %0d rules", SAM_NUM_RULES);
         $finish;
     end
-
 endmodule
 
 `resetall

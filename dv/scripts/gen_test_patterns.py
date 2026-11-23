@@ -1165,7 +1165,7 @@ def _load_topology(name):
     bases, entries = address_map.pack_config(topo)
     config_bases = {e["dst_id"]: e["base"] for e in entries if e["space"] == "config"}
     sizes = {
-        "memory": {e["dst_id"]: e["size"] for e in entries if e["space"] == "memory"},
+        "memory": {e["dst_id"]: e["size"] for e in entries if e["space"] == "memory" and e["port"] == 0},
         "config": {e["dst_id"]: e["size"] for e in entries if e["space"] == "config"},
     }
     peripherals = [e for e in entries if e["space"] == "peripheral"]

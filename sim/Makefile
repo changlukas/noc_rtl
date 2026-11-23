@@ -5,6 +5,7 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 SCRIPTS := $(ROOT)/dv/scripts
 PROFILE ?= $(ROOT)/dv/config/profile.yml
 DIRECT_LINK ?= 0
+TOPOLOGY_ARG = $(if $(TOPOLOGY),--topology "$(abspath $(TOPOLOGY))")
 RECIPE := $(ROOT)/build/compile/recipes/$(notdir $(PROFILE))$(if $(filter 1,$(DIRECT_LINK)),.direct,).json
 -include $(RECIPE:.json=.mk)
 -include $(ROOT)/sim/environment.mk
@@ -70,6 +71,7 @@ endif
 CAMPAIGN = $(shell python3 -c 'import json; print("$(ROOT)/"+json.load(open("$(ROOT)/build/regression/latest.json"))["campaign"])')
 .PHONY: perf_multicast_plot perf_multicast_report perf_boundary_plot perf_cross_plot perf_interference_plot help perf perf_plot perf_latency_plot perf_tile_plot prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report
 help:
+	@echo "make gen_sam TOPOLOGY=<yaml>  Generate build/topology.sv for simulation"
 	@printf '%s\n' 'make perf CASE=<case>         Measure an existing case; always save FSDB and a new permanent result' 'make prepare                  Generate inputs and a new coverage campaign' 'make run CASE=<case>           Compile and simulate' 'make run_wave view CASE=<case> Run with FSDB and open nWave' 'make verification JOBS=3       Run the prepared coverage matrix' 'make report                   Generate native URG coverage' 'make list                     List existing cases' 'make clean                    Remove new compile/regression outputs'
 perf:
 	@case "$(SCENARIO)" in unicast|interference|boundary|multicast) ;; *) echo "Invalid SCENARIO" >&2; exit 1;; esac
@@ -103,9 +105,13 @@ perf_interference_plot:
 perf_latency_plot: RESULTS = $(foreach pattern,neighbor bit-complement transpose uniform shuffle,$(addprefix $(MESH_RESULT)/runs/$(pattern)-,zero 0p001 0p01 0p05 0p1 0p15 0p2 0p25 0p3 0p4 0p5))
 perf_latency_plot:
 	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" MPLCONFIGDIR="$(ROOT)/build/perf_plot_deps/cache" python3 -B "$(SCRIPTS)/performance.py" --latency-results $(foreach directory,$(RESULTS),"$(directory)") --output "$(or $(RESULT),$(MESH_RESULT))"
+.PHONY: gen_sam
+gen_sam:
+	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" python3 -B "$(SCRIPTS)/prepare.py" --emit-sam "$(ROOT)/build/topology.sv" $(TOPOLOGY_ARG) $(if $(filter 1,$(DIRECT_LINK)),--direct,)
+
 prepare:
-	python3 -B "$(SCRIPTS)/prepare.py" --out "$(SINGLE)" --profile "$(PROFILE)" $(if $(filter 1,$(DIRECT_LINK)),--direct,) $(if $(filter multicast,$(SCENARIO)),--extra-catalog performance_multicast,)
-	$(if $(filter 1,$(DIRECT_LINK)),@true,python3 -B "$(SCRIPTS)/prepare_ni_verification.py" --out "$(ROOT)/build/regression/$$(date -u +%Y%m%dT%H%M%S_%N)" --profile "$(PROFILE)")
+	python3 -B "$(SCRIPTS)/prepare.py" --out "$(SINGLE)" $(TOPOLOGY_ARG) --profile "$(PROFILE)" $(if $(filter 1,$(DIRECT_LINK)),--direct,) $(if $(filter multicast,$(SCENARIO)),--extra-catalog performance_multicast,)
+	$(if $(filter 1,$(DIRECT_LINK)),@true,python3 -B "$(SCRIPTS)/prepare_ni_verification.py" --out "$(ROOT)/build/regression/$$(date -u +%Y%m%dT%H%M%S_%N)" --profile "$(PROFILE)" $(TOPOLOGY_ARG))
 sync:
 	python3 -B "$(SCRIPTS)/sync_nmu_workstation.py" --source "$(ROOT)" --remote-dir "$(REMOTE_ROOT)"
 compile run sim run_wave view verification report print-build-dirs:

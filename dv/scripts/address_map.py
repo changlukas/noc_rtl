@@ -7,7 +7,6 @@ FlooNoC-shaped config (dv/config/topology/*.yml), read by pack_config():
     endpoints:
       - name: "tile"
         array: [4, 4]
-        sbr_port_protocol: ["axi"]           # is_sbr() gates SAM participation
         addr_range:
           - { base: 0x0, size: 0x2000000, stride: 0x100000000, space: memory }
     routers:
@@ -86,20 +85,33 @@ def members(endpoint):
     return n
 
 
+def range_members(bounds, shape):
+    """Expand inclusive array coordinates in the mesh's X-fast order."""
+    if len(bounds) != len(shape) or len(shape) not in (1, 2):
+        raise ValueError("connection range dimensions must match the array")
+    axes = []
+    for (first, last), size in zip(bounds, shape):
+        if not 0 <= first <= last < size:
+            raise ValueError("connection range outside array: {}".format(bounds))
+        axes.append(range(first, last + 1))
+    if len(axes) == 1:
+        return list(axes[0])
+    return [y * shape[0] + x for y in axes[1] for x in axes[0]]
+
+
 def attachments(cfg, name, num, x_dim):
     """Member index -> {"x", "y", "port", "dir"}, off the connections naming this endpoint.
 
-    Two forms. src_idx/dst_idx list the pairing explicitly. src_range/dst_range
-    pair the two arrays element for element, which this reader accepts only when
-    the two ranges are identical -- every shipped config connects a tile array to
-    the router array it sits on, and a general range remap has no caller.
+    Pair explicit member indices or inclusive source and router coordinate ranges.
     """
     x_bits = _clog2(x_dim)
     out = [None] * num
     for c in cfg.get("connections") or []:
         if c.get("src") != name:
             continue
-        direction = int(c["dst_dir"])
+        raw_direction = c["dst_dir"]
+        named = {"North": 0, "East": 1, "South": 2, "West": 3, "Eject": 4}
+        direction = named[raw_direction] if raw_direction in named else int(raw_direction)
         port = _PORT_OF_DST_DIR.get(direction)
         if port is None:
             raise ValueError(
@@ -107,11 +119,15 @@ def attachments(cfg, name, num, x_dim):
         if c.get("src_idx") is not None:
             pairs = list(zip(c["src_idx"], c["dst_idx"]))
         else:
-            if c.get("src_range") != c.get("dst_range"):
-                raise ValueError(
-                    f"connection {name}: src_range and dst_range differ -- this reader pairs the "
-                    f"two arrays element for element and has no range remap")
-            pairs = [(k, k) for k in range(num)]
+            if "src_range" in c or "dst_range" in c:
+                ep = next(e for e in cfg["endpoints"] if e["name"] == name)
+                sources = range_members(c["src_range"], ep.get("array") or [num])
+                targets = range_members(c["dst_range"], router_array(cfg))
+                if len(sources) != len(targets):
+                    raise ValueError("connection ranges must select equal member counts")
+                pairs = zip(sources, targets)
+            else:
+                pairs = [(k, k) for k in range(num)]
         for src, dst in pairs:
             dst = int(dst)
             out[int(src)] = {"x": dst & (x_dim - 1), "y": dst >> x_bits, "port": port,
@@ -130,21 +146,14 @@ def pack_config(cfg):
              aperture.
     entries: ordered [{"x", "y", "size", "base", "dst_id", "space", "port"}, ...].
 
-    An endpoint contributes to the SAM only if it declares sbr_port_protocol
-    (FlooNoC endpoint.py:87-89). mgr_port_protocol / sbr_port_protocol are
-    presence markers and nothing more: the protocols: block they would resolve
-    against is omitted; AXI widths come from native SV packages, so the
-    protocol labels themselves are ignored.
-
-    Rules come out range-major -- every member of a range, then the next range --
-    preserving the first-match SAM rule order.
+    Each endpoint with address ranges contributes SAM rules.
     """
     if cfg.get("routing", {}).get("use_id_table", True) is not True:
         raise ValueError("routing.use_id_table must be true; offset decode is deferred")
     x_dim, y_dim = router_array(cfg)
     entries = []
     for ep in cfg["endpoints"]:
-        if ep.get("sbr_port_protocol") is None:
+        if not ep.get("addr_range"):
             continue
         num = members(ep)
         attach = attachments(cfg, ep["name"], num, x_dim)
@@ -174,7 +183,7 @@ def pack_config(cfg):
                 entries.append({"x": x, "y": y, "size": size, "base": base + stride * k,
                                 "dst_id": dst_id(x, y), "space": space, "port": port,
                                 "en_collective": r.get("en_collective", False) is True})
-    bases = {e["dst_id"]: e["base"] for e in entries if e["space"] == "memory"}
+    bases = {e["dst_id"]: e["base"] for e in entries if e["space"] == "memory" and e["port"] == 0}
     return bases, entries
 
 

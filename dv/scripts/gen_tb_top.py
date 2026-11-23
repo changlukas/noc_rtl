@@ -181,7 +181,7 @@ def tile_targets(topo: dict, endpoints):
         # Checked BEFORE the padding below, or every short row would read as
         # ragged-then-padded and the check would say nothing.
         expected = ["config", "memory"] if port == 0 else ["peripheral"]
-        if order != expected:
+        if order != expected and not (port != 0 and order == ["memory"]):
             raise SystemExit(
                 f"gen_tb_top: endpoint {idx} (port {port}) window order {order} must be "
                 f"{expected} -- user_node_endpoint puts the config memory on target 0 and "
@@ -214,9 +214,12 @@ def tile_targets(topo: dict, endpoints):
     width = max(len(w) for w in out.values())
     for idx, windows in out.items():
         # Staggered, so two pads in one row could never be the same rule twice.
-        windows.extend({"space": None, "base": 2 * egress + k * _PAD_BYTES,
-                        "size": _PAD_BYTES}
-                       for k in range(width - len(windows)))
+        padding = [{"space": None, "base": 2 * egress + k * _PAD_BYTES,
+                    "size": _PAD_BYTES} for k in range(width - len(windows))]
+        if windows[-1]["space"] == "memory":
+            windows[:0] = padding  # The data memory occupies the last target.
+        else:
+            windows.extend(padding)
     return out, egress
 
 def _is_power_of_two(value: int) -> bool:
@@ -229,7 +232,7 @@ def _validate_sam_ranges(topo: dict) -> None:
     """Reject ranges that cannot be represented by the generated address type."""
     addr_limit = 1 << ADDR_WIDTH
     for endpoint in topo["endpoints"]:
-        if endpoint.get("sbr_port_protocol") is None:
+        if not endpoint.get("addr_range"):
             continue
         member_count = address_map.members(endpoint)
         for rule in endpoint["addr_range"]:

@@ -30,6 +30,16 @@ def attach_hardware(recipe, patterns):
         write_text(manifest.parent / "ni_tb_params.svh", header)
 
 
+def selected_topology(topology_path, direct):
+    default = "dv/config/topology.yml" if direct else "dv/config/topology/mesh_4x4.yml"
+    return Path(topology_path or ROOT / default).resolve()
+
+
+def topology_package(topo):
+    import yaml
+    return emit_sam_pkg(yaml.safe_load(topo.read_text()))
+
+
 def prepare(out, profile_path=None, extra_catalog=None, direct=False, topology_path=None, patterns=True):
     import yaml
     profile_path = Path(profile_path or ROOT / "dv/config/profile.yml").resolve()
@@ -58,7 +68,7 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False, topology_p
     depth = profile["credit_depth"]
     if type(depth) is not int or depth < 2 or depth & (depth-1):
         raise ValueError("DAT input FIFO depth must be a power of two >= 2")
-    topo = Path(topology_path or ROOT / ("dv/config/topology.yml" if direct else "dv/config/topology/mesh_4x4.yml")).resolve()
+    topo = selected_topology(topology_path, direct)
     parameters = dict(
         INPUT_ID_WIDTH=pattern_id_width, OUTPUT_ID_WIDTH=noc_id_width,
         DEVICE_ID_WIDTH=device_id_width, CONTEXT_DEPTH=profile.get("context_depth", 32),
@@ -90,7 +100,7 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False, topology_p
     coverage = (ROOT / "dv/config/coverage.hier").read_text()
     if direct:
         coverage = "+module tb_top\n+tree tb_top.dut 0\n" + "".join("+tree tb_top.gen_node[%d].i_nsu 0\n" % n for n in range(4))
-    generated = {"topology_pkg.sv": emit_sam_pkg(yaml.safe_load(topo.read_text())),
+    generated = {"topology_pkg.sv": topology_package(topo),
         "ni_tb_params.svh": "".join("localparam int NI_{:<26} = {};\n".format(k,v) for k,v in parameters.items())}
     recipe = dict(commit=subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT).decode().strip(), profile=profile, profile_path=profile_path.relative_to(ROOT).as_posix(),
         profile_text=profile_path.read_text(), topology_path=topo.relative_to(ROOT).as_posix(),
@@ -176,6 +186,10 @@ if __name__ == "__main__":
     p.add_argument("--extra-catalog")
     p.add_argument("--topology")
     p.add_argument("--direct", action="store_true")
+    p.add_argument("--emit-sam", metavar="FILE", help="Generate the simulation topology package at FILE")
     args=p.parse_args()
-    prepare(args.out, args.profile, args.extra_catalog, topology_path=args.topology, direct=args.direct)
-    print(args.out)
+    if args.emit_sam:
+        write_text(args.emit_sam, topology_package(selected_topology(args.topology, args.direct)))
+    else:
+        prepare(args.out, args.profile, args.extra_catalog, topology_path=args.topology, direct=args.direct)
+    print(args.emit_sam or args.out)

@@ -17,18 +17,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
     parser.add_argument("--profile")
+    parser.add_argument("--topology")
     parser.add_argument("--capacity", choices=("all", "per_id", "context", "rob"), default="all",
                         help="Prepare the full matrix by default, or only one capacity test")
     args = parser.parse_args()
     out = Path(args.out).resolve()
-    recipe = prepare(out, args.profile, patterns=False)
+    recipe = prepare(out, args.profile, topology_path=args.topology, patterns=False)
     import yaml
     profile = yaml.safe_load((out / "profile.yml").read_text())
     cases = {c["name"]: c for c in load_cases("base")}
     import yaml
     from address_map import pack_config
     _, entries = pack_config(yaml.safe_load((out / "topology.yml").read_text()))
-    num_destinations = sum(e["space"] == "memory" for e in entries)
+    num_destinations = sum(e["space"] == "memory" and e["port"] == 0 for e in entries)
     hardware = dict(response_fifo_depth=profile.get("io_fifo_depth", 32),
                     context_depth=profile.get("context_depth", 32))
     rows = []
