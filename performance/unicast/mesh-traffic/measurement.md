@@ -180,24 +180,25 @@ node 0 讀取相鄰 node 1 的單筆 8 B 資料。從來源 AR handshake 到來�
 
 ### Additional read latency at an injection setting of 0.5
 
-五種 pattern 的實際接受率相同。除 hop 數外，下表單位均為 cycles。
+比較每種 pattern 在 zero-load 與設定注入率 0.5 下的讀取延遲。每個條件各有 16 個來源、每個來源讀 32 筆，取 512 筆來源端 AR 至第一個 R handshake 的平均。表中三個 **Increase** 欄皆為兩次實測的差，單位為 cycles。
 
-| Pattern | Avg. one-way hops | Predicted zero-load latency | Measured zero-load latency | Loaded latency | Additional latency |
+| Pattern | Zero-load latency | Loaded latency | REQ mesh increase | RSP mesh increase | Total increase |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Neighbor | 1.5 | 14 | 14 | 14.000 | 0.000 |
-| Bit-complement | 4 | 19 | 19 | 25.494 | 6.494 |
-| Transpose | 2.5 | 16 | 16 | 25.234 | 9.234 |
-| Uniform | 2.3125 | 15.625 | 15.625 | 26.299 | 10.674 |
-| Shuffle | 2 | 15 | 15 | 16.912 | 1.912 |
+| Neighbor | 14.000 | 14.000 | 0.000 | 0.000 | 0.000 |
+| Bit-complement | 19.000 | 25.494 | 5.068 | 1.426 | 6.494 |
+| Transpose | 16.000 | 25.234 | 6.713 | 2.521 | 9.234 |
+| Uniform | 15.625 | 26.299 | 9.611 | 1.063 | 10.674 |
+| Shuffle | 15.000 | 16.912 | 1.303 | 0.609 | 1.912 |
 
-以 Uniform 這一列為例：
+**Uniform 多出的 10.674 cycles 中，約 90% 發生在 REQ mesh。** 請求從來源 NI 送入 mesh 到目的 NI 收到，平均由 3.313 增至 12.924 cycles；回應沿 RSP mesh 返回則由 3.313 增至 4.375 cycles。五種 pattern 中，只有 Neighbor 的兩段都維持原延遲。[逐階段平均](tables/narrow-read-stages.csv)
 
-- **Avg. one-way hops**：由 16 組來源與目的地的座標算出各自的單程 hop 數，再取平均，得到 2.3125。
-- **Predicted zero-load latency**：用上一節的路徑延遲公式推算，$11+2\times2.3125=15.625$ cycles。
-- **Measured zero-load latency、Loaded latency**：兩次測試都從來源 AR handshake 量到第一個 R handshake，以 cycles 記錄每筆延遲。每次測試各有 16 個來源、每個來源 32 筆，因此這兩欄各自取 512 筆讀取的平均。全網一次只讀一筆時量得 **15.625** cycles，設定 0.5 時量得 **26.299** cycles。
-- **Additional latency**：用 Loaded latency 減去 Predicted zero-load latency。Uniform 平均多等 10.674 cycles。這是整筆讀取增加的時間；要定位等待發生在哪個 router 或記憶體介面，還需要逐段時間戳。
+以 Uniform 中 node 12 讀取 node 3 的位址 `0x302000c28` 為例，zero-load 時需 23 cycles，設定 0.5 時需 34 cycles。相同路徑的 REQ 由 7 增至 17 cycles，RSP 由 7 增至 8 cycles，合計多 11 cycles。[同位址的逐筆紀錄，CSV 第 3166 與 3670 行](tables/narrow-read-events.csv)
 
-Uniform 在無等待時比 Bit-complement 快 3.375 cycles；加入相同負載後，Uniform 的額外等待較長，平均讀取延遲反而高約 0.8 cycle。[完整 55 個量測點](tables/latency.csv)
+另查全數 5,120 筆讀取，每筆在來源端首次取樣到 ARVALID 的上升時脈邊緣，ARREADY 也已為 1；請求接受前等待皆為 0 cycles。[逐場景 AR stall 統計](tables/narrow-read-stages.csv)
+
+![Mean narrow-read latency by stage, zero-load and injection setting 0.5](figures/narrow-read-stages.png)
+
+圖中由左至右是來源 NI 送出請求、REQ mesh、目的 NI 交付請求、device 完成讀取、目的 NI 送出回應、RSP mesh、來源 NI 交付資料。四段 NI 平均各為 2 cycles，device 的 AR 至 R handshake 為 1 cycle。REQ 與 RSP 的時間分別量到封包離開 mesh，包含沿途 router 的轉送與等待。[逐筆 AXI 與 mesh handshake 時間戳](tables/narrow-read-events.csv) · [波形分析程式](provenance/narrow-read-stages.py) · [完整 55 個量測點](tables/latency.csv)
 
 ## Data sources
 
