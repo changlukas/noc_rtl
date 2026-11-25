@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 import address_map
+from address_map import native_param
 ROOT = Path(__file__).resolve().parents[2]
 
 def load_topology(name: str) -> dict:
@@ -18,18 +19,6 @@ def load_topology(name: str) -> dict:
 def num_vc() -> int:
     """DAT class count from the native unit configuration."""
     return native_param("noc_unit_params_pkg", "DAT_NUM_VC")
-
-
-def native_param(package: str, name: str) -> int:
-    """Read a literal integer or bit parameter from an existing native package."""
-    import re
-    source = (ROOT / "define" / (package + ".sv")).read_text(encoding="utf-8")
-    value = re.search(r"\blocalparam\s+(?:int|bit)\s+" + re.escape(name)
-                      + r"\s*=\s*(\d+|1'b[01])\s*;", source)
-    if value is None:
-        raise ValueError("Expected a native integer or bit parameter: " + package + "::" + name)
-    literal = value.group(1)
-    return int(literal[-1]) if "'b" in literal else int(literal)
 
 
 def _check_flit_capacity(cfg: dict, path) -> None:
@@ -374,6 +363,7 @@ def _emit_endpoint_declarations(topo):
 
 def emit_sam_pkg(topo):
     """SAM-only package for block co-simulation without mesh/tile crossbars."""
+    _check_flit_capacity(topo, topo.get("name", "topology"))
     return "\n".join([
         "`timescale 1ns/1ps",
         "// Generated from the co-simulation topology; do not edit.",
@@ -464,7 +454,7 @@ def emit_topology_pkg(topo: dict) -> str:
     w(f"`endif  // {guard}")
     return "\n".join(lines) + "\n"
 
-X_WIDTH = native_param("noc_header_pkg", "X_WIDTH")
+X_WIDTH = address_map.X_WIDTH
 Y_WIDTH = native_param("noc_header_pkg", "Y_WIDTH")
 DST_ID_WIDTH = X_WIDTH + Y_WIDTH
 ADDR_WIDTH = native_param("noc_payload_pkg", "AXI_ADDR_WIDTH")

@@ -23,7 +23,22 @@ dst_id = (y << X_WIDTH) | x.
 pack_config() expands each range into ordered SAM rules.
 """
 
-X_WIDTH = 4  # Coordinate X width; matches noc_header_pkg::X_WIDTH.
+import re
+from pathlib import Path
+
+
+def native_param(package: str, name: str) -> int:
+    """Read a literal integer or bit parameter from an existing native package."""
+    source = (Path(__file__).resolve().parents[2] / "define" / (package + ".sv")).read_text(encoding="utf-8")
+    value = re.search(r"\blocalparam\s+(?:int|bit)\s+" + re.escape(name)
+                      + r"\s*=\s*(\d+|1'b[01])\s*;", source)
+    if value is None:
+        raise ValueError("Expected a native integer or bit parameter: " + package + "::" + name)
+    literal = value.group(1)
+    return int(literal[-1]) if "'b" in literal else int(literal)
+
+
+X_WIDTH = native_param("noc_header_pkg", "X_WIDTH")
 
 # Tile crossbar target order. Fixed, not inferred: it is what pins m0 to the
 # config memory and the last target to the data memory in user_node_endpoint.
