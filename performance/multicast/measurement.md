@@ -38,6 +38,19 @@
 
 最遠端收齊時間由 221 降至 122 cycles，縮短 44.8%。兩種方法都在最遠端收齊後再經 9 cycles 開始下一批，因此 prefetch interval 也縮短 99 cycles（43.0%）。[逐批量測](tables/row-feed.csv)
 
+### Memory read and recipient write bandwidth
+
+四輪分發中，每個 memory（node 16–19）各讀出 8 KiB，每個接收端（node 0–15）各寫入 8 KiB。兩種方法的資料量相同；hardware multicast 較早完成，讓每個裝置的平均有效頻寬提高至 1.76 倍。
+
+| Method | Transfer time [cycles] | Read BW per memory [B/cycle] | Write BW per recipient [B/cycle] | AXI bandwidth utilization per direction |
+| --- | ---: | ---: | ---: | ---: |
+| Direct unicast | 919 | 8.91 | 8.91 | 13.93% |
+| Hardware multicast | 523 | 15.66 | 15.66 | 24.47% |
+
+所有裝置共用同一計時窗口，從來源端首筆 AR handshake（8.5 ns）到最後一筆 B handshake（direct unicast 為 927.5 ns，hardware multicast 為 531.5 ns）。利用率以各裝置單方向的 AXI 峰值 64 B/cycle 為分母；兩種模式均觀察到連續 cycles 接受 64 B 的資料。[Direct unicast 交易](results/feed-unicast-ddr/tables/transactions.csv) · [Hardware multicast 交易](results/feed-multicast-ddr/tables/transactions.csv)
+
+![Effective memory read and recipient write bandwidth](figures/device-bandwidth.svg)
+
 ### Estimated compute utilization
 
 假設使用 double buffering，計算當批時可同時預取下一批。若每批計算需 131 cycles，direct unicast 每輪仍需等資料 99 cycles，推估 compute utilization 為 57.0%；hardware multicast 可在計算結束時接上下一批，推估為 100%。
@@ -112,7 +125,6 @@ Pipelined sequential forwarding（seq）把訊息切成數批，讓不同節點�
 
 以最佳 seq 為基準，硬體加速比為 1.18–2.67×。論文 Fig. 5(a) 採用不同的軟體基準與 DMA 計時邊界。Fig. 5(c) 的 5.3× 是 4×4 全網 broadcast 的幾何平均。[Collective NoC §4.2.2](https://arxiv.org/html/2603.26438v2#S4.SS2.SSS2)
 
-全網 16 個節點接收同一份訊息的 broadcast 待測。
 
 ## 3. References and reproducibility
 
