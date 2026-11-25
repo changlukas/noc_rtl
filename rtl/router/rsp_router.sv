@@ -26,11 +26,8 @@ module rsp_router #(
     wire [4:0][noc_payload_pkg::B_BRESP_WIDTH-1:0] bresp;
     wire [4:0] full, empty, pop, last, collect_b;
     wire [4:0][4:0] route_mask, merge_mask, branch_valid, branch_ready;
-    logic [4:0][4:0] route_reg = '0, route_next;
-    logic [4:0] active_reg = '0, active_next;
     assign RXRSPRDY = ~full;
     for (genvar i = 0; i < 5; i++) begin : gen_input
-        wire [4:0] computed_route;
         assign header[i] = head[i].header;
         assign bid[i] = head[i].payload[noc_payload_pkg::B_BID_LSB +: noc_payload_pkg::B_BID_WIDTH];
         assign bresp[i] = head[i].payload[noc_payload_pkg::B_BRESP_LSB +: noc_payload_pkg::B_BRESP_WIDTH];
@@ -38,7 +35,6 @@ module rsp_router #(
         assign collect_b[i] = head[i].header.coll_op == noc_header_pkg::COLL_MULTICAST &&
             (head[i].header.packet_type == noc_header_pkg::PKT_NARROW_B ||
              head[i].header.packet_type == noc_header_pkg::PKT_DATA_B);
-        assign route_mask[i] = active_reg[i] ? route_reg[i] : computed_route;
         cc_fifo #(
             .Depth          (FIFO_DEPTH),
             .FallThrough    (1'b0),
@@ -64,7 +60,7 @@ module rsp_router #(
         ) i_route (
             .header_i       (head[i].header),
             .multicast_i    (1'b0),
-            .route_mask_o   (computed_route),
+            .route_mask_o   (route_mask[i]),
             .merge_mask_o   (merge_mask[i])
         );
         assign branch_valid[i] = {5{!empty[i]}} & route_mask[i];
@@ -79,25 +75,6 @@ module rsp_router #(
             RXRSPVLD[i] |-> RXRSP[i].header.flit_tail)
             else $fatal(1, "Each RSP flit must end its packet (instance %m)");
         // synthesis translate_on
-    end
-    always_comb begin
-        route_next = route_reg;
-        active_next = active_reg;
-        for (int i = 0; i < 5; i++) begin
-            if (pop[i]) begin
-                active_next[i] = !last[i];
-                route_next[i] = route_mask[i];
-            end
-        end
-    end
-    always @(posedge clk_i or negedge rst_n_i) begin
-        if (~rst_n_i) begin
-            active_reg <= '0;
-            route_reg <= '0;
-        end else begin
-            active_reg <= active_next;
-            route_reg <= route_next;
-        end
     end
     for (genvar o = 0; o < 5; o++) begin : gen_output
         wire [4:0] merge_valid, merge_ready;
