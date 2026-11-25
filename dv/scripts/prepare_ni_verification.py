@@ -100,7 +100,7 @@ def main():
                     destination_order=[(i + destination) % num_destinations for i in range(num_destinations)]), mode)
         for destination in range(1):
             add("P20", dict(name="data_read_write", mode="data", count=128,
-                burst_beats=8, ids="multiple", concurrent_rw=True,
+                burst_beats=1, ids="multiple", concurrent_rw=True,
                 source_response_hold_cycles=4096, response_backpressure=True,
                 response_random_delay=True,
                 destination_order=[(i + destination) % num_destinations for i in range(num_destinations)]), "data")
