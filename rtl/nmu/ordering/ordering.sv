@@ -181,7 +181,7 @@ module nmu_ordering #(
              (!aw_reorder || b_free_cnt != 0));
         ar_can_accept = ar_hold_reg ||
             (rd_outstanding_cnt_reg[ID_IDX_W'(s_ar_i.axi.arid)] < OUTSTANDING_CNT_W'(MAX_OUTSTANDING_PER_ID) &&
-             (R_ROB_EN ? (!ar_reorder || r_free_cnt >= (TAG_W+1)'(ar_beat_cnt)) :
+             (R_ROB_EN ? (!ar_reorder || r_free_cnt > s_ar_i.axi.arlen) :
               !ar_reorder_required));
     end
 
@@ -257,7 +257,7 @@ module nmu_ordering #(
     assign r_storage_rd_addr = r_sel_valid ?
         TAG_W'(int'(rd_order_head[ID_IDX_W'(r_sel_id)].base) + int'(r_retire_offset_reg[ID_IDX_W'(r_sel_id)])) : '0;
     assign r_storage_free_addr = TAG_W'(int'(rd_order_head[ID_IDX_W'(r_retire_id)].base) + int'(r_retire_offset_reg[ID_IDX_W'(r_retire_id)]));
-    // NarrowR payload contains one 64-bit lane; position it using the issuing AR.
+    // NarrowR payload contains one narrow lane; position it using the issuing AR.
     // Context is selected only at retirement, after any out-of-order buffering.
     always_comb begin
         retire_r         = r_sel_valid ? r_storage_rd_data : s_r_i.axi;
@@ -272,10 +272,11 @@ module nmu_ordering #(
                 retire_byte_addr = (int'(retire_context.addr) & ~(retire_span-1)) |
                     (retire_byte_addr & (retire_span-1));
         end
-        retire_lane     = (retire_byte_addr % (noc_payload_pkg::DATA_WIDTH/8)) / 8;
+        retire_lane     = (retire_byte_addr % noc_payload_pkg::WSTRB_WIDTH) / noc_payload_pkg::NARROW_WSTRB_WIDTH;
         retire_response = retire_r;
         if (retire_context.packet_type == noc_header_pkg::PKT_NARROW_AR)
-            retire_response.rdata = noc_payload_pkg::DATA_WIDTH'(retire_r.rdata[63:0]) << (retire_lane*64);
+            retire_response.rdata = noc_payload_pkg::DATA_WIDTH'(retire_r.rdata[noc_payload_pkg::NARROW_DATA_WIDTH-1:0])
+                << (retire_lane * noc_payload_pkg::NARROW_DATA_WIDTH);
     end
     assign s_r_ready_o = (r_direct ? m_r_ready_i :
         (R_ROB_EN && s_r_i.packet_info.ordering_req && r_storage_wr_ready));
