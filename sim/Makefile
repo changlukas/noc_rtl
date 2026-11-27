@@ -109,8 +109,10 @@ perf_latency_plot:
 gen_sam:
 	PYTHONPATH="$(ROOT)/build/perf_plot_deps/site-packages$${PYTHONPATH:+:$$PYTHONPATH}" python3 -B "$(SCRIPTS)/prepare.py" --emit-sam "$(ROOT)/build/topology.sv" $(TOPOLOGY_ARG) $(if $(filter 1,$(DIRECT_LINK)),--direct,)
 
-prepare:
+.PHONY: prepare-single
+prepare-single:
 	python3 -B "$(SCRIPTS)/prepare.py" --out "$(SINGLE)" $(TOPOLOGY_ARG) --profile "$(PROFILE)" $(if $(filter 1,$(DIRECT_LINK)),--direct,) $(if $(filter multicast,$(SCENARIO)),--extra-catalog performance_multicast,)
+prepare: prepare-single
 	$(if $(filter 1,$(DIRECT_LINK)),@true,python3 -B "$(SCRIPTS)/prepare_ni_verification.py" --out "$(ROOT)/build/regression/$$(date -u +%Y%m%dT%H%M%S_%N)" --profile "$(PROFILE)" $(TOPOLOGY_ARG))
 sync:
 	python3 -B "$(SCRIPTS)/sync_nmu_workstation.py" --source "$(ROOT)" --remote-dir "$(REMOTE_ROOT)"
