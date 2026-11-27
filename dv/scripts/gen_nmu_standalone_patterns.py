@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 import yaml
 from address_map import pack_config
-from gen_test_patterns import _ax_fields, encode_write_beats
+from axi_file_format import _ax_fields, encode_write_beats
 
 
 def generate(out, topology, id_width):
