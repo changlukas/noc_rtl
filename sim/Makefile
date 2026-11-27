@@ -66,7 +66,10 @@ else ifneq ($(RTL_ROUTER),1)
 $(error RTL router mesh is required when DIRECT_LINK is disabled)
 endif
 ifneq ($(filter _compile _sim _print,$(MAKECMDGOALS)),)
-SIM := $(shell python3 -B "$(SCRIPTS)/build_key.py" --recipe "$(RECIPE)" --flags="$(VCS) $(VCS_FLAGS) $(WAVE_FLAGS)" --coverage)
+SIM := $(shell python3 -B "$(SCRIPTS)/build_key.py" --recipe "$(RECIPE)" --profile "$(abspath $(PROFILE))" $(TOPOLOGY_ARG) --flags="$(VCS) $(VCS_FLAGS) $(WAVE_FLAGS)" --coverage)
+ifeq ($(strip $(SIM)),)
+$(error Unable to select the prepared simulation build)
+endif
 endif
 CAMPAIGN = $(shell python3 -c 'import json; print("$(ROOT)/"+json.load(open("$(ROOT)/build/regression/latest.json"))["campaign"])')
 .PHONY: perf_multicast_plot perf_multicast_report perf_boundary_plot perf_cross_plot perf_interference_plot help perf perf_plot perf_latency_plot perf_tile_plot prepare sync compile run sim run_wave view regress verification report list clean print-build-dirs _compile _sim _view _verification _report

@@ -21,12 +21,15 @@ def write(path, data):
         path.write_bytes(data)
 
 
-def materialize(root, recipe_path, flags, coverage=False):
+def materialize(root, recipe_path, flags, coverage=False, profile=None, topology=None):
     root = Path(root).resolve()
     recipe_path = Path(recipe_path).resolve()
     recipe = json.loads(recipe_path.read_text())
-    for key in ('profile', 'topology'):
-        if normalized(root / recipe[key+'_path']).decode() != recipe[key+'_text']:
+    for key, requested in (('profile', profile), ('topology', topology)):
+        prepared = root / recipe[key+'_path']
+        if requested is not None and Path(requested).resolve() != prepared.resolve():
+            raise ValueError('Requested {} {} differs from prepared {}; run make build with the requested configuration'.format(key, requested, prepared))
+        if normalized(prepared).decode() != recipe[key+'_text']:
             raise ValueError(key+' changed; run make prepare again')
     generated = dict(recipe['generated'])
     if coverage:
@@ -133,6 +136,8 @@ def campaign_binary(campaign):
 if __name__ == '__main__':
     p=argparse.ArgumentParser()
     p.add_argument('--recipe', type=Path)
+    p.add_argument('--profile', type=Path)
+    p.add_argument('--topology', type=Path)
     p.add_argument('--flags', default='')
     p.add_argument('--coverage', action='store_true')
     p.add_argument('--complete', type=Path)
@@ -146,6 +151,6 @@ if __name__ == '__main__':
     elif a.campaign:
         print(str(campaign_binary(a.campaign))+'.vdb')
     elif a.recipe:
-        print(materialize(ROOT, a.recipe, a.flags, a.coverage))
+        print(materialize(ROOT, a.recipe, a.flags, a.coverage, a.profile, a.topology))
     else:
         p.error('recipe, complete, valid or campaign is required')

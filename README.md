@@ -3,6 +3,62 @@
 NMU and NSU RTL with AXI4 interfaces. The existing AXI UVM integration testbench
 supports direct NMU-to-NSU links and an RTL router mesh.
 
+## System simulation
+
+From the checkout root on the VCS workstation, run `make test` for the seven system checks previously verified under #23.
+
+| Root target | Inputs and result | Reference |
+|---|---|---|
+| `make build` | Prepare the selected profile, topology and single-run inputs, then compile and elaborate the system testbench. Produces the active `build/compile/current/simv`. | [FlooNoC build](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L185-L192) |
+| `make compile` | Use the prepared recipe. Compile when sources or tool flags have changed; reuse the matching binary otherwise. | [FlooNoC compile-vcs](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L119-L128) |
+| `make sim CASE=ctrl_read_single` | Run one case using the matching compiled binary and prepared inputs. Set `WAVE=1` to save an FSDB or `WAVE=0` to skip waveform output. | [FlooNoC run-vcs-batch](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L128-L131) |
+| `make test` | Build once, then run single control/data reads and writes, reset recovery, same-ID reordering with backpressure, and reorder-buffer capacity reuse. The runner returns the pass/fail status to Make. | [Smoke test with a build prerequisite](https://github.com/verilator/verilator/blob/v5.028/Makefile.in#L147-L162) · [Project runner](dv/scripts/run.py) |
+| `make clean` | Remove the generated compile and regression directories. Published measurements live under `performance/`. | [FlooNoC clean-vcs](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L133-L141) · [Project cleanup paths](dv/scripts/clean.py) |
+
+The checked-in workstation defaults in [sim/environment.mk](sim/environment.mk) select VCS, Verdi and the compatible C++ compiler. Other installations can set VCS, VERDI_HOME and VCS_EXTRA in the environment or on the Make command line.
+
+The root targets delegate to [sim/Makefile](sim/Makefile). `make check` runs the existing Python checks. For a coverage campaign use `make -C sim prepare` followed by `make -C sim verification JOBS=3`.
+
+## Repository tree
+
+```text
+Makefile                      User commands
+define/                       Shared packet, payload, parameter and SAM packages
+rtl/{common,nmu,nsu,ni,router}/   Design blocks and adjacent block-level checks
+dv/config/                    Topologies, profiles and case catalogs
+dv/{tb,env,tests,checkers,coverage}/   System testbench and verification sources
+dv/{filelists,scripts,waves}/  Compile order, tools and waveform groups
+sim/                          System Makefile, workstation settings and usage
+deps/                         Pinned dependency sources and licenses
+spec.pdf, spec.pptx           Design specification (PDF and editable slides)
+docs/                         Verification plan, rules and results
+upload-manifest.json          Historical workstation handoff record
+performance/                  Published measurements grouped by workload
+build/{compile,regression}/   Generated binaries, stimulus, runs and coverage
+```
+
+The system filelist selects production RTL explicitly. Block-level checks beside their design are invoked by their own scripts; shared UVM resources live in `dv/`. Comparable RTL and verification boundaries are documented in [OpenTitan directory guide](https://opentitan.org/book/doc/contributing/directory_structure.html) and [FlooNoC test source group](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Bender.yml#L55-L78).
+
+For a new measurement series, use the following layout inside its workload directory. The report, plots and comparison tables belong to the series; each run keeps the inputs and evidence needed to reproduce its point. Create directories when there is data to store. [Measurement handoff, section 7](https://github.com/changlukas/noc_rtl/issues/26)
+
+```text
+performance/<workload>/
+  measurement.md
+  figures/                    Published PNG/SVG
+  tables/                     Cross-run CSV/JSON
+  provenance/                 Analysis scripts, versions and references
+  results/<campaign>/
+    campaign.json             Command, configuration and run identity
+    config/                   Resolved inputs and settings
+    provenance/               Source and tool records
+    runs/<run_id>/            Stimulus, log, waveform and run record
+    validation.json           Checker, drain and calibration results
+    tables/                   Transaction records and summary
+    figures/                  Run-specific plots, when produced
+```
+
+Existing paths are used by the plotting scripts and waveform links. Boundary and multicast use `results/<campaign>/`, interference uses `results/cross/<campaign>/`, mesh traffic uses `unicast/mesh-traffic/runs/<campaign>/`, and `unicast/tile-to-tile/` holds a single campaign directly. Git contains the reports, published figures, summary tables and analysis records. The workstation retains the complete campaigns under `/home/mingwei/noc_rtl/performance/` with the same relative paths, including waveforms, transaction logs and validation records. Open run-level links and regenerate plots that read those files from that checkout. Use `make clean` for build cleanup; `git clean -fdx` can delete ignored campaign evidence. [Simulation and measurement commands](sim/README.md)
+
 ## DAT link interface
 
 NMU exposes scalar `TXREQ`, `RXRSP`, `TXDAT` and `RXDAT` streams, each with
@@ -47,17 +103,6 @@ remain in the existing NMU ordering and write-context blocks.
 The default read RoB stores 128 entries of 512-bit raw RDATA (8 KiB);
 metadata is additional storage. Inferred arrays are not SRAM macro signoff.
 
-## Source layout
-
-| Directory | Content |
-|---|---|
-| `rtl/` | NMU, NSU and shared RTL |
-| `deps/` | Vendored dependencies, licenses and pinned revisions |
-| `dv/` | Testbench, UVM environment, coverage, configuration and scripts |
-| `sim/` | Single integration simulation entry |
-| `docs/` | Verification plan, guidelines and accepted results |
-| `build/` | Generated inputs, compiled binaries, logs and coverage. Not source |
-
 ## Requirements
 
 Preparation and checks: Linux, Python 3.10 or later, GNU Make and the packages in
@@ -86,29 +131,4 @@ and [results](docs/verification-integration-results.md) for remaining scope.
 
 Dependencies retain their own licenses. See `LICENSE` and `deps/revisions.json`.
 
-## File ownership and cleanup
-
-| Files | Required use |
-|---|---|
-| `rtl/` production modules | NMU/NSU design sources |
-| `rtl/**/tb_*.sv`, fixtures and `test_*.sh` | Focused RTL checks invoked by the adjacent test script |
-| `dv/tb/`, `dv/env/`, `dv/tests/`, `dv/checkers/`, `dv/coverage/` | UVM agents, checkers, coverage and integration TB |
-| `dv/scripts/`, `dv/tb/standalone/` | Preparation, execution, report export, cleanup and focused tests |
-| `dv/config/` | Stimulus definitions, hardware profiles and topology |
-| `dv/filelists/`, `dv/waves/` | Compile order and waveform groups |
-| `deps/` | Required library sources, include files, focused VIP test inputs and licenses |
-| `docs/` | Verification rules, plan and accepted evidence |
-
-Dependency distributions omit unused upstream CI, examples and self-tests. Pinned
-revisions and subset notes are in `deps/revisions.json`.
-
-From the repository root:
-
-```sh
-make clean
-```
-
-This removes only `build/compile/` and `build/regression/`, including their
-inputs, binaries, logs, waves and coverage. Retained historical outputs elsewhere
-and canonical sources/settings are untouched. Save required evidence before cleaning.
-The workstation uses the same `make clean` command from its `sim/` directory.
+Pinned dependency revisions and subset notes are in [deps/revisions.json](deps/revisions.json).

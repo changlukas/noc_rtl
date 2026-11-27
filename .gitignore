@@ -1,4 +1,11 @@
 /build/
+.dide/
+/fsdb2vcdLog/
+/fsdbextractLog/
+/nWaveLog/
+/sim/fsdb2vcdLog/
+/sim/fsdbextractLog/
+/sim/nWaveLog/
 **/output/
 **/__pycache__/
 **/.pytest_cache/
