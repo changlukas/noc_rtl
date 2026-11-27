@@ -1,4 +1,28 @@
 #!/usr/bin/env python3
+# Traffic pattern algorithms adapted from BookSim 2 src/traffic.cpp:
+# https://github.com/booksim/booksim2/blob/28f43299f1706a3160ffac721ca461d74eb6e618/src/traffic.cpp
+# Copyright (c) 2007-2015, Trustees of The Leland Stanford Junior University
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice, this
+# list of conditions and the following disclaimer in the documentation and/or
+# other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """Emit per-node AXI text stimulus (write.txt/read.txt) for a traffic pattern.
 
 Usage:
@@ -17,34 +41,31 @@ Writes <out>/node<i>/{write,read}.txt for each node i. Each transaction:
 
 Patterns
 --------
-neighbor  (ported from booksim2 NeighborTrafficPattern::dest, src/traffic.cpp:316)
+neighbor
     Per dimension: digit += 1 mod k.  For (x,y): dst = ((x+1)%x_dim, (y+1)%y_dim).
     Deterministic bijection; non-self when dim > 1.
 
-uniform_random  (ported from booksim2 UniformRandomTrafficPattern::dest,
-                 src/traffic.cpp:386-390)
+uniform_random
     Each packet independently draws a uniformly random destination from [0, nodes-1].
-    Self-traffic is PERMITTED by default (booksim-faithful); --exclude-self opts out.
+    Self-traffic is allowed unless --exclude-self is set.
     Uses random.Random(seed) for reproducibility.
 
-transpose  (ported from booksim2 TransposeTrafficPattern::dest, src/traffic.cpp:244-250)
+transpose
     Bit-half-swap of the node id.  On a square k×k mesh (k a power of two) this is
     equivalent to (x,y)→(y,x).  Requires x_dim == y_dim and x_dim a power of two.
-    Diagonal nodes (x==y) are self-traffic; permitted by default (booksim-faithful).
+    Diagonal nodes map to themselves.
     Each node's dst is fixed; all transactions_per_node pairs target the same dst.
 
-hotspot  (ported from booksim2 HotSpotTrafficPattern::dest, src/traffic.cpp:506-526)
+hotspot
     Directs traffic to one or more hotspot nodes (--hotspot <linear-node-ids>).
     Single hotspot: all packets go to that node.
     Multiple hotspots: weighted selection by --hotspot-rates (default: equal weight).
     Uses random.Random(seed) for reproducibility.
     --hotspot-peripherals names the peripheral endpoints as the hotspot set
     instead of node ids, which is the many-to-one shape a memory controller or
-    host bridge sees. Same booksim selection, --hotspot-rates included; only the
-    target set differs -- see peripheral_hotspot_dsts.
+    host bridge sees. The same --hotspot-rates apply.
 
-multicast  (S4 collectives; stimulus intent ported from FlooNoC
-            tb_floo_rob_multicast.sv:30-49,189-195,379-395 masked-region writes)
+multicast
     Source nodes issue multicast writes whose AWUSER carries the address mask
     (row / column / 2x2-submesh member sets, --mcast-shape, ONE shape per run),
     then read back every member replica; non-source nodes carry unicast filler
@@ -77,15 +98,7 @@ alloc_unique_offset(dst_node, src_node, seq, base_offset, n_nodes, region_bytes,
     (stride = max(_SLOT_STRIDE, burst_footprint)), a tight upper bound on the
     allocator's max offset + reserved, so the ValueError never fires in practice.
 
-Constants
----------
-X_WIDTH = 4  -- mirrors c_model addr_trans.hpp / ni_flit_constants.h
-DST_ID_WIDTH = 8  -- mirrors ni_flit_constants.h header::DST_ID_WIDTH (X_WIDTH + Y_WIDTH)
-
-Per-tile base address = base(dst_id), expanded from the config file's
-address_map.tiles list (see address_map.py). Mirrors c_model SamTable::packed's
-base formula (addr_trans.hpp): base = space_base[space] + ((y << x_bits) | x) *
-slot[space].
+Per-tile base addresses come from address_map.pack_config().
 """
 
 import argparse
@@ -100,9 +113,6 @@ import yaml
 import address_map
 from gen_tb_top import native_param
 
-# Must mirror c_model addr_trans.hpp SamTable::packed:
-#   dst_id = (y << X_WIDTH) | x
-#   base = space_base[space] + ((y << x_bits) | x) * slot[space]
 X_WIDTH = native_param("noc_header_pkg", "X_WIDTH")
 Y_WIDTH = native_param("noc_header_pkg", "Y_WIDTH")
 DST_ID_WIDTH = X_WIDTH + Y_WIDTH
@@ -139,18 +149,9 @@ def emit_file_master_node(out_dir, src_idx, dst_bases, n_nodes,
     coordinate no longer names one destination and the base does.
 
     AXI ids: each initiator draws uniformly at random from a block of
-    `ids_per_initiator` ids starting at src_idx*ids_per_initiator (mod
-    num_axi_ids), mirroring axi_rand_master's `rand logic [IW-1:0] ax_id`
-    (deps/axi-0.39.7/src/axi_test.sv:233) over N_AXI_IDS = 2**IW (:715).
-    Ids repeat within an initiator (upstream UNIQUE_IDS = 1'b0, :710), so a run
-    carries both same-id pairs (must stay ordered) and cross-id pairs (may
-    reorder). Blocks overlap across initiators once
-    ids_per_initiator * n_nodes > num_axi_ids -- legal, because responses route
-    by the flit's src_id, not by AXI id (nsu/meta_buffer.hpp:21,
-    nsu/packetize.hpp:97,123), and upstream shares ids across nodes by
-    construction (each test node draws the full space). ids_per_initiator=1
-    gives each tile one id (= src_idx) and draws no randomness. VC allocation is
-    id-agnostic (VC id only), so this changes concurrency, not VC spread.
+    ids_per_initiator IDs starting at src_idx * ids_per_initiator modulo num_axi_ids.
+    Repeated IDs exercise same-ID ordering. Blocks may overlap across initiators
+    because the response also identifies its source.
 
     extra: optional (write_lines, read_lines) tuple appended after the regular
     dst_bases transactions -- e.g. one narrow-class (config-space) probe for a
@@ -331,39 +332,21 @@ def narrow_config_probe_lines(axid, config_base, data_width):
 # ---------------------------------------------------------------------------
 
 def coord_id(x, y):
-    """Coordinate-encoded node id = (y << X_WIDTH) | x.  Mirrors addr_trans.xy_route."""
+    """Pack the x and y fields into the destination ID."""
     return (y << X_WIDTH) | x
 
 
 def neighbor_dst(x, y, x_dim, y_dim):
-    """Booksim2 NeighborTrafficPattern::dest (traffic.cpp:316): +1 per dimension, wrap.
-
-    Returns (dst_x, dst_y).  Deterministic bijection; non-self when x_dim > 1 and
-    y_dim > 1.
-    """
+    """Advance both coordinates by one, wrapping at each dimension."""
     return (x + 1) % x_dim, (y + 1) % y_dim
 
 
 def transpose_dst(x, y):
-    """Booksim2 TransposeTrafficPattern::dest (traffic.cpp:244): bit-half-swap of node id.
-
-    On a square k×k mesh (k a power of two), booksim's row-major node id y*k+x has
-    equal-width x and y fields; the bit-half-swap is equivalent to swapping the two
-    coordinate fields, giving dst = (y, x).
-
-    Caller MUST have already validated that x_dim == y_dim and x_dim is a power of two
-    (see _check_transpose_guard).  Diagonal nodes (x==y) map to themselves, which is
-    booksim-faithful (booksim does NOT special-case self-traffic).
-
-    Returns (dst_x, dst_y).
-    """
+    """Swap coordinates on a square power-of-two mesh. Diagonal nodes target themselves."""
     return y, x
 
 
-# Bit and digit permutations operate on booksim's linear node id, which is
-# row-major (idx = y * x_dim + x) -- the same index this generator's node list
-# already carries. _linear / _coords are the two conversions, spelled out once so
-# each pattern below reads like its source.
+# Bit permutations use a row-major node index.
 def _linear(x, y, x_dim):
     return y * x_dim + x
 
@@ -373,28 +356,13 @@ def _coords(idx, x_dim):
 
 
 def bit_complement_dst(x, y, x_dim, y_dim):
-    """Booksim2 BitCompTrafficPattern::dest (traffic.cpp:220-225): ~src, masked.
-
-    Every node pairs with the one diagonally opposite, so every packet crosses
-    the full diameter in both dimensions. Table 7.2 of On-Chip Networks 2e puts
-    it at 0.25 of capacity on an 8x8 with XY routing.
-
-    Caller MUST have validated the node count is a power of two
-    (_check_bit_permutation_guard).
-    """
+    """Complement the linear node ID within the mesh address width."""
     mask = x_dim * y_dim - 1
     return _coords(~_linear(x, y, x_dim) & mask, x_dim)
 
 
 def bit_reverse_dst(x, y, x_dim, y_dim):
-    """Booksim2 BitRevTrafficPattern::dest (traffic.cpp:257-266): reverse the id bits.
-
-    The tightest of the standard permutations at 0.14 on an 8x8, alongside
-    transpose -- it concentrates traffic on the few nodes whose id is its own
-    reverse.
-
-    Caller MUST have validated the node count is a power of two.
-    """
+    """Reverse the bits of the linear node ID on a power-of-two mesh."""
     nodes = x_dim * y_dim
     src = _linear(x, y, x_dim)
     result = 0
@@ -407,26 +375,14 @@ def bit_reverse_dst(x, y, x_dim, y_dim):
 
 
 def shuffle_dst(x, y, x_dim, y_dim):
-    """Booksim2 ShuffleTrafficPattern::dest (traffic.cpp:275-280): rotate the id left.
-
-    0.25 on an 8x8. FlooNoC's gen_jobs.py writes the same permutation as a
-    halves split (util/gen_jobs.py, traffic_type "shuffle").
-
-    Caller MUST have validated the node count is a power of two.
-    """
+    """Rotate the linear node ID left by one bit on a power-of-two mesh."""
     nodes = x_dim * y_dim
     shifted = _linear(x, y, x_dim) << 1
     return _coords((shifted & (nodes - 1)) | bool(shifted & nodes), x_dim)
 
 
 def bit_rotation_dst(x, y, x_dim, y_dim):
-    """FlooNoC util/gen_jobs.py traffic_type "bit_rotation": rotate the id right.
-
-    The inverse of shuffle, and the one member of the standard permutation set
-    booksim2 does not carry -- hence the different source.
-
-    Caller MUST have validated the node count is a power of two.
-    """
+    """Rotate the linear node ID right by one bit on a power-of-two mesh."""
     nodes = x_dim * y_dim
     src = _linear(x, y, x_dim)
     dst = src // 2 if src % 2 == 0 else src // 2 + nodes // 2
@@ -434,35 +390,14 @@ def bit_rotation_dst(x, y, x_dim, y_dim):
 
 
 def tornado_dst(x, y, x_dim, y_dim):
-    """Booksim2 TornadoTrafficPattern::dest (traffic.cpp:295-308) at xr=1.
-
-    Each coordinate advances by ceil(k/2) - 1, so every packet travels just under
-    half the ring in both dimensions. This is the middle of the band the set
-    covers -- 0.33 on an 8x8 -- which nothing else in the suite occupies.
-
-    Caller MUST have validated a uniform radix (_check_tornado_guard); a mesh
-    whose dimensions differ has no single k.
-
-    Booksim shifts every dimension (its dest() loops over _n); FlooNoC's
-    gen_jobs.py shifts X only. This follows booksim, like the rest of the suite.
-    """
+    """Advance both coordinates by ceil(k/2) - 1 on a square mesh."""
     k = x_dim
     shift = (k + 1) // 2 - 1
     return (x + shift) % k, (y + shift) % k
 
 
 def uniform_random_dsts(src_node, n_nodes, n_txn, rng, exclude_self=False):
-    """Booksim2 UniformRandomTrafficPattern::dest (traffic.cpp:386-390): uniform random node.
-
-    Returns a list of n_txn destination linear node indices.  Each packet draws its
-    own dst independently (per-packet random, not one dst per node).
-
-    Self-traffic policy (booksim-faithful by default):
-      - booksim `RandomInt(nodes-1)` returns a uniform node in [0, nodes-1] and
-        PERMITS self (no source exclusion).  This is the default.
-      - pass exclude_self=True to re-sample until dst != src (clean NoC-only
-        measurement; opt-in via --exclude-self).
-    """
+    """Draw each destination independently, including the source unless excluded."""
     dsts = []
     for _ in range(n_txn):
         while True:
@@ -475,11 +410,6 @@ def uniform_random_dsts(src_node, n_nodes, n_txn, rng, exclude_self=False):
 
 def all_to_all_dsts(src_node, n_nodes, n_txn):
     """Every node walks every other node in turn (MPI_Alltoall's spatial shape).
-
-    Booksim2 and FlooNoC both lack this one: their sets are permutations, which
-    give a node ONE destination, plus uniform/hotspot, which draw randomly. This
-    is the deterministic complement -- the destination changes on every
-    transaction by construction.
 
     That is the point of it. The NMU allocates a reorder-buffer slot only when a
     same-id transaction goes somewhere other than the previous one; a repeat
@@ -611,22 +541,7 @@ def many_to_many_dsts(src_node, x_dim, y_dim, n_txn):
 
 
 def hotspot_dsts(src_node, n_nodes, n_txn, rng, hotspots, rates=None, exclude_self=False):
-    """Booksim2 HotSpotTrafficPattern::dest (traffic.cpp:506-526): weighted hotspot selection.
-
-    hotspots: list of linear node indices (0..n_nodes-1).
-    rates:    weights parallel to hotspots (default: all 1, i.e. equal weight).
-              Must be positive integers.
-
-    Single hotspot: all packets go to that node (booksim fast path, traffic.cpp:510;
-    returns the hotspot UNCONDITIONALLY -- even when src == hotspot).
-    Multiple hotspots: weighted cumulative selection (traffic.cpp:514-525); booksim
-    applies NO source exclusion.
-
-    Self-traffic policy (booksim-faithful by default): permit self.  Pass
-    exclude_self=True (--exclude-self) to re-sample until dst != src; if no non-self
-    dst exists (e.g. single hotspot == src) the selection falls back to the
-    booksim-faithful value rather than raising.
-    """
+    """Draw weighted hotspots. A source-only hotspot set allows self-traffic even with exclude_self."""
     if not hotspots:
         raise ValueError("hotspot pattern requires at least one --hotspot node id")
     for h in hotspots:
@@ -641,22 +556,19 @@ def hotspot_dsts(src_node, n_nodes, n_txn, rng, hotspots, rates=None, exclude_se
         if r <= 0:
             raise ValueError(f"hotspot rate {r} must be positive")
 
-    max_val = sum(rates) - 1  # mirrors booksim _max_val accumulation
-    # True only if every hotspot equals src -- then exclude_self cannot succeed and we
-    # fall back to the booksim-faithful value (no raise; booksim never raises).
+    max_val = sum(rates) - 1
+    # When the source is the only eligible hotspot, allow self-traffic.
     all_hotspots_are_self = all(h == src_node for h in hotspots)
 
     def _select():
         if len(hotspots) == 1:
-            # booksim fast path: single hotspot -> return it directly (traffic.cpp:510)
             return hotspots[0]
-        # booksim weighted cumulative select (traffic.cpp:514-525)
         pct = rng.randint(0, max_val)
         for i in range(len(hotspots) - 1):
             if rates[i] > pct:
                 return hotspots[i]
             pct -= rates[i]
-        return hotspots[-1]  # mirrors booksim assert-backed fallthrough
+        return hotspots[-1]
 
     dsts = []
     for _ in range(n_txn):
@@ -740,7 +652,7 @@ def alloc_unique_offset(dst_node, src_node, seq, base_offset, n_nodes,
 # outputs, which R1 forbids for concurrently in-flight multicasts.
 #
 # Within one source every transaction shares ONE AXI id, so the NMU's R2 gate
-# (one outstanding collective per (NMU, id); nmu/rob.hpp) serializes that
+# (one outstanding collective per source and ID) serializes that
 # source's own multicasts on the merged B -- the "issuer waits for the merged
 # B" arm of R1, enforced by the DUT, not by file pacing.
 #
@@ -756,9 +668,7 @@ def alloc_unique_offset(dst_node, src_node, seq, base_offset, n_nodes,
 #                   a config topology one narrow 2-beat write+read probe into
 #                   the NEXT node's config tile -- cross-node narrow transit
 #                   traffic, so the CollectB join contends on RSP with responses
-#                   it does not own. (Every B and R beat is stamped flit_tail=1
-#                   at nsu/packetize.hpp:99,125, so RSP carries no multi-flit
-#                   worm and this probe cannot exercise a mid-worm hold.)
+#                   it does not own. Each RSP flit is a packet tail.
 #
 # Local-offset partitions inside a tile. The two spaces sit at different bases
 # in the map itself, so a config offset can never collide with a memory one;
@@ -1034,21 +944,7 @@ def write_traffic_meta(out_root, source_dsts=None, broadcast_groups=None, rounds
 
 
 def peripheral_hotspot_dsts(src_idx, peripherals, n_txn, rng, rates=None):
-    """The peripherals a tile targets under --hotspot-peripherals.
-
-    Booksim2 HotSpotTrafficPattern::dest (src/traffic.cpp:506-526) with the
-    peripheral endpoints as the target set instead of node ids: one peripheral
-    takes the single-hotspot fast path (:510) and every packet goes to it,
-    several draw from the weighted cumulative select (:514-525) that
-    --hotspot-rates parameterizes. A tile reaches every peripheral now, so the
-    target set needs no per-source filtering and booksim's own distribution is
-    what runs.
-
-    exclude_self does not apply: the source is a tile and the targets are
-    peripherals, so no draw can return the source.
-
-    Returns the peripheral records, in draw order.
-    """
+    """Select peripheral destinations in draw order using the configured hotspot weights."""
     picks = hotspot_dsts(src_idx, len(peripherals), n_txn, rng,
                          list(range(len(peripherals))), rates)
     return [peripherals[p] for p in picks]
@@ -1226,14 +1122,7 @@ def _check_mesh_capacity(x_dim, y_dim):
 
 
 def _check_transpose_guard(x_dim, y_dim):
-    """Fail fast if the mesh is unsuitable for transpose.
-
-    Booksim TransposeTrafficPattern::TransposeTrafficPattern (traffic.cpp:230-242)
-    requires the total node count to be an even power of two (it exit(-1)s otherwise).
-    For a square row-major mesh this additionally requires x_dim == y_dim and x_dim
-    to be a power of two.  Non-square meshes cannot satisfy the equal bit-field split
-    that makes the bit-half-swap equivalent to (x,y)→(y,x).
-    """
+    """Transpose swaps equal-width coordinate fields on a square power-of-two mesh."""
     if x_dim != y_dim:
         sys.exit(
             f"ERROR: transpose pattern requires a square mesh (x_dim == y_dim); "
@@ -1247,9 +1136,7 @@ def _check_transpose_guard(x_dim, y_dim):
 
 
 def _check_bit_permutation_guard(pattern, x_dim, y_dim):
-    """Booksim2 BitPermutationTrafficPattern (traffic.cpp:207-215) exit(-1)s unless
-    the node count is a power of two: a permutation of the id bits is only a
-    bijection over nodes when every bit pattern names a node."""
+    """Every permuted ID must identify a node."""
     nodes = x_dim * y_dim
     if nodes == 0 or (nodes & (nodes - 1)) != 0:
         sys.exit(
@@ -1259,9 +1146,7 @@ def _check_bit_permutation_guard(pattern, x_dim, y_dim):
 
 
 def _check_tornado_guard(x_dim, y_dim):
-    """Tornado shifts every coordinate by the same ceil(k/2)-1, so the mesh needs
-    one radix. Booksim states k as a parameter of a k-ary n-cube; a mesh whose
-    dimensions differ has no single k to state."""
+    """Both coordinates use the same radix for the tornado shift."""
     if x_dim != y_dim:
         sys.exit(
             f"ERROR: tornado pattern requires a uniform radix (x_dim == y_dim); "

@@ -35,9 +35,6 @@ def _check_flit_capacity(cfg: dict, path) -> None:
         errors.append(f"x_dim={x_dim} < 2 (mesh dimension minimum is 2; 1x1/1xN meshes are illegal)")
     if y_dim < 2:
         errors.append(f"y_dim={y_dim} < 2 (mesh dimension minimum is 2; 1x1/1xN meshes are illegal)")
-    # Mirrors sam_yaml.hpp's load-time assert. Caught here so a non-power-of-two
-    # topology fails at generate time rather than after elaborating a testbench
-    # the model then aborts on.
     for axis, dim in (("x", x_dim), ("y", y_dim)):
         if dim & (dim - 1):
             errors.append(
@@ -80,11 +77,8 @@ def _nodes(topo: dict):
 def _peripherals(topo: dict):
     """Endpoints attached to a boundary port instead of EJECT, in member order.
 
-    A peripheral has an NI and a test endpoint but no router. It SHARES its host
-    router's coordinate and is told apart by the boundary port it hangs off:
-    EAST/WEST are port 1, NORTH/SOUTH port 2. dst_dir is read as that port and
-    never as a coordinate offset -- FlooNoC derives a non-router NI's coordinate
-    from it, which here would place the peripheral one step outside the mesh.
+    A peripheral shares its host router's coordinates. dst_dir selects its
+    attachment port.
 
     A corner router is legal: it has two free faces, and dst_dir says which one
     is meant.
@@ -106,11 +100,7 @@ def _peripherals(topo: dict):
                     f"gen_tb_top: peripheral {ep['name']} at (x={x},y={y}) is outside the "
                     f"{x_dim}x{y_dim} router array -- a peripheral shares a router's "
                     f"coordinate, it does not take one of its own")
-            # Same rule sam_yaml.hpp's loader applies, checked here because the
-            # generator is a second, independent reader of the same config: on an
-            # edge router the named port has no neighbour and is terminal, while
-            # on an interior router it carries a live inter-router link and
-            # hanging a peripheral off it closes a channel dependency cycle.
+            # Interior ports are already connected to neighboring routers.
             on_edge = {"WEST": x == 0, "EAST": x == x_dim - 1,
                        "SOUTH": y == 0, "NORTH": y == y_dim - 1}[direction]
             if not on_edge:
@@ -373,16 +363,7 @@ def emit_sam_pkg(topo):
     ])
 
 def emit_topology_pkg(topo: dict) -> str:
-    """Address-map package for the selected configuration: TILE_BASE_ADDR /
-    TILE_SIZE / NOC_EGRESS_BASE / the peripheral table, computed exactly as
-    emit_tb_top computes them for tb_top's own parameter block -- relocated
-    here, not re-derived. Mirrors FlooNoC's floo_axi_mesh_noc_pkg supplying
-    Sam[] to tb_floo_axi_mesh.sv.
-
-    The package NAME is fixed, its CONTENTS vary with CONFIG: sim/tb/
-    tb_noc_mesh.sv carries one `import`, so two configurations cannot coexist
-    in a build tree without regenerating -- FlooNoC's property too.
-    """
+    """Emit the address map and peripheral attachments for the selected topology."""
     nodes, x_dim, y_dim = _nodes(topo)
     n = len(nodes)
     peripherals = _peripherals(topo)
@@ -423,9 +404,7 @@ def emit_topology_pkg(topo: dict) -> str:
     w("// DO NOT EDIT - modify the generator or dv/config/topology/*.yml instead.")
     w("//")
     w("// Address-map constants for the selected configuration: TILE_BASE_ADDR /")
-    w("// TILE_SIZE / NOC_EGRESS_BASE / the peripheral table, the same values emit_tb_top")
-    w("// stamps into tb_top's own parameter block. Mirrors FlooNoC's")
-    w("// floo_axi_mesh_noc_pkg supplying Sam[] to tb_floo_axi_mesh.sv.")
+    w("// TILE_SIZE / NOC_EGRESS_BASE / the peripheral table.")
     w("")
     w(f"`ifndef {guard}")
     w(f"`define {guard}")

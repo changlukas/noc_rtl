@@ -3,7 +3,7 @@
 Used by gen_test_patterns.py and gen_tb_top.py to compute endpoint addresses
 and preserve the same first-match rule order from topology configuration.
 
-FlooNoC-shaped config (dv/config/topology/*.yml), read by pack_config():
+Topology configuration (dv/config/topology/*.yml), read by pack_config():
     endpoints:
       - name: "tile"
         array: [4, 4]
@@ -13,11 +13,8 @@ FlooNoC-shaped config (dv/config/topology/*.yml), read by pack_config():
       - { name: "router", array: [4, 4] }
     connections:
       - { src: "tile", dst: "router", src_range: ..., dst_range: ..., dst_dir: 4 }
-Member k of a range lands at base + stride * k, stride defaulting to size
-(FlooNoC routing.py:440-449). The member's coordinate is its host router's,
-taken from the connection: array index k is X-fast, k = (y << x_bits) | x, which
-is this repo's node numbering and not FlooNoC's Y-fast one -- on a square mesh
-the two produce the same SET of bases and transpose every coordinate.
+Member k uses base + stride * k; stride defaults to size. The connection sets its
+host router coordinate. Members are numbered in X-fast order.
 dst_id = (y << X_WIDTH) | x.
 
 pack_config() expands each range into ordered SAM rules.
@@ -57,13 +54,8 @@ def _clog2(n):
     return b
 
 
-# XYDirections (FlooNoC routing.py:245-252) -> the router port an endpoint hangs
-# off. EJECT is the LOCAL port the tile owns; EAST/WEST are the x face and
-# NORTH/SOUTH the y face.
-# dst_dir is read as a port and nothing else: a peripheral shares its host
-# router's coordinate, so FlooNoC's coordinate derivation for a non-router NI
-# (network.py:354-363) must NOT be applied -- it would place the peripheral one
-# step outside the mesh.
+# EJECT maps to the local port. Boundary peripherals use their host router's
+# coordinates and select a port on its x or y face.
 _PORT_OF_DST_DIR = {0: 2, 1: 1, 2: 2, 3: 1, 4: 0}
 
 
@@ -154,7 +146,7 @@ def attachments(cfg, name, num, x_dim):
 
 
 def pack_config(cfg):
-    """Expand a FlooNoC-shaped config into (bases, entries).
+    """Expand the topology into (bases, entries).
 
     bases:   {dst_id: base} for the memory space only -- gen_test_patterns.py
              and gen_tb_top.py want the node's data-class base, not a config
@@ -182,10 +174,6 @@ def pack_config(cfg):
             if space not in ("config", "memory", "peripheral"):
                 raise ValueError(
                     f"endpoint {ep['name']}: space {space!r} is not a declared space")
-            # Same rule as SamTable::validate (addr_trans.hpp): a zero or
-            # misaligned size aborts at simulation load, but a NEGATIVE one only
-            # trips there by accident, through the base+size overflow assert.
-            # Refused here so the generators reject the config they packed from.
             if size <= 0 or size % 0x1000 != 0:
                 raise ValueError(
                     f"endpoint {ep['name']}: range size {size:#x} must be positive "
@@ -212,15 +200,7 @@ def node_windows(entries, node_id, port):
     router's LOCAL port and takes the config and memory windows; a peripheral
     port takes its own single window.
 
-    This is what the tile crossbar decodes on: a request that reached this
-    endpoint -- either from its own initiator or from the fabric -- names an
-    address in one of these ranges, or it is not this endpoint's. The NSU
-    rewrites an arriving address's node-coordinate field to this node before the
-    crossbar sees it (nsu::Depacketize::rebase_), so a collective replica
-    carrying the request's own address lands here like any unicast.
-
-    Sizes are exact, not rounded: pulp axi_xbar states a rule as start/end, so
-    a window need not be a power of two.
+    Ranges keep their configured size, including non-power-of-two windows.
 
     Returns [{"space", "base", "size"}, ...].
     """

@@ -7,13 +7,13 @@ supports direct NMU-to-NSU links and an RTL router mesh.
 
 From the checkout root on the VCS workstation, run `make test` for the seven system checks previously verified under #23.
 
-| Root target | Inputs and result | Reference |
-|---|---|---|
-| `make build` | Prepare the selected profile, topology and single-run inputs, then compile and elaborate the system testbench. Produces the active `build/compile/current/simv`. | [FlooNoC build](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L185-L192) |
-| `make compile` | Use the prepared recipe. Compile when sources or tool flags have changed; reuse the matching binary otherwise. | [FlooNoC compile-vcs](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L119-L128) |
-| `make sim CASE=ctrl_read_single` | Run one case using the matching compiled binary and prepared inputs. Set `WAVE=1` to save an FSDB or `WAVE=0` to skip waveform output. | [FlooNoC run-vcs-batch](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L128-L131) |
-| `make test` | Build once, then run single control/data reads and writes, reset recovery, same-ID reordering with backpressure, and reorder-buffer capacity reuse. The runner returns the pass/fail status to Make. | [Smoke test with a build prerequisite](https://github.com/verilator/verilator/blob/v5.028/Makefile.in#L147-L162) · [Project runner](dv/scripts/run.py) |
-| `make clean` | Remove the generated compile and regression directories. Published measurements live under `performance/`. | [FlooNoC clean-vcs](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Makefile#L133-L141) · [Project cleanup paths](dv/scripts/clean.py) |
+| Root target | Inputs and result |
+|---|---|
+| `make build` | Prepare the selected profile, topology and single-run inputs, then compile and elaborate the system testbench. Produces the active `build/compile/current/simv`. |
+| `make compile` | Use the prepared recipe. Compile when sources or tool flags have changed; reuse the matching binary otherwise. |
+| `make sim CASE=ctrl_read_single` | Run one case using the matching compiled binary and prepared inputs. Set `WAVE=1` to save an FSDB or `WAVE=0` to skip waveform output. |
+| `make test` | Build once, then run single control/data reads and writes, reset recovery, same-ID reordering with backpressure, and reorder-buffer capacity reuse. The runner returns the pass/fail status to Make. |
+| `make clean` | Remove the generated compile and regression directories. Published measurements live under `performance/`. |
 
 The checked-in workstation defaults in [sim/environment.mk](sim/environment.mk) select VCS, Verdi and the compatible C++ compiler. Other installations can set VCS, VERDI_HOME and VCS_EXTRA in the environment or on the Make command line.
 
@@ -37,7 +37,7 @@ performance/                  Published measurements grouped by workload
 build/{compile,regression}/   Generated binaries, stimulus, runs and coverage
 ```
 
-The system filelist selects production RTL explicitly. Block-level checks beside their design are invoked by their own scripts; shared UVM resources live in `dv/`. Comparable RTL and verification boundaries are documented in [OpenTitan directory guide](https://opentitan.org/book/doc/contributing/directory_structure.html) and [FlooNoC test source group](https://github.com/pulp-platform/FlooNoC/blob/05368bdff914f91a48b47c4ceddfc6ff266c6b3a/Bender.yml#L55-L78).
+The system filelist selects production RTL explicitly. Block-level checks beside their design are invoked by their own scripts; shared UVM resources live in `dv/`.
 
 For a new measurement series, use the following layout inside its workload directory. The report, plots and comparison tables belong to the series; each run keeps the inputs and evidence needed to reproduce its point. Create directories when there is data to store. [Measurement handoff, section 7](https://github.com/changlukas/noc_rtl/issues/26)
 

@@ -223,7 +223,7 @@ def wide_curve(results, output):
 
 
 def narrow_curve(results, output):
-    """Average the saved per-source narrow read latency, as in FlooNoC Fig.8."""
+    """Average the saved per-source narrow-read latencies."""
     output = output.resolve()
     points, sources = [], []
     context = None
@@ -1510,7 +1510,7 @@ def mesh_node_timeline(root):
 
 
 def tile_to_tile(root):
-    """FlooNoC Fig.7 presentation, with native AXI/NI/router boundaries."""
+    """Plot the tile-to-tile timeline at the AXI, NI and router boundaries."""
     root = root.resolve()
     if (root/"tables/bandwidth.csv").exists():
         return mesh_node_timeline(root)

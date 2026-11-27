@@ -253,8 +253,7 @@ The curve remains preliminary: native platform/VIP timing and the unidentified
 paper experiment RTL revision are stated explicitly.
 
 For the isolated tile-to-tile delivery, use `make -C sim perf_tile_plot`.
-Use `RESULT` to select an alternate result. The figure follows the six-lane
-presentation of FlooNoC Fig.7 using the actual native source/device AXI boundaries.
+Use `RESULT` to select an alternate result. The six lanes show the source and device AXI boundaries and the network between them.
 The one 64-bit NI0-to-NI1 read is sampled directly from its own FSDB: AXI,
 NI/router local interfaces, and physical East/West router ports. The converter
 command and FSDB/VCD hashes are retained; no router observer or DUT change is used.
@@ -263,9 +262,7 @@ The figure begins at source ARVALID assertion and includes the cycles until
 NI0 accepts AR. The return path separates NI0 response conversion from
 RVALID assertion through R acceptance. The table also records accepted AR to
 accepted R separately.
-The native testbench uses VIP AXI endpoints. FlooNoC Fig. 7 includes the
-cluster LSU and SPM interconnect. The initial end-to-end review is complete;
-continue with the mesh traffic measurements below.
+The measured path starts and ends at the VIP AXI endpoints.
 
 
 The mesh curves cover neighbor, bit-complement, transpose, uniform and shuffle. Each
@@ -284,7 +281,6 @@ nonself destination per source, reused for every job. It is not per-packet
 resampling; mapping seed 42 and simulation seed 1 are recorded separately.
 Shuffle rotates the upstream index s=x*4+y, then converts the target to native
 coordinates (d%4,d//4), retaining local endpoints 0/15.
-Mappings are checked against the saved FlooNoC candidate gen_jobs.py.
 
 The existing injection_ratio field reaches the VIP address start_delay through
 schedule.txt and the existing sequence. Its integer [0,100] draw quantizes small
@@ -315,7 +311,7 @@ Keep native platform costs; the paper's cluster +7-cycle adjustment is not added
 
 The existing `performance_interference` catalog uses per-source
 `source_overrides` for mode, count and contiguous burst length. It covers
-2023 FlooNoC Fig.5: 100 single-beat narrow probe reads against 0/2/4/8/16/32
+100 single-beat narrow probe reads against 0/2/4/8/16/32
 wide bursts, and 16 wide probe bursts against 0/2/4/8/16/32/64 narrow reads,
 separately for one and two directions. Wide bursts contain 16 64-byte beats.
 
