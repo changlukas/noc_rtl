@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 import pytest
 from gen_standalone_patterns import generate, REPO, load_cases
 from axi_file_parser import _parse_read, _parse_write

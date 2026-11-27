@@ -1,6 +1,5 @@
 ﻿"""Canonical source and generated configuration invalidate the build cache."""
 import json
-from pathlib import Path
 from build_key import materialize
 
 

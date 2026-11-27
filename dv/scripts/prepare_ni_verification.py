@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Prepare shared AXI and router verification patterns."""
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import sys

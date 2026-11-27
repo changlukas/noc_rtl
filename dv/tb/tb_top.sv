@@ -62,7 +62,6 @@ module tb_top #(
             DEVICE_ID_WIDTH != NI_DEVICE_ID_WIDTH ||
             CONTEXT_DEPTH != NI_CONTEXT_DEPTH ||
             noc_unit_params_pkg::DAT_NUM_VC != NI_NUM_DAT_VC ||
-            noc_unit_params_pkg::CREDIT_DEPTH != NI_CREDIT_DEPTH ||
             1 != NI_DAT_VC_MODE) begin
             $fatal(1, "Hardware parameters differ from ni_tb_params.svh; regenerate the profile");
         end
@@ -70,7 +69,7 @@ module tb_top #(
             $fatal(1, "Clock periods must be at least 2 ps");
         $display("PARAM_CONFIG device_id=%0d context=%0d per_id=%0d io_fifo=%0d reg_type=%0d b_rob=%0d r_rob=%0d r_rob_en=%0d vc=%0d vc_mode=%0d dat_fifo=%0d",
             DEVICE_ID_WIDTH, CONTEXT_DEPTH, MAX_OUTSTANDING_PER_ID, IO_FIFO_DEPTH,
-            OUTPUT_REG_TYPE, B_ROB_DEPTH, R_ROB_DEPTH, R_ROB_EN, noc_unit_params_pkg::DAT_NUM_VC, 1, noc_unit_params_pkg::CREDIT_DEPTH);
+            OUTPUT_REG_TYPE, B_ROB_DEPTH, R_ROB_DEPTH, R_ROB_EN, noc_unit_params_pkg::DAT_NUM_VC, 1, NI_DAT_RX_FIFO_DEPTH);
         $display("CLOCK_CONFIG axi_period_ps=%0d noc_period_ps=%0d apply_delay_ps=%0d sample_delay_ps=%0d",
             CLK_PERIOD, NOC_CLK_PERIOD, APPL_DELAY, ACQ_DELAY);
         $display("CLOCK_PHASE noc_phase_ps=%0d", NOC_CLK_PHASE_PS);
@@ -302,6 +301,7 @@ module tb_top #(
             node_ids[p] = ni_types_pkg::NODE_ID_W'(p == 0 ? NMU_ID : nsu_id(p));
     endfunction
     ni_direct_link #(
+        .DAT_RX_FIFO_DEPTH (NI_DAT_RX_FIFO_DEPTH),
         .NUM_NSUS (NUM_NSUS ),
         .NODE_IDS (node_ids())
     ) i_direct_link (
@@ -328,7 +328,7 @@ module tb_top #(
     );
 `else
     router_mesh #(
-
+        .DAT_RX_FIFO_DEPTH (NI_DAT_RX_FIFO_DEPTH),
         .MESH_X (MESH_X),
         .MESH_Y (MESH_Y)
     ) i_router (
@@ -822,7 +822,7 @@ module tb_top #(
             uvm_config_db #(tvip_axi_configuration)::set(null, "uvm_test_top.env", "source_cfg0", cfg);
         end
         uvm_config_db #(virtual ni_tb_if)::set(null, "uvm_test_top", "control", control);
-        uvm_config_db #(int)::set(null, "uvm_test_top", "reset_drain_cycles", 2*IO_FIFO_DEPTH+2*noc_unit_params_pkg::CREDIT_DEPTH);
+        uvm_config_db #(int)::set(null, "uvm_test_top", "reset_drain_cycles", 2*IO_FIFO_DEPTH+2*NI_DAT_RX_FIFO_DEPTH);
         run_test("ni_test");
     end
     final begin

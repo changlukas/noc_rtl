@@ -100,8 +100,6 @@ def package(run_dir, output, directory=False, block_patterns=None, id_width=None
             copy_path(repo / "rtl/nmu/sam" / name)
         copy_path(repo / "rtl/nmu/top/nmu_lint.vlt")
         copy_path(repo / "rtl/nmu/response_path/tb_response_path.sv")
-        # Legacy credit storage belongs only to the exported focused TB.
-        copy_path(repo / "rtl/common/rx_credit_buffer.sv")
         copy_path(repo / "rtl/nmu/response_depacketize/tb_response_depacketize.sv")
         copy_path(repo / "rtl/nmu/response_depacketize/test_response_depacketize.sh")
         (root / "script").mkdir()

@@ -3,7 +3,6 @@
 """Generate the shared topology/SAM package for NMU verification."""
 
 import argparse
-import sys
 from pathlib import Path
 import address_map
 from address_map import native_param
@@ -182,7 +181,7 @@ def tile_targets(topo: dict, endpoints):
     #
     # A pad is a REAL range parked above every window, never an empty one.
     # size 0 at base 0 looks inert and is the opposite: addr_decode
-    # (deps/common_cells-1.37.0/src/addr_decode_dync.sv:110-112) matches on
+    # (deps/common_cells-v2.0.0-beta.3/src/cc_addr_decode_dync.sv) matches on
     #     addr >= start_addr && (addr < end_addr || end_addr == '0)
     # and end_addr == '0 means "end of address space" (documented at :56-57),
     # so start = end = 0 is a WILDCARD that matches every address. The match

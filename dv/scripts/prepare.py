@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Generate DV build recipes and inputs; canonical RTL/DV sources stay in the checkout."""
 import argparse
-import hashlib
 import json
 from pathlib import Path
-import sys
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -65,7 +63,8 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False, topology_p
         raise ValueError("io_fifo_depth must be at least 2")
     if profile.get("reg_type", 0) not in (0, 1, 2) or profile.get("r_rob_en", 1) not in (0, 1):
         raise ValueError("invalid register or read ROB mode")
-    depth = profile["credit_depth"]
+    # Archived measurement profiles used the old name for this FIFO capacity.
+    depth = profile.get("dat_rx_fifo_depth", profile.get("credit_depth", native_param("noc_unit_params_pkg", "DAT_RX_FIFO_DEPTH")))
     if type(depth) is not int or depth < 2 or depth & (depth-1):
         raise ValueError("DAT input FIFO depth must be a power of two >= 2")
     topo = selected_topology(topology_path, direct)
@@ -77,7 +76,7 @@ def prepare(out, profile_path=None, extra_catalog=None, direct=False, topology_p
         B_ROB_DEPTH=profile.get("b_rob_depth", native_param("noc_unit_params_pkg", "NMU_ROB_B_DEPTH")),
         R_ROB_DEPTH=profile.get("r_rob_depth", native_param("noc_unit_params_pkg", "NMU_ROB_R_DEPTH")),
         R_ROB_EN=profile.get("r_rob_en", native_param("noc_unit_params_pkg", "NMU_R_ROB_EN")),
-        NUM_DAT_VC=vc_count, DAT_VC_MODE=int(vc_count > 1), CREDIT_DEPTH=depth,
+        NUM_DAT_VC=vc_count, DAT_VC_MODE=int(vc_count > 1), DAT_RX_FIFO_DEPTH=depth,
         DIRECT_LINK=int(direct), MON_ID_WIDTH=max(pattern_id_width, device_id_width))
     lines = (ROOT / "dv/filelists/rtl.f").read_text().splitlines()
     includes = [line[len("+incdir+"):] for line in lines if line.startswith("+incdir+")]

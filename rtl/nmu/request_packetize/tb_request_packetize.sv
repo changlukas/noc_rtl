@@ -3,8 +3,6 @@
 
 module tb_nmu_request_packetize;
 
-    localparam int unsigned NUM_DAT_VC = 2;
-    localparam int unsigned CREDIT_DEPTH = 2;
 
     logic clk = 1'b0;
     logic rst_n_i = 1'b0;
@@ -17,15 +15,16 @@ module tb_nmu_request_packetize;
     noc_payload_pkg::req_flit_t                         m_req;
     logic                                           m_req_valid, m_req_ready;
     noc_payload_pkg::dat_flit_t                         m_dat;
-    logic                                           m_dat_valid;
-    logic                          [NUM_DAT_VC-1:0] dat_credit_return;
+    logic                                           m_dat_valid, m_dat_ready;
 
     always #5 clk = ~clk;
 
     nmu_request_inject_tb_dut #(
-        .FIFO_DEPTH      (4              ),
-        .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .CREDIT_DEPTH (CREDIT_DEPTH),
+        .REQ_AW_REG_TYPE (1),
+        .REQ_W_REG_TYPE  (1),
+        .REQ_AR_REG_TYPE (1),
+        .DAT_AW_REG_TYPE (1),
+        .DAT_W_REG_TYPE  (1),
         .SRC_ID          (8'h12          ),
         .SRC_PORT_ID     (2'h2           )
     ) dut (
@@ -45,7 +44,7 @@ module tb_nmu_request_packetize;
         .m_req_ready_i       (m_req_ready      ),
         .m_dat_o             (m_dat            ),
         .m_dat_valid_o       (m_dat_valid      ),
-        .credit_i            (dat_credit_return)
+        .m_dat_ready_i       (m_dat_ready      )
     );
 
     task automatic push_aw(input logic is_data, input logic [7:0] dst,
@@ -77,7 +76,7 @@ module tb_nmu_request_packetize;
 
     int dat_count = 0;
     always @(posedge clk) begin
-        if (rst_n_i && m_dat_valid) begin
+        if (rst_n_i && m_dat_valid && m_dat_ready) begin
             if (dat_count % 2 == 0) begin
                 if (m_dat.header.packet_type != noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_DATA_AW) ||
                         m_dat.header[(noc_header_pkg::DST_ID_LSB + ni_types_pkg::NODE_ID_W - 1):noc_header_pkg::DST_ID_LSB] != 8'h32)
@@ -100,7 +99,7 @@ module tb_nmu_request_packetize;
         s_w_valid         = 1'b0;
         s_ar_valid        = 1'b0;
         m_req_ready       = 1'b0;
-        dat_credit_return = '0;
+        m_dat_ready = 1'b0;
         repeat (3) @(posedge clk);
         rst_n_i = 1'b1;
         @(negedge clk);
@@ -115,15 +114,16 @@ module tb_nmu_request_packetize;
         push_w(512'hfeed_face);
 
         m_req_ready = 1'b1;
+        m_dat_ready = 1'b1;
         #1;
-        assert (m_req_valid)
+        assert (m_req_valid && m_dat_valid)
             else $fatal(1, "REQ and DAT AW were not independently available");
         assert (m_req.header.packet_type ==
                 noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_NARROW_AW));
         assert (m_req.header[(noc_header_pkg::SRC_ID_LSB + ni_types_pkg::NODE_ID_W - 1):noc_header_pkg::SRC_ID_LSB] == 8'h12);
         @(posedge clk);
         #1;
-        assert (m_req_valid)
+        assert (m_req_valid && m_dat_valid)
             else $fatal(1, "REQ and DAT W did not transfer in parallel");
         assert (m_req.header.packet_type ==
                 noc_header_pkg::PACKET_TYPE_WIDTH'(noc_header_pkg::PKT_NARROW_W));
@@ -150,33 +150,28 @@ module tb_nmu_request_packetize;
         assert (m_req.header.flit_tail);
         @(posedge clk);
 
-        // The first Data packet consumed both VC0 credits.  A same-domain AW
-        // must reuse VC0 and may consume a returned credit in the same cycle.
+        // Hold AW and W independently on the scalar DAT output.
         @(negedge clk);
+        m_dat_ready = 0;
         push_aw(1'b1, 8'h32, 3'h2, 48'h1080);
         push_w(512'h1234_5678);
-        #1;
-        assert (!m_dat_valid)
-            else $fatal(1, "fixed VC packet ignored exhausted credit");
-        dat_credit_return[0] = 1'b1;
-        #1;
-        assert (m_dat_valid);
-        assert (noc_unit_params_pkg::dat_class(m_dat.header.packet_type) == 0);
-        @(posedge clk);
+        repeat (3) @(negedge clk);
+        if (!m_dat_valid || dat_count != 2 ||
+            m_dat.header.packet_type != noc_header_pkg::PKT_DATA_AW)
+            $fatal(1, "DAT AW did not remain pending while stalled");
+        m_dat_ready = 1;
+        @(negedge clk); m_dat_ready = 0;
+        repeat (3) @(negedge clk);
+        if (!m_dat_valid || dat_count != 3 ||
+            m_dat.header.packet_type != noc_header_pkg::PKT_DATA_W)
+            $fatal(1, "DAT W did not remain pending while stalled");
+        m_dat_ready = 1;
         @(negedge clk);
-        dat_credit_return = '0;
-        #1;
-        assert (!m_dat_valid);
-        dat_credit_return[0] = 1'b1;
-        #1;
-        assert (m_dat_valid);
-        @(posedge clk);
-
-        @(negedge clk); dat_credit_return = '0;
         if (dat_count != 4) $fatal(1, "DAT transfer count mismatch");
         $display("PASS: NMU request packetization and independent REQ/DAT scheduling");
         $finish;
     end
+    initial begin #100us; $fatal(1, "packetization timeout"); end
 
 endmodule
 

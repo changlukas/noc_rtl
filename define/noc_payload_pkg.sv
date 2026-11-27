@@ -167,25 +167,4 @@ package noc_payload_pkg;
     localparam int RSP_FLIT_WIDTH = $bits(rsp_flit_t);
     localparam int DAT_FLIT_WIDTH = $bits(dat_flit_t);
 
-    function automatic network_t packet_network(input packet_type_t kind);
-        case (kind)
-            PKT_NARROW_AW, PKT_NARROW_W, PKT_NARROW_AR, PKT_DATA_AR: return NETWORK_REQ;
-            PKT_NARROW_B, PKT_NARROW_R, PKT_DATA_B: return NETWORK_RSP;
-            PKT_DATA_AW, PKT_DATA_W, PKT_DATA_R: return NETWORK_DAT;
-            default: return NETWORK_INVALID;
-        endcase
-    endfunction
-
-    function automatic int payload_width(input packet_type_t kind);
-        case (kind)
-            PKT_NARROW_AW, PKT_DATA_AW: return AW_WIDTH;
-            PKT_NARROW_AR, PKT_DATA_AR: return AR_WIDTH;
-            PKT_NARROW_W: return NARROW_W_WIDTH;
-            PKT_NARROW_B, PKT_DATA_B: return B_WIDTH;
-            PKT_NARROW_R: return NARROW_R_WIDTH;
-            PKT_DATA_W: return DATA_W_WIDTH;
-            PKT_DATA_R: return DATA_R_WIDTH;
-            default: return 0;
-        endcase
-    endfunction
 endpackage

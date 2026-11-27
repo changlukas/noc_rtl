@@ -3,6 +3,7 @@
 module router_mesh #(
     parameter int unsigned MESH_X = topology_pkg::X_DIM,
     parameter int unsigned MESH_Y = topology_pkg::Y_DIM,
+    parameter int unsigned DAT_RX_FIFO_DEPTH = noc_unit_params_pkg::DAT_RX_FIFO_DEPTH,
     parameter int unsigned NUM_ENDPOINTS = topology_pkg::NUM_ENDPOINTS,
     parameter logic [NUM_ENDPOINTS-1:0][31:0] ENDPOINT_NODE = topology_pkg::ENDPOINT_NODE,
     parameter logic [NUM_ENDPOINTS-1:0][31:0] ENDPOINT_PORT = topology_pkg::ENDPOINT_PORT,
@@ -38,7 +39,6 @@ module router_mesh #(
     // Explicit fixture capacities keep DUT and passive observers on the same values.
     localparam int REQ_FIFO_DEPTH = 32;
     localparam int RSP_FIFO_DEPTH = 32;
-    localparam int DAT_RX_FIFO_DEPTH = noc_unit_params_pkg::CREDIT_DEPTH;
     localparam int DAT_FIFO_DEPTH = noc_unit_params_pkg::ROUTER_OUTPUT_FIFO_DEPTH;
     wire logic [4:0] rx_req_valid [NUM_ROUTERS];
     wire logic [4:0] rx_req_ready [NUM_ROUTERS];

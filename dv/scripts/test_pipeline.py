@@ -20,31 +20,25 @@ out = root / options.report
 out.mkdir(parents=True, exist_ok=True)
 lines = (options.build_dir / "files.f").read_text().splitlines()
 lines = [line for line in lines if not line.endswith(("tb_top.sv", "router_wrap.sv"))]
-# Credit adapters are legacy test fixtures, outside the production filelist.
-lines += [
-    "deps/common_cells-v2.0.0-beta.3/src/cc_credit_counter.sv",
-    "rtl/common/tx_credit_buffer.sv",
-    "rtl/common/rx_credit_buffer.sv",
-    "rtl/nmu/request_packetize/request_inject_tb_dut.sv",
-]
+lines.append("rtl/nmu/request_packetize/request_inject_tb_dut.sv")
 lines = [str(root / line) if line.startswith(("deps/", "rtl/")) else line for line in lines]
 filelist = out / "files.f"
 filelist.write_text("\n".join(lines) + "\n")
 cases = [
     ("tb_nmu_request_packetize", {}),
     ("tb_nmu_request_packetize_stall", {}),
-    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 0, "NUM_DAT_VC": 2}),
-    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 1, "NUM_DAT_VC": 2}),
-    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 2, "NUM_DAT_VC": 2}),
+    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 0}),
+    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 1}),
+    ("tb_nmu_request_packetize_stress", {"REG_TYPE": 2}),
     ("tb_nmu_request_packetize_stress", {"AW_REG_TYPE": 2, "W_REG_TYPE": 0, "AR_REG_TYPE": 1}),
     ("tb_nmu_request_packetize_stress", {"AW_REG_TYPE": 0, "W_REG_TYPE": 2, "AR_REG_TYPE": 1}),
-    ("tb_nmu_response_depacketize", {"NUM_DAT_VC": 2, "CREDIT_DEPTH": 2}),
+    ("tb_nmu_response_depacketize", {}),
 ]
 if options.ordering_only:
     cases = [("tb_nmu_ordering", {"NUM_IDS": 3})]
 results = []
 for top, params in cases:
-    if options.rx_only and (top != "tb_nmu_response_depacketize" or params["NUM_DAT_VC"] != 2):
+    if options.rx_only and top != "tb_nmu_response_depacketize":
         continue
     if options.mixed_only and "AW_REG_TYPE" not in params:
         continue

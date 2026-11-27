@@ -2,9 +2,6 @@
 `default_nettype none
 
 module tb_nmu_request_packetize_stress #(
-    parameter int unsigned FIFO_DEPTH  = 2,
-    parameter int unsigned NUM_DAT_VC  = 2,
-    localparam int unsigned DAT_VC_MODE = (NUM_DAT_VC > 1),
     parameter int unsigned REG_TYPE    = 0,
     parameter int unsigned AW_REG_TYPE = REG_TYPE,
     parameter int unsigned W_REG_TYPE  = REG_TYPE,
@@ -13,8 +10,6 @@ module tb_nmu_request_packetize_stress #(
     localparam int unsigned WRITES = 24;
     localparam int unsigned READS = 24;
     localparam int unsigned BEATS = 3;
-    localparam int unsigned CREDIT_DEPTH = 2;
-    localparam int unsigned WRITE_VCS = DAT_VC_MODE == 1 ? NUM_DAT_VC/2 : NUM_DAT_VC;
     logic clk_i = 0, rst_n_i = 0;
     ni_types_pkg::nmu_aw_request_t                  s_aw_i;
     ni_signals_pkg::noc_axi_w_t                         s_w_i;
@@ -23,22 +18,15 @@ module tb_nmu_request_packetize_stress #(
     noc_payload_pkg::dat_flit_t                         m_dat_o;
     logic                                           s_aw_valid_i, s_aw_ready_o, s_w_valid_i, s_w_ready_o;
     logic                                           s_ar_valid_i, s_ar_ready_o, m_req_valid_o, m_req_ready_i, m_dat_valid_o;
-    logic                          [NUM_DAT_VC-1:0] credit_i;
-    logic                          [NUM_DAT_VC-1:0] credit_delay [3];
+    logic m_dat_ready_i, dat_stalled;
+    noc_payload_pkg::dat_flit_t previous_dat;
     logic [31:0] random_reg = 32'hb7251309;
     logic req_stalled = 0;
     int narrow_count = 0, data_count = 0, read_count = 0;
     int narrow_beat = 0, data_beat = 0;
-    int data_txn [NUM_DAT_VC], data_beat_vc [NUM_DAT_VC];
-    bit data_active_vc [NUM_DAT_VC];
-    bit data_seen [WRITES];
-    int flow_vc [8];
-    bit [NUM_DAT_VC-1:0] vc_seen;
     int cycle = 0, parallel_count = 0;
     bit narrow_active = 0, data_active = 0;
-    int credit [NUM_DAT_VC];
-    int pending_credit [NUM_DAT_VC];
-    int vc_bypass_count = 0;
+    int dat_stall_cycles = 0;
     bit writes_done = 0, reads_done = 0;
 
     nmu_request_inject_tb_dut #(
@@ -46,10 +34,7 @@ module tb_nmu_request_packetize_stress #(
         .REQ_W_REG_TYPE (W_REG_TYPE),
         .REQ_AR_REG_TYPE (AR_REG_TYPE),
         .DAT_AW_REG_TYPE (AW_REG_TYPE),
-        .DAT_W_REG_TYPE (W_REG_TYPE),
-        .FIFO_DEPTH      (FIFO_DEPTH  ),
-        .NUM_DAT_VC      (NUM_DAT_VC  ),
-        .CREDIT_DEPTH (CREDIT_DEPTH)
+        .DAT_W_REG_TYPE (W_REG_TYPE)
     ) dut (.*);
 
     always #5ns clk_i = !clk_i;
@@ -61,27 +46,22 @@ module tb_nmu_request_packetize_stress #(
         return 64'habc00000 + 64'(transaction * 16 + beat);
     endfunction
 
-    // Delayed credit returns model real occupied downstream slots.
+    // Stall REQ and DAT independently.
     always @(negedge clk_i) begin
         if (~rst_n_i) begin
             m_req_ready_i       = 0;
-            credit_i = '0;
+            m_dat_ready_i = 0;
             random_reg          = 32'hb7251309;
         end else begin
             random_reg          = {random_reg[30:0], random_reg[31] ^ random_reg[21] ^ random_reg[1] ^ random_reg[0]};
             m_req_ready_i       = cycle > 12 && random_reg[0];
-            for (int vc = 0; vc < NUM_DAT_VC; vc++)
-                credit_i[vc] = pending_credit[vc] > 0 && (vc != 0 || cycle > 150);
+            m_dat_ready_i       = cycle > 18 && random_reg[3];
         end
     end
 
     always @(posedge clk_i or negedge rst_n_i) begin
         if (~rst_n_i) begin
-            for (int vc = 0; vc < NUM_DAT_VC; vc++) begin
-                credit[vc] = CREDIT_DEPTH;
-                pending_credit[vc] = 0;
-            end
-            for (int n = 0; n < 3; n++) credit_delay[n] = '0;
+            dat_stalled = 0;
             req_stalled = 0;
         end else begin
             cycle++;
@@ -89,16 +69,11 @@ module tb_nmu_request_packetize_stress #(
                 $fatal(1, "REQ payload changed under randomized stalls");
             req_stalled     = m_req_valid_o && !m_req_ready_i;
             previous_req    = m_req_o;
-            credit_delay[2] = credit_delay[1];
-            credit_delay[1] = credit_delay[0];
-            credit_delay[0] = '0;
-            for (int vc = 0; vc < NUM_DAT_VC; vc++) begin
-                if (credit_i[vc]) begin
-                    credit[vc]++;
-                    pending_credit[vc]--;
-                end
-                if (credit[vc] > CREDIT_DEPTH) $fatal(1, "credit overflow");
-            end
+            if (dat_stalled && (!m_dat_valid_o || m_dat_o !== previous_dat))
+                $fatal(1, "DAT changed while stalled");
+            dat_stalled = m_dat_valid_o && !m_dat_ready_i;
+            previous_dat = m_dat_o;
+            if (dat_stalled) dat_stall_cycles++;
             if (m_req_valid_o && m_req_ready_i) begin
                 case (int'(m_req_o.header.packet_type))
                     noc_header_pkg::PKT_NARROW_AW: begin
@@ -124,57 +99,39 @@ module tb_nmu_request_packetize_stress #(
                     default: $fatal(1, "unexpected REQ channel");
                 endcase
             end
-            if (m_dat_valid_o) begin
-                int vc;
-                vc = int'(noc_unit_params_pkg::dat_class(m_dat_o.header.packet_type));
-                if (vc >= WRITE_VCS || credit[vc] == 0) $fatal(1, "illegal or empty DAT VC");
-                credit[vc]--;
-                pending_credit[vc]++;
-                if (vc != 0 && credit[0] == 0 && !dut.i_tx_credit_buffer.dat_empty[0])
-                    vc_bypass_count++;
+            if (m_dat_valid_o && m_dat_ready_i) begin
                 case (int'(m_dat_o.header.packet_type))
                     noc_header_pkg::PKT_DATA_AW: begin
-                        int txn, id;
-                        id = int'(m_dat_o.payload[noc_payload_pkg::AW_AWID_LSB +: noc_payload_pkg::AW_AWID_WIDTH]);
-                        if (vc != noc_unit_params_pkg::DAT_WRITE_VC)
-                            $fatal(1, "write VC must remain fixed regardless of ordering_req");
-                        if (flow_vc[id] >= 0 && flow_vc[id] != vc)
-                            $fatal(1, "same flow changed VC");
-                        flow_vc[id] = vc;
-                        vc_seen[vc] = 1'b1;
+                        int txn;
                         txn = int'((m_dat_o.payload[(noc_payload_pkg::AW_AWADDR_LSB + noc_payload_pkg::AW_AWADDR_WIDTH - 1):noc_payload_pkg::AW_AWADDR_LSB] - 48'h1000) >> 8);
-                        if (txn < 0 || txn >= WRITES || !txn[0] || data_active_vc[vc])
-                            $fatal(1, "data AW lost ownership or VC order");
-                        if (data_seen[txn]) $fatal(1, "duplicate data AW");
-                        data_seen[txn] = 1;
-                        data_active_vc[vc] = 1;
-                        data_txn[vc] = txn;
-                        data_beat_vc[vc] = 0;
+                        if (txn != 2*data_count+1 || data_active ||
+                            m_dat_o.payload[noc_payload_pkg::AW_AWID_LSB +: noc_payload_pkg::AW_AWID_WIDTH] != noc_payload_pkg::NOC_ID_WIDTH'(data_count))
+                            $fatal(1, "data AW address, ID, or order mismatch");
+                        data_active = 1;
+                        data_beat = 0;
                     end
                     noc_header_pkg::PKT_DATA_W: begin
-                        if (!data_active_vc[vc] ||
-                                m_dat_o.payload[(noc_payload_pkg::DATA_W_WDATA_LSB + noc_payload_pkg::DATA_W_WDATA_WIDTH - 1):noc_payload_pkg::DATA_W_WDATA_LSB] != noc_payload_pkg::DATA_WIDTH'(payload(data_txn[vc], data_beat_vc[vc])) ||
-                                m_dat_o.header.flit_tail != (data_beat_vc[vc] == BEATS-1))
-                            $fatal(1, "data W payload, VC, or lock mismatch");
-                        data_beat_vc[vc]++;
-                        if (data_beat_vc[vc] == BEATS) begin
-                            data_active_vc[vc] = 0;
+                        if (!data_active ||
+                                m_dat_o.payload[(noc_payload_pkg::DATA_W_WDATA_LSB + noc_payload_pkg::DATA_W_WDATA_WIDTH - 1):noc_payload_pkg::DATA_W_WDATA_LSB] != noc_payload_pkg::DATA_WIDTH'(payload(2*data_count+1, data_beat)) ||
+                                m_dat_o.header.flit_tail != (data_beat == BEATS-1))
+                            $fatal(1, "data W payload or burst lock mismatch");
+                        data_beat++;
+                        if (data_beat == BEATS) begin
+                            data_active = 0;
                             data_count++;
                         end
                     end
                     default: $fatal(1, "unexpected DAT channel");
                 endcase
             end
-            if (m_req_valid_o && m_req_ready_i && m_dat_valid_o) parallel_count++;
+            if (m_req_valid_o && m_req_ready_i && m_dat_valid_o && m_dat_ready_i) parallel_count++;
         end
     end
 
     initial begin
-        foreach (flow_vc[i]) flow_vc[i] = -1;
-        vc_seen = '0;
         s_aw_i              = '0; s_w_i = '0; s_ar_i = '0;
         s_aw_valid_i        = 0; s_w_valid_i = 0; s_ar_valid_i = 0;
-        credit_i = '0; m_req_ready_i = 0;
+        m_dat_ready_i = 0; m_req_ready_i = 0;
         repeat (4) @(negedge clk_i);
         #1; rst_n_i = 1;
         fork
@@ -225,14 +182,8 @@ module tb_nmu_request_packetize_stress #(
         repeat (8) @(negedge clk_i);
         if (!writes_done || !reads_done || parallel_count == 0 || m_req_valid_o || m_dat_valid_o)
             $fatal(1, "incomplete drain or no parallel progress");
-        for (int vc = 0; vc < NUM_DAT_VC; vc++) begin
-            if (credit[vc] != CREDIT_DEPTH) $fatal(1, "credit not conserved after drain");
-        end
-        if (WRITE_VCS > 1 && vc_bypass_count == 0) $fatal(1, "no progress past credit-starved VC");
-        if (vc_seen != ((NUM_DAT_VC'(1) << WRITE_VCS)-1))
-            $fatal(1, "write VC pool not exercised: %h", vc_seen);
-        $display("VC_BYPASS count=%0d vc_seen=%h", vc_bypass_count, vc_seen);
-        $display("PASS: packet stress depth=%0d vcs=%0d mode=%0d writes=%0d reads=%0d parallel=%0d", FIFO_DEPTH, NUM_DAT_VC, DAT_VC_MODE, WRITES, READS, parallel_count);
+        if (!dat_stall_cycles) $fatal(1, "DAT backpressure not exercised");
+        $display("PASS: packet stress writes=%0d reads=%0d parallel=%0d", WRITES, READS, parallel_count);
         $finish;
     end
     initial begin #100us; $fatal(1, "packet stress timeout"); end

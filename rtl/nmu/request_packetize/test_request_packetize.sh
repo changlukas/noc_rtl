@@ -3,19 +3,10 @@ set -euo pipefail
 task_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 task_tmp=$(mktemp -d "${TMPDIR:-/tmp}/nmu-request-packetize-XXXXXX")
 trap 'rm -rf "$task_tmp"' EXIT
-task_revision=63b7c50d43e462b59506f69d341ff1e40202866d
-if [[ -n "${COMMON_CELLS_DIR:-}" ]]; then
-    task_common_cells=$COMMON_CELLS_DIR
-else
-    task_common_cells="$task_tmp/common_cells"
-    git clone --quiet https://github.com/pulp-platform/common_cells.git "$task_common_cells"
-    git -C "$task_common_cells" checkout --quiet "$task_revision"
-fi
-[[ $(git -C "$task_common_cells" rev-parse HEAD) == "$task_revision" ]]
+task_common_cells=${COMMON_CELLS_DIR:-$task_root/deps/common_cells-v2.0.0-beta.3}
+cd "$task_tmp"
 task_sources=(
     "$task_common_cells/src/cc_pkg.sv"
-    "$task_common_cells/src/cc_credit_counter.sv"
-    "$task_common_cells/src/cc_fifo.sv"
     "$task_common_cells/src/cc_spill_register_flushable.sv"
     "$task_common_cells/src/cc_spill_register.sv"
     "$task_common_cells/src/cc_stream_register.sv"
@@ -32,8 +23,6 @@ task_sources=(
     "$task_root/rtl/common/packet_rr_arbiter.sv"
     "$task_root/rtl/nmu/request_dispatch/request_dispatch.sv"
     "$task_root/rtl/nmu/request_path/write_context.sv"
-    "$task_root/rtl/common/tx_credit_buffer.sv"
-    "$task_root/rtl/common/flit_rr_arbiter.sv"
     "$task_root/rtl/nmu/request_packetize/request_packetize.sv"
     "$task_root/rtl/nmu/request_packetize/request_inject_tb_dut.sv"
 )
@@ -53,12 +42,11 @@ done
 if [[ "${1:-test}" == test ]]; then
     task_top=tb_nmu_request_packetize_stress
     task_tb="$task_root/rtl/nmu/request_packetize/${task_top/tb_nmu_/tb_}.sv"
-    for task_depth in 2 4 8; do
-        task_obj="$task_tmp/stress_${task_depth}"
+    for task_reg in ${NMU_REG_TYPE:-0 1 2}; do
+        task_obj="$task_tmp/stress_${task_reg}"
         mkdir -p "$task_obj"
         "${task_vcs[@]}" -top "$task_top" \
-            -pvalue+${task_top}.REG_TYPE="${NMU_REG_TYPE:-0}" \
-            -pvalue+${task_top}.FIFO_DEPTH="$task_depth" \
+            -pvalue+${task_top}.REG_TYPE="$task_reg" \
             "${task_sources[@]}" "$task_tb" \
             -Mdir="$task_obj/csrc" -o "$task_obj/simv" -l "$task_obj.compile.log"
         "$task_obj/simv"

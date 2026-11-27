@@ -20,10 +20,6 @@ package noc_header_pkg;
         COLL_UNICAST = 2'd0, COLL_MULTICAST = 2'd1
     } collective_op_t;
 
-    typedef enum logic [1:0] {
-        NETWORK_REQ, NETWORK_RSP, NETWORK_DAT, NETWORK_INVALID
-    } network_t;
-
     // Derived header widths.
     localparam int PACKET_TYPE_WIDTH = $bits(packet_type_t);
     localparam int COLL_OP_WIDTH = $bits(collective_op_t);

@@ -9,7 +9,7 @@ module router #(
     parameter int unsigned MESH_X            = noc_unit_params_pkg::MESH_X_DIM,
     parameter int unsigned MESH_Y            = noc_unit_params_pkg::MESH_Y_DIM,
     parameter int unsigned NUM_DAT_VC        = noc_unit_params_pkg::DAT_NUM_VC,
-    parameter int unsigned DAT_RX_FIFO_DEPTH = noc_unit_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned DAT_RX_FIFO_DEPTH = noc_unit_params_pkg::DAT_RX_FIFO_DEPTH,
     parameter int unsigned REQ_FIFO_DEPTH    = 32,
     parameter int unsigned RSP_FIFO_DEPTH    = 32,
     parameter int unsigned REQ_REG_TYPE      = 0,

@@ -3,8 +3,6 @@
 
 module tb_nmu_request_packetize_stall;
 
-    localparam int unsigned NUM_DAT_VC = 2;
-    localparam int unsigned CREDIT_DEPTH = 2;
 
     logic clk = 1'b0;
     logic rst_n_i = 1'b0;
@@ -17,15 +15,16 @@ module tb_nmu_request_packetize_stall;
     noc_payload_pkg::req_flit_t                         m_req;
     logic                                           m_req_valid, m_req_ready;
     noc_payload_pkg::dat_flit_t                         m_dat;
-    logic                                           m_dat_valid;
-    logic                          [NUM_DAT_VC-1:0] dat_credit_return;
+    logic                                           m_dat_valid, m_dat_ready;
 
     always #5 clk = ~clk;
 
     nmu_request_inject_tb_dut #(
-        .FIFO_DEPTH      (4              ),
-        .NUM_DAT_VC      (NUM_DAT_VC     ),
-        .CREDIT_DEPTH (CREDIT_DEPTH),
+        .REQ_AW_REG_TYPE (1),
+        .REQ_W_REG_TYPE  (1),
+        .REQ_AR_REG_TYPE (1),
+        .DAT_AW_REG_TYPE (1),
+        .DAT_W_REG_TYPE  (1),
         .SRC_ID          (8'h12          ),
         .SRC_PORT_ID     (2'h2           )
     ) dut (
@@ -45,7 +44,7 @@ module tb_nmu_request_packetize_stall;
         .m_req_ready_i       (m_req_ready      ),
         .m_dat_o             (m_dat            ),
         .m_dat_valid_o       (m_dat_valid      ),
-        .credit_i            (dat_credit_return)
+        .m_dat_ready_i       (m_dat_ready      )
     );
 
     task automatic push_aw(input logic is_data, input logic [7:0] dst,
@@ -79,7 +78,7 @@ module tb_nmu_request_packetize_stall;
     int dat_count = 0;
     always @(posedge clk) begin
         if (!rst_n_i) dat_count = 0;
-        else if (m_dat_valid) begin
+        else if (m_dat_valid && m_dat_ready) begin
             if (int'(m_dat.header.packet_type) !=
                     (dat_count == 0 ? noc_header_pkg::PKT_DATA_AW : noc_header_pkg::PKT_DATA_W))
                 $fatal(1, "post-reset DAT order mismatch");
@@ -94,16 +93,10 @@ module tb_nmu_request_packetize_stall;
             dut.i_write_context.active_reg !== 1'b0)
             $fatal(1, "Request state did not reset asynchronously");
     end
-    always @(negedge rst_n_i) begin : check_credit_reset
-        #1ps;
-        if (int'(dut.i_tx_credit_buffer.gen_dat_vc[noc_unit_params_pkg::DAT_WRITE_VC].gen_active.i_credit.credit_o) !== CREDIT_DEPTH)
-            $fatal(1, "DAT credits did not reset asynchronously");
-    end
-
     initial begin
         s_aw='0; s_w='0; s_ar='0;
         s_aw_valid=0; s_w_valid=0; s_ar_valid=0;
-        m_req_ready=0; dat_credit_return='0;
+        m_req_ready=0; m_dat_ready=1;
         repeat (3) @(negedge clk);
         rst_n_i = 1;
         s_ar.axi.arid=3;

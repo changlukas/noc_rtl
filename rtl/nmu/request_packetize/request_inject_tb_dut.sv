@@ -11,10 +11,6 @@ module nmu_request_inject_tb_dut #(
     parameter int unsigned REQ_AR_REG_TYPE                               = 0,
     parameter int unsigned DAT_AW_REG_TYPE                               = 0,
     parameter int unsigned DAT_W_REG_TYPE                                = 0,
-    parameter int unsigned                               FIFO_DEPTH      = noc_unit_params_pkg::NOC_FIFO_DEPTH,
-    parameter int unsigned                               NUM_DAT_VC      = noc_unit_params_pkg::DAT_NUM_VC,
-    localparam int unsigned                               DAT_VC_MODE     = (NUM_DAT_VC > 1),
-    parameter int unsigned                               CREDIT_DEPTH    = noc_unit_params_pkg::CREDIT_DEPTH,
     parameter logic [ni_types_pkg::NODE_ID_W-1:0]      SRC_ID          = '0,
     parameter logic [noc_header_pkg::PORT_ID_WIDTH-1:0] SRC_PORT_ID     = '0
 ) (
@@ -34,7 +30,7 @@ module nmu_request_inject_tb_dut #(
     input  wire logic                                           m_req_ready_i,
     output wire noc_payload_pkg::dat_flit_t                         m_dat_o,
     output wire logic                                           m_dat_valid_o,
-    input  wire logic                          [NUM_DAT_VC-1:0] credit_i
+    input  wire logic                                           m_dat_ready_i
 );
     import ni_types_pkg::*;
 
@@ -93,10 +89,6 @@ module nmu_request_inject_tb_dut #(
         .m_dat_valid_o (dat_valid      ),
         .m_dat_ready_i (dat_ready      )
     );
-    wire noc_payload_pkg::req_flit_t assigned_req;
-    wire noc_payload_pkg::dat_flit_t assigned_dat;
-    wire assigned_req_valid, assigned_req_ready, assigned_dat_valid;
-    wire [NUM_DAT_VC-1:0] dat_fifo_ready;
     nmu_request_dispatch i_request_dispatch (
         .clk_i         (clk_i             ),
         .rst_n_i       (rst_n_i           ),
@@ -106,49 +98,12 @@ module nmu_request_inject_tb_dut #(
         .s_dat_i       (dat_flit          ),
         .s_dat_valid_i (dat_valid         ),
         .s_dat_ready_o (dat_ready         ),
-        .m_req_o       (assigned_req      ),
-        .m_req_valid_o (assigned_req_valid),
-        .m_req_ready_i (assigned_req_ready),
-        .m_dat_o       (assigned_dat      ),
-        .m_dat_valid_o (assigned_dat_valid),
-        .m_dat_ready_i (dat_fifo_ready[noc_unit_params_pkg::DAT_WRITE_VC])
-    );
-    wire noc_payload_pkg::dat_flit_t [NUM_DAT_VC-1:0] tx_dat_head;
-    wire [NUM_DAT_VC-1:0] tx_dat_valid, tx_dat_ready;
-    tx_credit_buffer #(
-        .CTRL_FIFO_DEPTH (FIFO_DEPTH  ),
-        .NUM_DAT_VC     (NUM_DAT_VC  ),
-        .CREDIT_DEPTH   (CREDIT_DEPTH)
-    ) i_tx_credit_buffer (
-        .clk_i               (clk_i              ),
-        .rst_n_i             (rst_n_i            ),
-        .s_ctrl_i             (assigned_req       ),
-        .s_ctrl_valid_i       (assigned_req_valid ),
-        .s_ctrl_ready_o       (assigned_req_ready ),
-        .m_ctrl_o             (m_req_o            ),
-        .m_ctrl_valid_o       (m_req_valid_o      ),
-        .m_ctrl_ready_i       (m_req_ready_i      ),
-        .s_dat_i             (assigned_dat       ),
-        .s_dat_valid_i       (assigned_dat_valid && dat_fifo_ready[noc_unit_params_pkg::DAT_WRITE_VC]),
-        .dat_ready_o         (dat_fifo_ready     ),
-        .m_dat_o             (tx_dat_head        ),
-        .m_dat_valid_o       (tx_dat_valid       ),
-        .m_dat_ready_i       (tx_dat_ready       ),
-        .credit_i            (credit_i           )
-    );
-    wire [NUM_DAT_VC-1:0] link_dat_valid;
-    assign m_dat_valid_o = |link_dat_valid;
-    flit_rr_arbiter #(
-        .NUM_DAT_VC  (NUM_DAT_VC )
-    ) i_flit_rr_arbiter (
-        .clk_i         (clk_i        ),
-        .rst_n_i       (rst_n_i      ),
-        .s_dat_i       (tx_dat_head  ),
-        .s_dat_valid_i (tx_dat_valid ),
-        .s_dat_ready_o (tx_dat_ready ),
+        .m_req_o       (m_req_o      ),
+        .m_req_valid_o (m_req_valid_o),
+        .m_req_ready_i (m_req_ready_i),
         .m_dat_o       (m_dat_o      ),
-        .m_dat_valid_o (link_dat_valid),
-        .m_dat_ready_i ('1           )
+        .m_dat_valid_o (m_dat_valid_o),
+        .m_dat_ready_i (m_dat_ready_i)
     );
 endmodule
 `resetall

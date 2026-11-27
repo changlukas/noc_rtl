@@ -107,7 +107,7 @@ def test_corruption_requires_both_checkers(tmp_path):
         stream.write("print('UVM_ERROR checker.svh(2) @ 10: checker [AXI_DATA] Unexpected RData ID: 0')\n")
     run(command + ["--corrupt"], cwd=tmp_path, check=True, capture_output=True)
     with (tmp_path / "simv").open("a") as stream:
-        stream.write("print('UVM_ERROR checker.svh(3) @ 10: checker [CREDIT] unrelated error')\n")
+        stream.write("print('UVM_ERROR checker.svh(3) @ 10: checker [PROTOCOL] unrelated error')\n")
     assert run(command + ["--corrupt"], cwd=tmp_path, capture_output=True).returncode != 0
 
 

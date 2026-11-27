@@ -8,7 +8,7 @@ package noc_unit_params_pkg;
     // Shared interface and NoC buffering.
     localparam int AXI_FIFO_DEPTH = 8;
     localparam int NOC_FIFO_DEPTH = 8;
-    localparam int CREDIT_DEPTH = 8;
+    localparam int DAT_RX_FIFO_DEPTH = 8;
 
     // Router topology, output buffering and fixed VC traffic classes.
     localparam int MESH_X_DIM = 4;

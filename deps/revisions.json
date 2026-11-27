@@ -12,16 +12,6 @@
     "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
   },
   {
-    "name": "yaml-cpp",
-    "revision": "56e3bb550c91fd7005566f19c079cb7a503223cf",
-    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
-  },
-  {
-    "name": "googletest",
-    "revision": "f8d7d77c06936315286eb55f8de22cd23c188571",
-    "distribution": "Subset used by project builds and focused tests. Unused upstream cells, examples, CI and dependency self-tests omitted."
-  },
-  {
     "name": "axi-0.39.7",
     "source_repository": "https://github.com/changlukas/noc_project.git",
     "source_commit": "69c70221f60cb4fa9f0856526e1b2a6d06fd98d6",

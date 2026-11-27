@@ -7,7 +7,7 @@
 module ni_direct_link #(
     parameter int unsigned NUM_NSUS     = 4,
     parameter int unsigned NUM_DAT_VC   = noc_unit_params_pkg::DAT_NUM_VC,
-    parameter int unsigned CREDIT_DEPTH = noc_unit_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned DAT_RX_FIFO_DEPTH = noc_unit_params_pkg::DAT_RX_FIFO_DEPTH,
     parameter logic [NUM_NSUS:0][ni_types_pkg::NODE_ID_W-1:0] NODE_IDS = '0,
     localparam int unsigned NUM_PORTS   = NUM_NSUS + 1
 ) (
@@ -36,7 +36,7 @@ module ni_direct_link #(
     localparam int unsigned DAT_VC_MODE    = 1;
 
     initial begin
-        if (NUM_NSUS < 1 || NUM_DAT_VC < 1 || CREDIT_DEPTH < 2)
+        if (NUM_NSUS < 1 || NUM_DAT_VC < 1 || DAT_RX_FIFO_DEPTH < 2)
             $fatal(1, "Invalid direct-link dimensions");
         for (int i = 0; i < NUM_PORTS; i++)
             for (int j = i + 1; j < NUM_PORTS; j++)
@@ -112,7 +112,7 @@ module ni_direct_link #(
                 assign dat_pop[p][vc]   = |grants;
                 assign dat_valid[p][vc] = rst_n_i && !empty;
                 cc_fifo #(
-                    .Depth       (CREDIT_DEPTH),
+                    .Depth       (DAT_RX_FIFO_DEPTH),
                     .FallThrough (1'b0        ),
                     .data_t      (noc_payload_pkg::dat_flit_t  )
                 ) i_fifo (

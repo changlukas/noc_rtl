@@ -9,7 +9,7 @@ module dat_router #(
     parameter int unsigned MESH_X          = noc_unit_params_pkg::MESH_X_DIM,
     parameter int unsigned MESH_Y          = noc_unit_params_pkg::MESH_Y_DIM,
     parameter int unsigned NUM_VC          = noc_unit_params_pkg::DAT_NUM_VC,
-    parameter int unsigned FIFO_DEPTH      = noc_unit_params_pkg::CREDIT_DEPTH,
+    parameter int unsigned FIFO_DEPTH      = noc_unit_params_pkg::DAT_RX_FIFO_DEPTH,
     parameter int unsigned OUT_FIFO_DEPTH  = noc_unit_params_pkg::ROUTER_OUTPUT_FIFO_DEPTH
 ) (
     input  wire logic                                     clk_i,
